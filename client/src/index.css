@@ -1,0 +1,48 @@
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+}
+
+/* total width */
+::-webkit-scrollbar {
+  background-color: #fff;
+  width: 16px;
+}
+
+/* scrollbar itself */
+::-webkit-scrollbar-thumb {
+  background-color: #babac0;
+  border-radius: 16px;
+}
+
+/* set button(top and bottom of the scrollbar) */
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+.tooltip {
+  position: absolute;
+  text-align: center;
+  width: auto;
+  height: auto;
+  padding: 2px;
+  font: 12px sans-serif;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 30;
+}
+
+:root {
+  --darkBlueColor: #1a202c;
+  --darkerBlueColor: #0c0f14;
+  --lightGrayColor: #e7ebf0;
+  --grayColor: #646d73;
+  --widgetColor: #2d3748;
+  --fontColor: #ffffffeb;
+  --anchorColor: #4fbcff;
+}

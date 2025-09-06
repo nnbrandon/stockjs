@@ -170,8 +170,8 @@ export class Chart {
         datum.open === datum.close
           ? "silver"
           : datum.open > datum.close
-          ? "red"
-          : "green"
+            ? "red"
+            : "green"
       );
   }
 
@@ -191,8 +191,8 @@ export class Chart {
         datum.open === datum.close
           ? "white"
           : datum.open > datum.close
-          ? "red"
-          : "green"
+            ? "red"
+            : "green"
       );
   }
 
@@ -202,32 +202,22 @@ export class Chart {
       .attr("class", "tooltip")
       .style("opacity", 0);
 
-    const bisectDate = bisector((datum) => {
-      return datum.date;
-    }).left;
-
     const mousemove = (event) => {
       const transform = zoomTransform(this.svgContainer.node());
       const xScaleZ = transform.rescaleX(this.xScale);
-
       const xCoordinate = pointer(event)[0];
-
       const x0 = xScaleZ.invert(xCoordinate);
-      const date = this.xDateScale(x0);
-      const index = bisectDate(this.d3ChartData, date, 1);
 
-      const datum0 = this.d3ChartData[index - 1];
-      const datum1 = this.d3ChartData[index];
-      const datum =
-        date.valueOf() - datum0.date.valueOf() >
-        datum1.date.valueOf() - date.valueOf()
-          ? datum1
-          : datum0;
+      let index = Math.round(x0);
+      index = Math.max(0, Math.min(index, this.d3ChartData.length - 1));
+      const datum = this.d3ChartData[index];
+
       let text = timeFormat("%a, %b %d, %Y")(datum.date);
       text += "<br>Open: " + datum.open.toFixed(2);
       text += "<br>Close: " + datum.close.toFixed(2);
       text += "<br>High: " + datum.high.toFixed(2);
       text += "<br>Low: " + datum.low.toFixed(2);
+      text += "<br>Volume: " + datum.volume.toLocaleString();
       tooltip
         .style("left", event.pageX + 5 + "px")
         .style("top", event.pageY - 30 + "px")

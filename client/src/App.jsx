@@ -11,15 +11,15 @@ import {
 import { lightTheme, darkTheme } from "./theme";
 import { addStockData, getStockDataBySymbol } from "./db";
 import { last } from "lodash";
-// import mock from "./mock.json";
 import CandlestickChart from "./components/CandlestickChart/CandlestickChart";
 import CircularProgress from "@mui/material/CircularProgress";
 import PatternTable from "./components/CandlestickChart/PatternTable/PatternTable";
 import { analyzePatternsFromStockData } from "./utils/patternRecognizer";
+import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
 
 const API_URL =
   "https://fwedwy4in5lnbkpm5yuczew6gm0vnfmj.lambda-url.us-east-1.on.aws/";
-const symbol = "AMZN";
+const symbol = "ADBE";
 const startDate = "2025-01-01";
 const endDate = "2025-09-06";
 
@@ -31,6 +31,8 @@ function App() {
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [chartData, setChartData] = useState([]);
   const [patternTableData, setPatternTableData] = useState([]);
+
+  const [showAddTickerModal, setShowAddTickerModal] = useState(false);
 
   const toggleTheme = () => {
     setMode((prev) => (prev === "light" ? "dark" : "light"));
@@ -143,8 +145,14 @@ function App() {
     <ThemeProvider theme={mode === "light" ? lightTheme : darkTheme}>
       {/* CssBaseline normalizes styles */}
       <CssBaseline />
-      <Button variant="contained" onClick={toggleTheme}>
+      {showAddTickerModal && (
+        <AddTickerModal onClose={() => setShowAddTickerModal(false)} />
+      )}
+      <Button variant="outlined" onClick={toggleTheme}>
         Toggle {mode === "light" ? "Dark" : "Light"} Mode
+      </Button>
+      <Button variant="outlined" onClick={() => setShowAddTickerModal(true)}>
+        Add Ticker
       </Button>
       <Tooltip
         title={
@@ -153,7 +161,7 @@ function App() {
       >
         <span>
           <Button
-            variant="contained"
+            variant="outlined"
             onClick={refreshData}
             disabled={!isUpToDate()}
           >

@@ -31,3 +31,7 @@ export const getStockDataByDateRange = async (symbol, startDate, endDate) => {
     .and((record) => record.date >= startDate && record.date <= endDate)
     .sortBy("date");
 };
+
+export const getStoredSymbols = async () => {
+  return await db.stockData.orderBy("symbol").uniqueKeys();
+};

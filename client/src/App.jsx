@@ -181,72 +181,47 @@ function App() {
         )}
 
         <div className={styles.view}>
-          {selectedSymbol ? (
-            <>
-              <div
-                style={{
-                  display: "flex",
-                  gap: "1rem",
-                  padding: "0.5rem",
-                  justifyContent: "space-between",
-                }}
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              padding: "0.5rem",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              {selectedSymbol && <h2>{selectedSymbol}</h2>}
+              {selectedSymbol && <h2>{last(chartData)?.close.toFixed(2)}</h2>}
+              <Button
+                variant="outlined"
+                onClick={refreshData}
+                disabled={!selectedSymbol}
               >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}
-                >
-                  <h2>{selectedSymbol}</h2>
-                  <h2>${last(chartData)?.close.toFixed(2)}</h2>
-                  <Button variant="outlined" onClick={refreshData}>
-                    Refresh Data
-                  </Button>
-                  <TimerangeSelector onChange={(range) => setRange(range)} />
-                  {range && (
-                    <h2>
-                      {new Date(range?.startDate).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}{" "}
-                      to{" "}
-                      {new Date(range?.endDate).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </h2>
-                  )}
-                </div>
+                Refresh Data
+              </Button>
+              <TimerangeSelector onChange={(range) => setRange(range)} />
+            </div>
 
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <Tooltip title="Delete all data for this symbol">
+                <IconButton
+                  color="error" // red color for delete
+                  onClick={() => {
+                    deleteSymbolData(selectedSymbol).then(() => {
+                      setSelectedSymbol(null);
+                      fetchStoredSymbols();
+                    });
+                  }}
+                  disabled={!selectedSymbol}
+                  aria-label="delete"
                 >
-                  <Tooltip title="Delete all data for this symbol">
-                    <IconButton
-                      color="error" // red color for delete
-                      onClick={() => {
-                        deleteSymbolData(selectedSymbol).then(() => {
-                          setSelectedSymbol(null);
-                          fetchStoredSymbols();
-                        });
-                      }}
-                      aria-label="delete"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </div>
-              </div>
-              {renderChart()}
-              {renderPatternTable()}
-            </>
-          ) : (
-            <>
-              <h2>Welcome to stockjs</h2>
-              <p>
-                To get started, click "Add Ticker" to add a stock ticker symbol.
-              </p>
-            </>
-          )}
+                  <DeleteIcon />
+                </IconButton>
+              </Tooltip>
+            </div>
+          </div>
+          {renderChart()}
+          {renderPatternTable()}
         </div>
       </div>
     </ThemeProvider>

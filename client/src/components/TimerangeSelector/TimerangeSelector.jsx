@@ -56,7 +56,15 @@ export default function YearSelect({ onChange }) {
         onChange={handleChange}
         renderValue={(selected) => {
           const option = options.find((o) => o.value === selected);
-          return option ? option.label : "";
+          const localRange = calculateRange(selected);
+          const dateOption = {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          };
+
+          const dateRange = `${new Date(localRange.startDate).toLocaleDateString("en-US", dateOption)} - ${new Date(localRange.endDate).toLocaleDateString("en-US", dateOption)}`;
+          return option ? `${option.label} (${dateRange})` : "";
         }}
       >
         {options.map((option) => (

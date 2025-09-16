@@ -1,6 +1,6 @@
-import { addStockData, getStoredSymbols } from "./db";
+import { addStockData } from "./db";
 
-class TickerService {
+class LambdaService {
   API_URL =
     "https://fwedwy4in5lnbkpm5yuczew6gm0vnfmj.lambda-url.us-east-1.on.aws/";
 
@@ -25,15 +25,6 @@ class TickerService {
       ...item,
     }));
   }
-
-  async addToDB(chartData) {
-    try {
-      await addStockData(chartData);
-    } catch (error) {
-      console.error("Error adding stock data to DB:", error);
-      throw error;
-    }
-  }
 }
 
-export default new TickerService();
+export default new LambdaService();

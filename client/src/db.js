@@ -35,3 +35,12 @@ export const getStockDataByDateRange = async (symbol, startDate, endDate) => {
 export const getStoredSymbols = async () => {
   return await db.stockData.orderBy("symbol").uniqueKeys();
 };
+
+export const deleteSymbolData = async (symbol) => {
+  try {
+    await db.stockData.where("symbol").equals(symbol).delete();
+    console.log(`All data for ${symbol} has been deleted.`);
+  } catch (err) {
+    console.error("Error deleting symbol data:", err);
+  }
+};

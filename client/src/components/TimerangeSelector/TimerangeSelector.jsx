@@ -47,7 +47,7 @@ export default function YearSelect({ onChange }) {
   }, []); // run once
 
   return (
-    <FormControl>
+    <FormControl variant="outlined" size="small" style={{ minWidth: 150 }}>
       <InputLabel id="years-ago-label">Select Time Range</InputLabel>
       <Select
         labelId="years-ago-label"

@@ -10,9 +10,8 @@ import isObject from "lodash/isObject";
 
 import styles from "./AddTickerModal.module.css";
 import tickers from "./sp500.json";
-import TickerService from "../../TickerService";
-import { getStoredSymbols } from "../../db";
-import { set } from "lodash";
+import LambdaService from "../../LambdaService";
+import { addStockData, getStoredSymbols } from "../../db";
 
 const boxStyle = {
   position: "absolute",
@@ -54,7 +53,7 @@ function AddTickerModal({ onClose, range }) {
       setIsLoading(true);
       let historicalData = [];
       try {
-        historicalData = await TickerService.fetchHistoricalData(
+        historicalData = await LambdaService.fetchHistoricalData(
           tickerInputValue,
           range.startDate,
           range.endDate
@@ -69,7 +68,7 @@ function AddTickerModal({ onClose, range }) {
       }
 
       try {
-        await TickerService.addToDB(historicalData);
+        await addStockData(historicalData);
       } catch (error) {
         setError(
           `Error storing data for ${tickerInputValue}: ${error.message}`

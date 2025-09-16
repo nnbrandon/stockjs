@@ -4,12 +4,16 @@ import {
   ThemeProvider,
   CssBaseline,
   Button,
-  Snackbar,
-  Tooltip,
   Divider,
+  Tooltip,
 } from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
-import { addStockData, getStockDataByDateRange, getStoredSymbols } from "./db";
+import {
+  addStockData,
+  deleteSymbolData,
+  getStockDataByDateRange,
+  getStoredSymbols,
+} from "./db";
 import { last } from "lodash";
 import CandlestickChart from "./components/CandlestickChart/CandlestickChart";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -19,16 +23,14 @@ import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
 import Navbar from "./components/Navbar/Navbar";
 import MenuIcon from "@mui/icons-material/Menu";
 import TimerangeSelector from "./components/TimerangeSelector/TimerangeSelector";
-
+import IconButton from "@mui/material/IconButton";
+import DeleteIcon from "@mui/icons-material/Delete";
 import styles from "./App.module.css";
-import TickerService from "./TickerService";
+import LambdaService from "./LambdaService";
 
 function App() {
   const [mode, setMode] = useState("dark");
   const [showNavBar, setShowNavBar] = useState(true);
-
-  const [showSnackbar, setShowSnackbar] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [chartData, setChartData] = useState([]);
@@ -74,20 +76,18 @@ function App() {
     setIsChartLoading(true);
     debugger;
     try {
-      const historicalData = await TickerService.fetchHistoricalData(
+      const historicalData = await LambdaService.fetchHistoricalData(
         selectedSymbol,
         range.startDate,
         range.endDate
       );
-      await TickerService.addToDB(historicalData);
+      await addStockData(historicalData); // Update IndexedDB
       setChartData(historicalData);
       addStockData(historicalData);
       const patterns = analyzePatternsFromStockData(historicalData);
       setPatternTableData(patterns);
-      setSnackbarMessage("Data refreshed successfully!");
     } catch (error) {
       console.error("Error fetching stock data:", error);
-      setSnackbarMessage("Error refreshing data. Error: " + error.error);
     } finally {
       setIsChartLoading(false);
     }
@@ -95,7 +95,18 @@ function App() {
 
   const renderChart = () => {
     if (isChartLoading) {
-      return <CircularProgress />;
+      return (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: 200,
+          }}
+        >
+          <CircularProgress />
+        </div>
+      );
     } else if (!isChartLoading && chartData && chartData.length) {
       return <CandlestickChart chartData={chartData} />;
     } else {
@@ -105,9 +116,24 @@ function App() {
 
   const renderPatternTable = () => {
     if (isChartLoading) {
-      return <CircularProgress />;
+      return (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: 200,
+          }}
+        >
+          <CircularProgress />
+        </div>
+      );
     } else if (!isChartLoading && chartData && chartData.length) {
-      return <PatternTable patternsData={patternTableData} />;
+      return (
+        <div style={{ padding: "1rem" }}>
+          <PatternTable patternsData={patternTableData} />
+        </div>
+      );
     } else {
       return <div />;
     }
@@ -154,27 +180,75 @@ function App() {
           />
         )}
 
-        <Snackbar
-          open={showSnackbar}
-          autoHideDuration={6000}
-          onClose={() => setShowSnackbar(false)}
-          message={snackbarMessage}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        ></Snackbar>
-
         <div className={styles.view}>
-          <h1>{selectedSymbol}</h1>
-          <h2>
-            {range?.startDate} to {range?.endDate}
-          </h2>
-          <TimerangeSelector onChange={(range) => setRange(range)} />
-          <h3>Close: {last(chartData)?.close.toFixed(2)}</h3>
-          <Button variant="outlined" onClick={refreshData}>
-            Refresh Data
-          </Button>
-          {renderChart()}
-          <Divider orientation="horizontal" />
-          {renderPatternTable()}
+          {selectedSymbol ? (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "1rem",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+                >
+                  <h1>
+                    {selectedSymbol}{" "}
+                    <Button variant="outlined" onClick={refreshData}>
+                      Refresh Data
+                    </Button>
+                  </h1>
+                  <TimerangeSelector onChange={(range) => setRange(range)} />
+                  {range && (
+                    <h2>
+                      {new Date(range?.startDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}{" "}
+                      to{" "}
+                      {new Date(range?.endDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </h2>
+                  )}
+                </div>
+
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+                >
+                  <Tooltip title="Delete all data for this symbol">
+                    <IconButton
+                      color="error" // red color for delete
+                      onClick={() => {
+                        deleteSymbolData(selectedSymbol).then(() => {
+                          setSelectedSymbol(null);
+                          fetchStoredSymbols();
+                        });
+                      }}
+                      aria-label="delete"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              </div>
+
+              <h3>Close: {last(chartData)?.close.toFixed(2)}</h3>
+              {renderChart()}
+              {renderPatternTable()}
+            </>
+          ) : (
+            <>
+              <h2>Welcome to stockjs</h2>
+              <p>
+                To get started, click "Add Ticker" to add a stock ticker symbol.
+              </p>
+            </>
+          )}
         </div>
       </div>
     </ThemeProvider>

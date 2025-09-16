@@ -19,7 +19,7 @@ import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
 
 const API_URL =
   "https://fwedwy4in5lnbkpm5yuczew6gm0vnfmj.lambda-url.us-east-1.on.aws/";
-const symbol = "ADBE";
+const symbol = "ORCL";
 const startDate = "2025-01-01";
 const endDate = "2025-09-06";
 
@@ -177,7 +177,11 @@ function App() {
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       ></Snackbar>
 
-      {symbol}
+      <h1>{symbol}</h1>
+      <h2>
+        {startDate} to {endDate}
+      </h2>
+      <h3>Close: {last(chartData)?.close.toFixed(2)}</h3>
       {renderChart()}
       <Divider orientation="horizontal" />
       {renderPatternTable()}

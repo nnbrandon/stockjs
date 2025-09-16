@@ -187,18 +187,18 @@ function App() {
                 style={{
                   display: "flex",
                   gap: "1rem",
+                  padding: "0.5rem",
                   justifyContent: "space-between",
                 }}
               >
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "1rem" }}
                 >
-                  <h1>
-                    {selectedSymbol}{" "}
-                    <Button variant="outlined" onClick={refreshData}>
-                      Refresh Data
-                    </Button>
-                  </h1>
+                  <h2>{selectedSymbol}</h2>
+                  <h2>${last(chartData)?.close.toFixed(2)}</h2>
+                  <Button variant="outlined" onClick={refreshData}>
+                    Refresh Data
+                  </Button>
                   <TimerangeSelector onChange={(range) => setRange(range)} />
                   {range && (
                     <h2>
@@ -236,8 +236,6 @@ function App() {
                   </Tooltip>
                 </div>
               </div>
-
-              <h3>Close: {last(chartData)?.close.toFixed(2)}</h3>
               {renderChart()}
               {renderPatternTable()}
             </>

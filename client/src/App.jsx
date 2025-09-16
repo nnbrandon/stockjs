@@ -9,22 +9,24 @@ import {
   Divider,
 } from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
-import { addStockData, getStockDataBySymbol } from "./db";
+import { addStockData, getStockDataByDateRange, getStoredSymbols } from "./db";
 import { last } from "lodash";
 import CandlestickChart from "./components/CandlestickChart/CandlestickChart";
 import CircularProgress from "@mui/material/CircularProgress";
 import PatternTable from "./components/CandlestickChart/PatternTable/PatternTable";
 import { analyzePatternsFromStockData } from "./utils/patternRecognizer";
 import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
+import Navbar from "./components/Navbar/Navbar";
+import MenuIcon from "@mui/icons-material/Menu";
+import TimerangeSelector from "./components/TimerangeSelector/TimerangeSelector";
 
-const API_URL =
-  "https://fwedwy4in5lnbkpm5yuczew6gm0vnfmj.lambda-url.us-east-1.on.aws/";
-const symbol = "ORCL";
-const startDate = "2025-01-01";
-const endDate = "2025-09-06";
+import styles from "./App.module.css";
+import TickerService from "./TickerService";
 
 function App() {
   const [mode, setMode] = useState("dark");
+  const [showNavBar, setShowNavBar] = useState(true);
+
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
@@ -32,93 +34,63 @@ function App() {
   const [chartData, setChartData] = useState([]);
   const [patternTableData, setPatternTableData] = useState([]);
 
+  const [range, setRange] = useState();
+  const [selectedSymbol, setSelectedSymbol] = useState(null);
+  const [storedSymbols, setStoredSymbols] = useState([]);
+
   const [showAddTickerModal, setShowAddTickerModal] = useState(false);
 
   const toggleTheme = () => {
     setMode((prev) => (prev === "light" ? "dark" : "light"));
   };
 
+  const fetchStoredSymbols = async () => {
+    const symbols = await getStoredSymbols();
+    setStoredSymbols(symbols);
+  };
+
   useEffect(() => {
+    // Get stored symbols from IndexedDB
+    fetchStoredSymbols();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSymbol || !range) return;
+
     setIsChartLoading(true);
-    getStockDataBySymbol(symbol)
+    // Fetch stock data from IndexedDB
+    getStockDataByDateRange(selectedSymbol, range.startDate, range.endDate)
       .then((data) => {
         if (data && data.length) {
           setChartData(data);
           const patterns = analyzePatternsFromStockData(data);
-          console.log(patterns);
           setPatternTableData(patterns);
         }
       })
       .finally(() => setIsChartLoading(false));
-  }, []);
+  }, [selectedSymbol, range]);
 
   const refreshData = async () => {
     setIsChartLoading(true);
+    debugger;
     try {
-      const response = await fetch(
-        `${API_URL}?symbol=${symbol}&start=${startDate}&end=${endDate}`
+      const historicalData = await TickerService.fetchHistoricalData(
+        selectedSymbol,
+        range.startDate,
+        range.endDate
       );
-      const data = await response.json();
-      if (!response.ok) {
-        console.error("Error fetching stock data:", data);
-        setSnackbarMessage("Error refreshing data. Error: " + data.error);
-      } else {
-        const formattedData = data.map((item) => ({
-          symbol: symbol,
-          ...item,
-        }));
-        setChartData(formattedData);
-        addStockData(formattedData);
-        const patterns = analyzePatternsFromStockData(formattedData);
-        setPatternTableData(patterns);
-        console.log(formattedData);
-        console.log(patterns);
-        setSnackbarMessage("Data refreshed successfully!");
-      }
+      await TickerService.addToDB(historicalData);
+      setChartData(historicalData);
+      addStockData(historicalData);
+      const patterns = analyzePatternsFromStockData(historicalData);
+      setPatternTableData(patterns);
+      setSnackbarMessage("Data refreshed successfully!");
     } catch (error) {
       console.error("Error fetching stock data:", error);
       setSnackbarMessage("Error refreshing data. Error: " + error.error);
     } finally {
       setIsChartLoading(false);
     }
-  };
-
-  const isUpToDate = () => {
-    if (!chartData || !chartData.length) return true;
-
-    // Check if today is a weekday (Monday to Friday)
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      // Today is a weekend
-      return false;
-    }
-
-    // Get today's date in YYYY-MM-DD format
-    const todayFormatted = today.toISOString().split("T")[0];
-    const lastEntryDate = new Date(last(chartData).date)
-      .toISOString()
-      .split("T")[0];
-
-    // Check if the last entry's date matches today's date
-    if (lastEntryDate !== todayFormatted) {
-      return false;
-    }
-
-    // Check if the current time is after the stock market's closing time
-    const marketCloseHour = 16; // 4:00 PM
-    const marketCloseMinute = 0;
-    const now = new Date();
-    const marketCloseTime = new Date();
-    marketCloseTime.setHours(marketCloseHour, marketCloseMinute, 0, 0);
-
-    if (now < marketCloseTime) {
-      // The market has not closed yet
-      return false;
-    }
-
-    // All conditions are met: it's a weekday, the last entry is today's date, and the market has closed
-    return true;
   };
 
   const renderChart = () => {
@@ -145,46 +117,66 @@ function App() {
     <ThemeProvider theme={mode === "light" ? lightTheme : darkTheme}>
       {/* CssBaseline normalizes styles */}
       <CssBaseline />
-      {showAddTickerModal && (
-        <AddTickerModal onClose={() => setShowAddTickerModal(false)} />
-      )}
-      <Button variant="outlined" onClick={toggleTheme}>
-        Toggle {mode === "light" ? "Dark" : "Light"} Mode
-      </Button>
-      <Button variant="outlined" onClick={() => setShowAddTickerModal(true)}>
-        Add Ticker
-      </Button>
-      <Tooltip
-        title={
-          !isUpToDate() ? "Data is up to date or market hasn't closed yet" : ""
-        }
-      >
-        <span>
-          <Button
-            variant="outlined"
-            onClick={refreshData}
-            disabled={!isUpToDate()}
-          >
+
+      <div className={styles.container}>
+        {showNavBar && (
+          <Navbar
+            mode={mode}
+            toggleTheme={toggleTheme}
+            symbols={storedSymbols}
+            selectedSymbol={selectedSymbol}
+            onCloseNav={() => setShowNavBar(false)}
+            onClickAddTickerModal={() => setShowAddTickerModal(true)}
+            onClickSymbol={setSelectedSymbol}
+          />
+        )}
+        {!showNavBar && (
+          <MenuIcon
+            className={styles.hamburgerButton}
+            alt="menu"
+            onClick={() => setShowNavBar(true)}
+            fontSize="large"
+          />
+        )}
+        {showNavBar && <Divider orientation="vertical" />}
+
+        {showAddTickerModal && (
+          <AddTickerModal
+            range={range}
+            onClose={(tickerInputValue) => {
+              setShowAddTickerModal(false);
+              if (tickerInputValue) {
+                // If a ticker was added, refetch the stored symbols
+                fetchStoredSymbols();
+                setSelectedSymbol(tickerInputValue);
+              }
+            }}
+          />
+        )}
+
+        <Snackbar
+          open={showSnackbar}
+          autoHideDuration={6000}
+          onClose={() => setShowSnackbar(false)}
+          message={snackbarMessage}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        ></Snackbar>
+
+        <div className={styles.view}>
+          <h1>{selectedSymbol}</h1>
+          <h2>
+            {range?.startDate} to {range?.endDate}
+          </h2>
+          <TimerangeSelector onChange={(range) => setRange(range)} />
+          <h3>Close: {last(chartData)?.close.toFixed(2)}</h3>
+          <Button variant="outlined" onClick={refreshData}>
             Refresh Data
           </Button>
-        </span>
-      </Tooltip>
-      <Snackbar
-        open={showSnackbar}
-        autoHideDuration={6000}
-        onClose={() => setShowSnackbar(false)}
-        message={snackbarMessage}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      ></Snackbar>
-
-      <h1>{symbol}</h1>
-      <h2>
-        {startDate} to {endDate}
-      </h2>
-      <h3>Close: {last(chartData)?.close.toFixed(2)}</h3>
-      {renderChart()}
-      <Divider orientation="horizontal" />
-      {renderPatternTable()}
+          {renderChart()}
+          <Divider orientation="horizontal" />
+          {renderPatternTable()}
+        </div>
+      </div>
     </ThemeProvider>
   );
 }

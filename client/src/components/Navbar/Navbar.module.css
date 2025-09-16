@@ -1,0 +1,45 @@
+.sidebar {
+  height: 100%;
+  width: 200px;
+
+  @media only screen and (min-device-width: 320px) and (max-device-width: 480px) {
+    position: absolute;
+    z-index: 99;
+    width: 100%;
+  }
+}
+
+.closeButton {
+  cursor: pointer;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
+
+.buttonLayout {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  width: 80%;
+  border-radius: 30px;
+}
+
+.selected {
+  /* color: $anchorColor !important; */
+}
+
+.nav {
+  height: 60%;
+  overflow-x: hidden;
+}
+
+.bottomNav {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 35%;
+}

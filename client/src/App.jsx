@@ -1,12 +1,6 @@
 // App.js
 import React, { useEffect, useState } from "react";
-import {
-  ThemeProvider,
-  CssBaseline,
-  Button,
-  Divider,
-  Tooltip,
-} from "@mui/material";
+import { ThemeProvider, CssBaseline, Button, Divider } from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
 import {
   addStockData,
@@ -23,10 +17,10 @@ import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
 import Navbar from "./components/Navbar/Navbar";
 import MenuIcon from "@mui/icons-material/Menu";
 import TimerangeSelector from "./components/TimerangeSelector/TimerangeSelector";
-import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import styles from "./App.module.css";
 import LambdaService from "./LambdaService";
+import Stock52WeekRange from "./components/Stock52WeekRange/Stock52WeekRange";
 
 function App() {
   const [mode, setMode] = useState("dark");
@@ -74,7 +68,6 @@ function App() {
 
   const refreshData = async () => {
     setIsChartLoading(true);
-    debugger;
     try {
       const historicalData = await LambdaService.fetchHistoricalData(
         selectedSymbol,
@@ -200,24 +193,25 @@ function App() {
                 Refresh Data
               </Button>
               <TimerangeSelector onChange={(range) => setRange(range)} />
+              {selectedSymbol && <Stock52WeekRange symbol={selectedSymbol} />}
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <Tooltip title="Delete all data for this symbol">
-                <IconButton
-                  color="error" // red color for delete
-                  onClick={() => {
-                    deleteSymbolData(selectedSymbol).then(() => {
-                      setSelectedSymbol(null);
-                      fetchStoredSymbols();
-                    });
-                  }}
-                  disabled={!selectedSymbol}
-                  aria-label="delete"
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
+              <Button
+                variant="outlined"
+                color="error" // red color for delete
+                onClick={() => {
+                  deleteSymbolData(selectedSymbol).then(() => {
+                    setSelectedSymbol(null);
+                    fetchStoredSymbols();
+                  });
+                }}
+                disabled={!selectedSymbol}
+                aria-label="delete"
+              >
+                Delete
+                <DeleteIcon />
+              </Button>
             </div>
           </div>
           {renderChart()}

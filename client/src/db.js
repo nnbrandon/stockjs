@@ -44,3 +44,26 @@ export const deleteSymbolData = async (symbol) => {
     console.error("Error deleting symbol data:", err);
   }
 };
+
+export const get52WeekStats = async (symbol) => {
+  const today = new Date();
+  const lastYear = new Date();
+  lastYear.setFullYear(today.getFullYear() - 1);
+
+  const data = await db.stockData
+    .where("symbol")
+    .equals(symbol)
+    .and((record) => new Date(record.date) >= lastYear)
+    .sortBy("date");
+
+  if (data.length === 0) return null;
+
+  const lows = data.map((d) => d.low);
+  const highs = data.map((d) => d.high);
+
+  return {
+    low52: Math.min(...lows),
+    high52: Math.max(...highs),
+    current: data[data.length - 1].close, // latest close
+  };
+};

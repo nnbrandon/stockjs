@@ -218,7 +218,6 @@ function App() {
             paddingRight: "6rem",
           }}
         >
-          <h3>Quarterly Fundamentals</h3>
           <QuarterlyFundamentalsTable
             quarterlyFundamentalsData={quarterlyFundamentalsData}
           />
@@ -254,7 +253,6 @@ function App() {
             paddingRight: "6rem",
           }}
         >
-          <h3>Annual Fundamentals</h3>
           <AnnualFundamentalsTable
             annualFundamentalsData={annualFundamentalsData}
           />
@@ -286,7 +284,6 @@ function App() {
             paddingRight: "6rem",
           }}
         >
-          <h3>Recognized Patterns</h3>
           <PatternTable patternsData={patternTableData} />
         </div>
       );

@@ -10,6 +10,8 @@ import {
   TableSortLabel,
 } from "@mui/material";
 import formatShortNumber from "../../utils/formatShortNumber";
+import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 
 export default function QuarterlyFundamentalsTable({
   quarterlyFundamentalsData,
@@ -79,17 +81,74 @@ export default function QuarterlyFundamentalsTable({
             <TableRow key={row.date}>
               <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
               <TableCell>{formatShortNumber(row.totalRevenue)}</TableCell>
-              <TableCell>
-                {row.revenueGrowth !== null && isFinite(row.revenueGrowth)
-                  ? row.revenueGrowth.toFixed(2) + "%"
-                  : "--"}
+              <TableCell
+                sx={{
+                  color:
+                    row.revenueGrowth > 0
+                      ? "#26a69a"
+                      : row.revenueGrowth < 0
+                        ? "#ef5350"
+                        : "inherit",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {row.revenueGrowth !== null && isFinite(row.revenueGrowth) ? (
+                  <>
+                    {row.revenueGrowth.toFixed(2) + "%"}
+                    {row.revenueGrowth > 0 && (
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        sx={{ verticalAlign: "middle" }}
+                      />
+                    )}
+                    {row.revenueGrowth < 0 && (
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        sx={{ verticalAlign: "middle" }}
+                      />
+                    )}
+                  </>
+                ) : (
+                  "--"
+                )}
               </TableCell>
               <TableCell>{formatShortNumber(row.costOfRevenue)}</TableCell>
               <TableCell>{formatShortNumber(row.netIncome)}</TableCell>
-              <TableCell>
-                {row.netIncomeGrowth !== null && isFinite(row.netIncomeGrowth)
-                  ? row.netIncomeGrowth.toFixed(2) + "%"
-                  : "--"}
+              <TableCell
+                sx={{
+                  color:
+                    row.netIncomeGrowth > 0
+                      ? "#26a69a"
+                      : row.netIncomeGrowth < 0
+                        ? "#ef5350"
+                        : "inherit",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {row.netIncomeGrowth !== null &&
+                isFinite(row.netIncomeGrowth) ? (
+                  <>
+                    {row.netIncomeGrowth.toFixed(2) + "%"}
+                    {row.netIncomeGrowth > 0 && (
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        sx={{ verticalAlign: "middle" }}
+                      />
+                    )}
+                    {row.netIncomeGrowth < 0 && (
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        sx={{ verticalAlign: "middle" }}
+                      />
+                    )}
+                  </>
+                ) : (
+                  "--"
+                )}
               </TableCell>
               <TableCell>{formatShortNumber(row.EBIT)}</TableCell>
               <TableCell>{row.dilutedEPS}</TableCell>

@@ -14,7 +14,7 @@ import styles from "./Navbar.module.css";
 function Navbar({
   mode,
   selectedSymbol,
-  symbols,
+  storedSymbolsWithNames,
   onCloseNav,
   onClickAddTickerModal,
   onClickSymbol,
@@ -22,14 +22,14 @@ function Navbar({
   toggleTheme,
   isRefreshingAll,
 }) {
-  const renderNavData = symbols.map((symbol, index) => {
+  const renderNavData = storedSymbolsWithNames.map((symbolWithName, index) => {
     return (
       <ListItem key={index}>
         <ListItemButton
-          selected={selectedSymbol === symbol}
-          onClick={() => onClickSymbol(symbol)}
+          selected={selectedSymbol === symbolWithName.symbol}
+          onClick={() => onClickSymbol(symbolWithName.symbol)}
         >
-          <ListItemText primary={symbol} />
+          <ListItemText primary={symbolWithName.name} />
         </ListItemButton>
       </ListItem>
     );

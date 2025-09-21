@@ -3,14 +3,8 @@ import Dexie from "dexie";
 // Create a single database
 export const db = new Dexie("StocksDB");
 
-// Table for all stock data
 db.version(1).stores({
-  stockData: "[symbol+date], open, close, high, low, volume, adjClose",
-  // compound primary key [symbol+date] prevents duplicates
-});
-
-// Table for fundamentals data
-db.version(1).stores({
+  stockData: "[symbol+date], open, close, high, low, volume, adjClose, name",
   quarterlyResult: "[symbol+date], symbol, date", // compound key + indexes
   annualResult: "[symbol+date], symbol, date",
 });
@@ -40,6 +34,18 @@ export const getStockDataByDateRange = async (symbol, startDate, endDate) => {
 
 export const getStoredSymbols = async () => {
   return await db.stockData.orderBy("symbol").uniqueKeys();
+};
+
+export const getStoredSymbolsWithNames = async () => {
+  const symbols = await db.stockData.orderBy("symbol").uniqueKeys();
+  // For each symbol, get the first record (which contains the name)
+  const symbolNamePairs = await Promise.all(
+    symbols.map(async (symbol) => {
+      const record = await db.stockData.where("symbol").equals(symbol).first();
+      return record ? { symbol, name: record.name } : { symbol, name: null };
+    })
+  );
+  return symbolNamePairs;
 };
 
 export const deleteSymbolData = async (symbol) => {

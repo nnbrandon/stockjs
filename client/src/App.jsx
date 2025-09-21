@@ -15,7 +15,7 @@ import {
   addStockData,
   deleteSymbolData,
   getStockDataByDateRange,
-  getStoredSymbols,
+  getStoredSymbolsWithNames,
   saveFundamentals,
   getQuarterly,
   getAnnual,
@@ -49,7 +49,7 @@ function App() {
 
   const [range, setRange] = useState();
   const [selectedSymbol, setSelectedSymbol] = useState(null);
-  const [storedSymbols, setStoredSymbols] = useState([]);
+  const [storedSymbolsWithNames, setStoredSymbolsWithNames] = useState([]);
 
   const [averageVolumePast30Days, setAverageVolumePast30Days] = useState(null);
 
@@ -65,8 +65,8 @@ function App() {
   };
 
   const fetchStoredSymbols = async () => {
-    const symbols = await getStoredSymbols();
-    setStoredSymbols(symbols);
+    const symbolsWithNames = await getStoredSymbolsWithNames();
+    setStoredSymbolsWithNames(symbolsWithNames);
   };
 
   useEffect(() => {
@@ -141,7 +141,7 @@ function App() {
     setIsChartLoading(true);
     setIsRefreshingAll(true);
     try {
-      const promises = storedSymbols.map(async (symbol) => {
+      const promises = storedSymbolsWithNames.map(async (symbol) => {
         const historicalData = await LambdaService.fetchHistoricalData(
           symbol,
           range.startDate,
@@ -302,7 +302,7 @@ function App() {
           <Navbar
             mode={mode}
             toggleTheme={toggleTheme}
-            symbols={storedSymbols}
+            storedSymbolsWithNames={storedSymbolsWithNames}
             selectedSymbol={selectedSymbol}
             onCloseNav={() => setShowNavBar(false)}
             onClickAddTickerModal={() => setShowAddTickerModal(true)}
@@ -342,6 +342,7 @@ function App() {
               gap: "1rem",
               padding: "0.5rem",
               justifyContent: "space-between",
+              flexWrap: "wrap",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -390,7 +391,7 @@ function App() {
           </div>
           {selectedSymbol && renderChart()}
           {selectedSymbol && (
-            <Box sx={{ width: "100%", mt: 2, ml: 2 }}>
+            <Box sx={{ width: "100%", mt: 2, ml: 2, mb: 2 }}>
               <Tabs
                 value={activeTab}
                 onChange={(_, newValue) => setActiveTab(newValue)}

@@ -39,7 +39,7 @@ function AddTickerModal({ onClose, range }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
+    document.activeElement.blur();
     if (!tickerInputValue) {
       setError("A ticker symbol must be provided.");
       setShowError(true);

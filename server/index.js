@@ -21,11 +21,12 @@ export const handler = async (event) => {
   }
 
   const params = event.queryStringParameters || {};
-  switch (params) {
+  const action = params.action;
+  switch (action) {
     case "prices":
-      return await fetchPrices(params);
+      return await fetchPrices(params, corsOrigin);
     case "fundamentals":
-      return await fetchFundamentals(params);
+      return await fetchFundamentals(params, corsOrigin);
     default:
       return {
         statusCode: 400,
@@ -40,7 +41,7 @@ export const handler = async (event) => {
   }
 };
 
-const fetchPrices = async (params) => {
+const fetchPrices = async (params, corsOrigin) => {
   try {
     // Read query parameters from Lambda Function URL
     const symbol = params.symbol;
@@ -105,7 +106,7 @@ const fetchPrices = async (params) => {
   }
 };
 
-const fetchFundamentals = async (params) => {
+const fetchFundamentals = async (params, corsOrigin) => {
   const type = params.type || "quarterly"; // or "annual"
   const start = params.start;
   const end = params.end;

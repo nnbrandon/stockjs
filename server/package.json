@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "google-finance": "^0.1.12",
     "yahoo-finance2": "^2.13.3"
   }
 }

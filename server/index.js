@@ -20,9 +20,29 @@ export const handler = async (event) => {
     };
   }
 
+  const params = event.queryStringParameters || {};
+  switch (params) {
+    case "prices":
+      return await fetchPrices(params);
+    case "fundamentals":
+      return await fetchFundamentals(params);
+    default:
+      return {
+        statusCode: 400,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": corsOrigin,
+        },
+        body: JSON.stringify({
+          error: "Invalid action. Use ?action=prices or ?action=fundamentals",
+        }),
+      };
+  }
+};
+
+const fetchPrices = async (params) => {
   try {
     // Read query parameters from Lambda Function URL
-    const params = event.queryStringParameters || {};
     const symbol = params.symbol;
     const start = params.start;
     const end = params.end;
@@ -83,4 +103,60 @@ export const handler = async (event) => {
       body: JSON.stringify({ error: err.message }),
     };
   }
+};
+
+const fetchFundamentals = async (params) => {
+  const type = params.type || "quarterly"; // or "annual"
+  const start = params.start;
+  const end = params.end;
+  const symbol = params.symbol;
+
+  if (!symbol) {
+    return {
+      statusCode: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": corsOrigin,
+      },
+      body: JSON.stringify({ error: "Missing symbol query param" }),
+    };
+  }
+
+  if (!start) {
+    return {
+      statusCode: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": corsOrigin,
+      },
+      body: JSON.stringify({ error: "Missing start query param" }),
+    };
+  }
+
+  if (!end) {
+    return {
+      statusCode: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": corsOrigin,
+      },
+      body: JSON.stringify({ error: "Missing end query param" }),
+    };
+  }
+
+  result = await yahooFinance.fundamentalsTimeSeries(symbol, {
+    period1: start,
+    period2: end,
+    type,
+    modules: ["financials", "balance-sheet", "cash-flow"],
+  });
+
+  return {
+    statusCode: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": corsOrigin,
+    },
+    body: JSON.stringify(result),
+  };
 };

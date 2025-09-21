@@ -194,6 +194,40 @@ export class Chart {
 
     this.gX.selectAll(".domain").attr("stroke", "none");
     this.gX.selectAll("line").attr("stroke", "none");
+
+    // Remove old grid lines
+    this.svgContainer.selectAll(".y-grid-line").remove();
+    this.svgContainer.selectAll(".x-grid-line").remove();
+
+    // Draw new grid lines for each tick
+    this.yScale.ticks().forEach((tick) => {
+      const y = this.yScale(tick);
+      this.svgContainer
+        .append("line")
+        .attr("class", "y-grid-line")
+        .attr("x1", 0)
+        .attr("x2", this.width)
+        .attr("y1", y)
+        .attr("y2", y)
+        .attr("stroke", "#444")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.18);
+    });
+
+    // Draw x-axis grid lines
+    this.xScale.ticks().forEach((tick) => {
+      const x = this.xScale(tick);
+      this.svgContainer
+        .append("line")
+        .attr("class", "x-grid-line")
+        .attr("x1", x)
+        .attr("x2", x)
+        .attr("y1", 0)
+        .attr("y2", this.height)
+        .attr("stroke", "#444")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.12);
+    });
   }
 
   drawRectangles() {
@@ -386,6 +420,40 @@ export class Chart {
 
     // Redraw latest close line after zoom
     this.drawLatestCloseLine();
+
+    // Remove old grid lines
+    this.svgContainer.selectAll(".y-grid-line").remove();
+    this.svgContainer.selectAll(".x-grid-line").remove();
+
+    // Draw new y-axis grid lines using updated yScale
+    this.yScale.ticks().forEach((tick) => {
+      const y = this.yScale(tick);
+      this.svgContainer
+        .append("line")
+        .attr("class", "y-grid-line")
+        .attr("x1", 0)
+        .attr("x2", this.width)
+        .attr("y1", y)
+        .attr("y2", y)
+        .attr("stroke", "#444")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.18);
+    });
+
+    // Draw new x-axis grid lines using zoomed xScale
+    xScaleZ.ticks().forEach((tick) => {
+      const x = xScaleZ(tick);
+      this.svgContainer
+        .append("line")
+        .attr("class", "x-grid-line")
+        .attr("x1", x)
+        .attr("x2", x)
+        .attr("y1", 0)
+        .attr("y2", this.height)
+        .attr("stroke", "#444")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.12);
+    });
   }
 
   zoomEndHandler(event) {

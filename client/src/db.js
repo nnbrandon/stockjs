@@ -78,6 +78,21 @@ export const get52WeekStats = async (symbol) => {
   };
 };
 
+export const getAverageVolumePast30Days = async (symbol) => {
+  const today = new Date();
+  const past30Days = new Date();
+  past30Days.setDate(today.getDate() - 30);
+  const data = await db.stockData
+    .where("symbol")
+    .equals(symbol)
+    .and((record) => new Date(record.date) >= past30Days)
+    .sortBy("date");
+  if (data.length === 0) return null;
+
+  const totalVolume = data.reduce((sum, record) => sum + record.volume, 0);
+  return totalVolume / data.length;
+};
+
 export async function saveFundamentals(symbol, data) {
   // Attach symbol to each item
   const quarterly =

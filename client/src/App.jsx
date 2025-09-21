@@ -1,6 +1,15 @@
 // App.js
-import React, { useEffect, useState } from "react";
-import { ThemeProvider, CssBaseline, Button, Divider } from "@mui/material";
+import { useEffect, useState } from "react";
+import {
+  ThemeProvider,
+  CssBaseline,
+  Button,
+  Divider,
+  Box,
+  Typography,
+  Tabs,
+  Tab,
+} from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
 import {
   addStockData,
@@ -10,6 +19,7 @@ import {
   saveFundamentals,
   getQuarterly,
   getAnnual,
+  getAverageVolumePast30Days,
 } from "./db";
 import { last } from "lodash";
 import CandlestickChart from "./components/CandlestickChart/CandlestickChart";
@@ -26,6 +36,7 @@ import LambdaService from "./LambdaService";
 import Stock52WeekRange from "./components/Stock52WeekRange/Stock52WeekRange";
 import QuarterlyFundamentalsTable from "./components/QuarterlyFundamentalsTable/QuarterlyFundamentalsTable";
 import AnnualFundamentalsTable from "./components/AnnualFundamentalsTable/AnnualFundamentalsTable";
+import formatShortNumber from "./utils/formatShortNumber";
 
 function App() {
   const [mode, setMode] = useState("dark");
@@ -40,11 +51,14 @@ function App() {
   const [selectedSymbol, setSelectedSymbol] = useState(null);
   const [storedSymbols, setStoredSymbols] = useState([]);
 
+  const [averageVolumePast30Days, setAverageVolumePast30Days] = useState(null);
+
   const [quarterlyFundamentalsData, setQuarterlyFundamentalsData] =
     useState(null);
   const [annualFundamentalsData, setAnnualFundamentalsData] = useState(null);
 
   const [showAddTickerModal, setShowAddTickerModal] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
 
   const toggleTheme = () => {
     setMode((prev) => (prev === "light" ? "dark" : "light"));
@@ -83,6 +97,10 @@ function App() {
 
     getAnnual(selectedSymbol, range.startDate, range.endDate).then((data) => {
       setAnnualFundamentalsData(data);
+    });
+
+    getAverageVolumePast30Days(selectedSymbol).then((data) => {
+      setAverageVolumePast30Days(data);
     });
   }, [selectedSymbol, range]);
 
@@ -197,7 +215,6 @@ function App() {
       return (
         <div
           style={{
-            paddingLeft: "3rem",
             paddingRight: "6rem",
           }}
         >
@@ -234,7 +251,6 @@ function App() {
       return (
         <div
           style={{
-            paddingLeft: "3rem",
             paddingRight: "6rem",
           }}
         >
@@ -267,7 +283,6 @@ function App() {
       return (
         <div
           style={{
-            paddingLeft: "3rem",
             paddingRight: "6rem",
           }}
         >
@@ -340,6 +355,14 @@ function App() {
               )}
               {selectedSymbol && <h2>{last(chartData)?.close.toFixed(2)}</h2>}
               {selectedSymbol && <Stock52WeekRange symbol={selectedSymbol} />}
+              {selectedSymbol && (
+                <Box>
+                  <Typography variant="h8">Average Volume (30 days)</Typography>
+                  <Box display="flex" justifyContent="space-between">
+                    {formatShortNumber(averageVolumePast30Days)}
+                  </Box>
+                </Box>
+              )}
               <TimerangeSelector onChange={(range) => setRange(range)} />
             </div>
 
@@ -369,9 +392,27 @@ function App() {
             </div>
           </div>
           {selectedSymbol && renderChart()}
-          {selectedSymbol && renderQuarterlyFundamentalsTable()}
-          {selectedSymbol && renderAnnualFundamentalsTable()}
-          {selectedSymbol && renderPatternTable()}
+          {selectedSymbol && (
+            <Box sx={{ width: "100%", mt: 2, ml: 2 }}>
+              <Tabs
+                value={activeTab}
+                onChange={(_, newValue) => setActiveTab(newValue)}
+                indicatorColor="primary"
+                textColor="inherit"
+                // variant="fullWidth"
+                // centered
+              >
+                <Tab label="Quarterly Financials" />
+                <Tab label="Annual Financials" />
+                <Tab label="Recognized Patterns" />
+              </Tabs>
+              <Box sx={{ mt: 2 }}>
+                {activeTab === 0 && renderQuarterlyFundamentalsTable()}
+                {activeTab === 1 && renderAnnualFundamentalsTable()}
+                {activeTab === 2 && renderPatternTable()}
+              </Box>
+            </Box>
+          )}
         </div>
       </div>
     </ThemeProvider>

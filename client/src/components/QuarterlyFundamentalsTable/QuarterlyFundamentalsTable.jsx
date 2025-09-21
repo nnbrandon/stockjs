@@ -9,6 +9,7 @@ import {
   Paper,
   TableSortLabel,
 } from "@mui/material";
+import formatShortNumber from "../../utils/formatShortNumber";
 
 export default function QuarterlyFundamentalsTable({
   quarterlyFundamentalsData,
@@ -66,6 +67,7 @@ export default function QuarterlyFundamentalsTable({
             </TableCell>
             <TableCell>Revenue</TableCell>
             <TableCell>Revenue Growth (%)</TableCell>
+            <TableCell>Cost of Revenue</TableCell>
             <TableCell>Net Income</TableCell>
             <TableCell>Net Income Growth (%)</TableCell>
             <TableCell>EBIT</TableCell>
@@ -76,19 +78,20 @@ export default function QuarterlyFundamentalsTable({
           {dataWithGrowth.map((row) => (
             <TableRow key={row.date}>
               <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
-              <TableCell>{row.totalRevenue?.toLocaleString()}</TableCell>
+              <TableCell>{formatShortNumber(row.totalRevenue)}</TableCell>
               <TableCell>
                 {row.revenueGrowth !== null && isFinite(row.revenueGrowth)
                   ? row.revenueGrowth.toFixed(2) + "%"
                   : "--"}
               </TableCell>
-              <TableCell>{row.netIncome?.toLocaleString()}</TableCell>
+              <TableCell>{formatShortNumber(row.costOfRevenue)}</TableCell>
+              <TableCell>{formatShortNumber(row.netIncome)}</TableCell>
               <TableCell>
                 {row.netIncomeGrowth !== null && isFinite(row.netIncomeGrowth)
                   ? row.netIncomeGrowth.toFixed(2) + "%"
                   : "--"}
               </TableCell>
-              <TableCell>{row.EBIT?.toLocaleString()}</TableCell>
+              <TableCell>{formatShortNumber(row.EBIT)}</TableCell>
               <TableCell>{row.dilutedEPS}</TableCell>
             </TableRow>
           ))}

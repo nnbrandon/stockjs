@@ -145,7 +145,12 @@ function AddTickerModal({ onClose, range }) {
                 </Button>
               ) : null}
               {!isLoading ? (
-                <Button type="submit" variant="contained" fullWidth>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  style={{ cursor: "pointer" }}
+                >
                   Add
                 </Button>
               ) : null}

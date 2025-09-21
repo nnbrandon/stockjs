@@ -183,6 +183,7 @@ const fetchFundamentals = async (params, corsOrigin) => {
   }
 };
 
+// NOT WORKING ATM
 const fetchNews = async (params, corsOrigin) => {
   const symbol = params.symbol;
 
@@ -198,14 +199,13 @@ const fetchNews = async (params, corsOrigin) => {
   }
 
   try {
-    const newsData = await googleFinance.companyNews({ symbol: symbol });
     return {
       statusCode: 200,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": corsOrigin, // Allow your React frontend
       },
-      body: JSON.stringify(newsData),
+      body: JSON.stringify([]),
     };
   } catch (err) {
     return {

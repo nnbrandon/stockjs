@@ -23,6 +23,7 @@ const boxStyle = {
   border: "2px solid #000",
   boxShadow: 24,
   p: 4,
+  borderRadius: 2,
 };
 
 function AddTickerModal({ onClose, range }) {

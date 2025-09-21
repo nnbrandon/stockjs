@@ -27,6 +27,7 @@ function App() {
   const [showNavBar, setShowNavBar] = useState(true);
 
   const [isChartLoading, setIsChartLoading] = useState(false);
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [chartData, setChartData] = useState([]);
   const [patternTableData, setPatternTableData] = useState([]);
 
@@ -86,6 +87,34 @@ function App() {
     }
   };
 
+  const refreshAllTickers = async () => {
+    setIsChartLoading(true);
+    setIsRefreshingAll(true);
+    try {
+      const promises = storedSymbols.map(async (symbol) => {
+        const historicalData = await LambdaService.fetchHistoricalData(
+          symbol,
+          range.startDate,
+          range.endDate
+        );
+        await addStockData(historicalData);
+
+        if (symbol === selectedSymbol) {
+          setChartData(historicalData);
+          const patterns = analyzePatternsFromStockData(historicalData);
+          setPatternTableData(patterns);
+        }
+      });
+
+      await Promise.allSettled(promises);
+    } catch (error) {
+      console.error("Error refreshing all tickers:", error);
+    } finally {
+      setIsChartLoading(false);
+      setIsRefreshingAll(false);
+    }
+  };
+
   const renderChart = () => {
     if (isChartLoading) {
       return (
@@ -123,7 +152,7 @@ function App() {
       );
     } else if (!isChartLoading && chartData && chartData.length) {
       return (
-        <div style={{ padding: "1rem" }}>
+        <div style={{ padding: "3rem", marginRight: "3rem" }}>
           <PatternTable patternsData={patternTableData} />
         </div>
       );
@@ -147,6 +176,8 @@ function App() {
             onCloseNav={() => setShowNavBar(false)}
             onClickAddTickerModal={() => setShowAddTickerModal(true)}
             onClickSymbol={setSelectedSymbol}
+            onRefreshAllTickers={refreshAllTickers}
+            isRefreshingAll={isRefreshingAll}
           />
         )}
         {!showNavBar && (
@@ -185,6 +216,11 @@ function App() {
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               {selectedSymbol && <h2>{selectedSymbol}</h2>}
               {selectedSymbol && <h2>{last(chartData)?.close.toFixed(2)}</h2>}
+              {selectedSymbol && <Stock52WeekRange symbol={selectedSymbol} />}
+              <TimerangeSelector onChange={(range) => setRange(range)} />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <Button
                 variant="outlined"
                 onClick={refreshData}
@@ -192,11 +228,6 @@ function App() {
               >
                 Refresh Data
               </Button>
-              <TimerangeSelector onChange={(range) => setRange(range)} />
-              {selectedSymbol && <Stock52WeekRange symbol={selectedSymbol} />}
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <Button
                 variant="outlined"
                 color="error" // red color for delete
@@ -214,8 +245,8 @@ function App() {
               </Button>
             </div>
           </div>
-          {renderChart()}
-          {renderPatternTable()}
+          {selectedSymbol && renderChart()}
+          {selectedSymbol && renderPatternTable()}
         </div>
       </div>
     </ThemeProvider>

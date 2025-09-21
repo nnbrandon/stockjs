@@ -1,11 +1,8 @@
-import { useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
-import HomeIcon from "@mui/icons-material/Home";
 import Button from "@mui/material/Button";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
@@ -21,7 +18,9 @@ function Navbar({
   onCloseNav,
   onClickAddTickerModal,
   onClickSymbol,
+  onRefreshAllTickers,
   toggleTheme,
+  isRefreshingAll,
 }) {
   const renderNavData = symbols.map((symbol, index) => {
     return (
@@ -59,6 +58,25 @@ function Navbar({
           <Button variant="outlined" onClick={onClickAddTickerModal} fullWidth>
             Add Ticker
           </Button>
+          {!isRefreshingAll ? (
+            <Button
+              variant="outlined"
+              onClick={() => onRefreshAllTickers()}
+              fullWidth
+              style={{ marginTop: "0.5rem" }}
+            >
+              Refresh all tickers
+            </Button>
+          ) : (
+            <Button
+              variant="outlined"
+              disabled
+              fullWidth
+              style={{ marginTop: "0.5rem" }}
+            >
+              Refreshing all tickers...
+            </Button>
+          )}
         </div>
         <div>
           {mode === "dark" && (

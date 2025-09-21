@@ -17,8 +17,8 @@ export default function Stock52WeekRange({ symbol }) {
   if (!stats) return <Typography>No data available</Typography>;
 
   return (
-    <Box sx={{ width: 300, mt: 2 }}>
-      <Typography variant="h6">{symbol} 52-Week Range</Typography>
+    <Box sx={{ width: 300 }}>
+      <Typography variant="h8">52-Week Range</Typography>
 
       {/* Labels above the slider */}
       <Box display="flex" justifyContent="space-between">
@@ -39,10 +39,6 @@ export default function Stock52WeekRange({ symbol }) {
           },
         }}
       />
-
-      <Typography variant="body2" align="center">
-        Current: ${stats.current.toFixed(2)}
-      </Typography>
     </Box>
   );
 }

@@ -375,7 +375,17 @@ export class Chart {
       .attr("x", (_, i) => xScaleZ(i) - (this.xBand.bandwidth() * t.k) / 2)
       .attr("width", this.xBand.bandwidth() * t.k);
 
-    this.drawLatestCloseLine(); // <-- Add this at the end
+    // Volume area and scale for visible data
+    const volumeHeight = this.height * 0.2;
+    const volumeY = this.height - volumeHeight;
+    const volumeScale = scaleLinear()
+      .domain([0, max(visibleData, (d) => d.volume)])
+      .range([volumeHeight, 0]);
+    // Update volume indicator in real time
+    this.drawVolumeIndicator(visibleData, volumeScale, volumeY, volumeHeight);
+
+    // Redraw latest close line after zoom
+    this.drawLatestCloseLine();
   }
 
   zoomEndHandler(event) {
@@ -489,26 +499,32 @@ export class Chart {
     );
   }
 
-  drawVolumeIndicator(filteredData, volumeScale, volumeY) {
-    // Remove previous indicator and label
+  drawVolumeIndicator(filteredData, volumeScale, volumeY, volumeHeight) {
     this.svgContainer.selectAll(".volume-indicator").remove();
     this.svgContainer.selectAll(".volume-indicator-label").remove();
     this.svgContainer.selectAll(".volume-indicator-bg").remove();
 
     if (!filteredData.length) return;
 
-    const lastDatum = filteredData[filteredData.length - 1];
+    // Find the rightmost visible index (the one closest to the right edge)
+    const rightmostIdx = filteredData.length - 1;
+    const lastDatum = filteredData[rightmostIdx];
     const lastVolume = lastDatum.volume;
+
+    // Calculate the x position for the rightmost bar
+    const xPos = this.width; // y-axis is at the right edge
     const yPos = volumeY + volumeScale(lastVolume);
 
-    // Determine color based on candle direction
+    // Only draw if yPos is within volume area bounds
+    if (yPos < volumeY || yPos > volumeY + volumeHeight) return;
+
     const color = lastDatum.open > lastDatum.close ? "#ef5350" : "#26a69a";
 
     // Draw a circle indicator on the y-axis (right side)
     this.svgContainer
       .append("circle")
       .attr("class", "volume-indicator")
-      .attr("cx", this.width)
+      .attr("cx", xPos)
       .attr("cy", yPos)
       .attr("r", 6)
       .attr("fill", color)
@@ -517,7 +533,7 @@ export class Chart {
 
     // Add a label background
     const labelText = this.formatShortNumber(lastVolume);
-    const labelX = this.width + 10;
+    const labelX = xPos + 10;
     const labelY = yPos + 4;
 
     // Create a temporary text element to measure width

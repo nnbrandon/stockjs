@@ -341,8 +341,7 @@ function App() {
               display: "flex",
               gap: "1rem",
               padding: "0.5rem",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
+              flexDirection: "column",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>

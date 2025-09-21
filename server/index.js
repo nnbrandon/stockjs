@@ -145,12 +145,24 @@ const fetchFundamentals = async (params, corsOrigin) => {
     };
   }
 
-  result = await yahooFinance.fundamentalsTimeSeries(symbol, {
-    period1: start,
-    period2: end,
-    type,
-    modules: ["financials", "balance-sheet", "cash-flow"],
-  });
+  let result;
+  try {
+    result = await yahooFinance.fundamentalsTimeSeries(symbol, {
+      period1: start,
+      period2: end,
+      type,
+      module: "financials",
+    });
+  } catch (err) {
+    return {
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": corsOrigin,
+      },
+      body: JSON.stringify({ error: err.message }),
+    };
+  }
 
   return {
     statusCode: 200,

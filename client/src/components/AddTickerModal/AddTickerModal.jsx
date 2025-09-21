@@ -37,7 +37,8 @@ function AddTickerModal({ onClose, range }) {
     setTickerList(tickers);
   }, []);
 
-  async function handleSubmit() {
+  async function handleSubmit(event) {
+    event.preventDefault();
     if (!tickerInputValue) {
       setError("A ticker symbol must be provided.");
       setShowError(true);
@@ -144,12 +145,7 @@ function AddTickerModal({ onClose, range }) {
                 </Button>
               ) : null}
               {!isLoading ? (
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  style={{ cursor: "pointer" }}
-                >
+                <Button type="submit" variant="contained" fullWidth>
                   Add
                 </Button>
               ) : null}

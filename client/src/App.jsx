@@ -7,11 +7,14 @@ import {
   deleteSymbolData,
   getStockDataByDateRange,
   getStoredSymbols,
+  saveFundamentals,
+  getQuarterly,
+  getAnnual,
 } from "./db";
 import { last } from "lodash";
 import CandlestickChart from "./components/CandlestickChart/CandlestickChart";
 import CircularProgress from "@mui/material/CircularProgress";
-import PatternTable from "./components/CandlestickChart/PatternTable/PatternTable";
+import PatternTable from "./components/PatternTable/PatternTable";
 import { analyzePatternsFromStockData } from "./utils/patternRecognizer";
 import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
 import Navbar from "./components/Navbar/Navbar";
@@ -21,6 +24,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import styles from "./App.module.css";
 import LambdaService from "./LambdaService";
 import Stock52WeekRange from "./components/Stock52WeekRange/Stock52WeekRange";
+import QuarterlyFundamentalsTable from "./components/QuarterlyFundamentalsTable/QuarterlyFundamentalsTable";
+import AnnualFundamentalsTable from "./components/AnnualFundamentalsTable/AnnualFundamentalsTable";
 
 function App() {
   const [mode, setMode] = useState("dark");
@@ -34,6 +39,10 @@ function App() {
   const [range, setRange] = useState();
   const [selectedSymbol, setSelectedSymbol] = useState(null);
   const [storedSymbols, setStoredSymbols] = useState([]);
+
+  const [quarterlyFundamentalsData, setQuarterlyFundamentalsData] =
+    useState(null);
+  const [annualFundamentalsData, setAnnualFundamentalsData] = useState(null);
 
   const [showAddTickerModal, setShowAddTickerModal] = useState(false);
 
@@ -65,6 +74,16 @@ function App() {
         }
       })
       .finally(() => setIsChartLoading(false));
+
+    getQuarterly(selectedSymbol, range.startDate, range.endDate).then(
+      (data) => {
+        setQuarterlyFundamentalsData(data);
+      }
+    );
+
+    getAnnual(selectedSymbol, range.startDate, range.endDate).then((data) => {
+      setAnnualFundamentalsData(data);
+    });
   }, [selectedSymbol, range]);
 
   const refreshData = async () => {
@@ -85,6 +104,19 @@ function App() {
     } finally {
       setIsChartLoading(false);
     }
+
+    try {
+      const fundamentalsData = await LambdaService.fetchFundamentals(
+        selectedSymbol,
+        range.startDate,
+        range.endDate
+      );
+      await saveFundamentals(selectedSymbol, fundamentalsData);
+      setQuarterlyFundamentalsData(fundamentalsData.quarterlyResult);
+      setAnnualFundamentalsData(fundamentalsData.annualResult);
+    } catch (error) {
+      console.error("Error fetching fundamentals data:", error);
+    }
   };
 
   const refreshAllTickers = async () => {
@@ -104,6 +136,13 @@ function App() {
           const patterns = analyzePatternsFromStockData(historicalData);
           setPatternTableData(patterns);
         }
+
+        const fundamentalsData = await LambdaService.fetchFundamentals(
+          symbol,
+          range.startDate,
+          range.endDate
+        );
+        await saveFundamentals(symbol, fundamentalsData);
       });
 
       await Promise.allSettled(promises);
@@ -136,6 +175,80 @@ function App() {
     }
   };
 
+  const renderQuarterlyFundamentalsTable = () => {
+    if (isChartLoading) {
+      return (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: 200,
+          }}
+        >
+          <CircularProgress />
+        </div>
+      );
+    } else if (
+      !isChartLoading &&
+      quarterlyFundamentalsData &&
+      quarterlyFundamentalsData.length
+    ) {
+      return (
+        <div
+          style={{
+            paddingLeft: "3rem",
+            paddingRight: "6rem",
+          }}
+        >
+          <h3>Quarterly Fundamentals</h3>
+          <QuarterlyFundamentalsTable
+            quarterlyFundamentalsData={quarterlyFundamentalsData}
+          />
+        </div>
+      );
+    } else {
+      return <div />;
+    }
+  };
+
+  const renderAnnualFundamentalsTable = () => {
+    if (isChartLoading) {
+      return (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: 200,
+          }}
+        >
+          <CircularProgress />
+        </div>
+      );
+    } else if (
+      !isChartLoading &&
+      annualFundamentalsData &&
+      annualFundamentalsData.length
+    ) {
+      return (
+        <div
+          style={{
+            paddingLeft: "3rem",
+            paddingRight: "6rem",
+          }}
+        >
+          <h3>Annual Fundamentals</h3>
+          <AnnualFundamentalsTable
+            annualFundamentalsData={annualFundamentalsData}
+          />
+        </div>
+      );
+    } else {
+      return <div />;
+    }
+  };
+
   const renderPatternTable = () => {
     if (isChartLoading) {
       return (
@@ -152,7 +265,13 @@ function App() {
       );
     } else if (!isChartLoading && chartData && chartData.length) {
       return (
-        <div style={{ padding: "3rem", marginRight: "3rem" }}>
+        <div
+          style={{
+            paddingLeft: "3rem",
+            paddingRight: "6rem",
+          }}
+        >
+          <h3>Recognized Patterns</h3>
           <PatternTable patternsData={patternTableData} />
         </div>
       );
@@ -214,7 +333,11 @@ function App() {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              {selectedSymbol && <h2>{selectedSymbol}</h2>}
+              {selectedSymbol && (
+                <h2>
+                  {chartData[0]?.name} ({chartData[0]?.symbol})
+                </h2>
+              )}
               {selectedSymbol && <h2>{last(chartData)?.close.toFixed(2)}</h2>}
               {selectedSymbol && <Stock52WeekRange symbol={selectedSymbol} />}
               <TimerangeSelector onChange={(range) => setRange(range)} />
@@ -246,6 +369,8 @@ function App() {
             </div>
           </div>
           {selectedSymbol && renderChart()}
+          {selectedSymbol && renderQuarterlyFundamentalsTable()}
+          {selectedSymbol && renderAnnualFundamentalsTable()}
           {selectedSymbol && renderPatternTable()}
         </div>
       </div>

@@ -9,6 +9,12 @@ db.version(1).stores({
   // compound primary key [symbol+date] prevents duplicates
 });
 
+// Table for fundamentals data
+db.version(1).stores({
+  quarterlyResult: "[symbol+date], symbol, date", // compound key + indexes
+  annualResult: "[symbol+date], symbol, date",
+});
+
 // Add or update multiple stock records
 export const addStockData = async (data) => {
   try {
@@ -38,7 +44,11 @@ export const getStoredSymbols = async () => {
 
 export const deleteSymbolData = async (symbol) => {
   try {
-    await db.stockData.where("symbol").equals(symbol).delete();
+    await Promise.allSettled([
+      db.stockData.where("symbol").equals(symbol).delete(),
+      db.quarterlyResult.where("symbol").equals(symbol).delete(),
+      db.annualResult.where("symbol").equals(symbol).delete(),
+    ]);
     console.log(`All data for ${symbol} has been deleted.`);
   } catch (err) {
     console.error("Error deleting symbol data:", err);
@@ -67,3 +77,51 @@ export const get52WeekStats = async (symbol) => {
     current: data[data.length - 1].close, // latest close
   };
 };
+
+export async function saveFundamentals(symbol, data) {
+  // Attach symbol to each item
+  const quarterly =
+    data.quarterlyResult?.map((item) => ({
+      ...item,
+      symbol,
+      date: new Date(item.date).toISOString(),
+    })) || [];
+
+  const annual =
+    data.annualResult?.map((item) => ({
+      ...item,
+      symbol,
+      date: new Date(item.date).toISOString(),
+    })) || [];
+
+  await db.transaction("rw", db.quarterlyResult, db.annualResult, async () => {
+    if (quarterly.length) await db.quarterlyResult.bulkPut(quarterly);
+    if (annual.length) await db.annualResult.bulkPut(annual);
+  });
+
+  console.log(`✅ Saved financials for ${symbol}`);
+}
+
+// Get quarterly data
+export async function getQuarterly(symbol, startDate, endDate) {
+  return db.quarterlyResult
+    .where("symbol")
+    .equals(symbol)
+    .and((item) => {
+      const d = new Date(item.date);
+      return d >= new Date(startDate) && d <= new Date(endDate);
+    })
+    .toArray();
+}
+
+// Get annual data
+export async function getAnnual(symbol, startDate, endDate) {
+  return db.annualResult
+    .where("symbol")
+    .equals(symbol)
+    .and((item) => {
+      const d = new Date(item.date);
+      return d >= new Date(startDate) && d <= new Date(endDate);
+    })
+    .toArray();
+}

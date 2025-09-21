@@ -1,0 +1,8 @@
+.patternTableHeader {
+  display: flex;
+  align-items: center;
+}
+
+.patternTableHeaderText {
+  padding-right: 5px;
+}

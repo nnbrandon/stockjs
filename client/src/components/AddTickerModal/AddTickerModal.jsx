@@ -11,7 +11,7 @@ import isObject from "lodash/isObject";
 import styles from "./AddTickerModal.module.css";
 import tickers from "./sp500.json";
 import LambdaService from "../../LambdaService";
-import { addStockData, getStoredSymbols } from "../../db";
+import { addStockData, getStoredSymbols, saveFundamentals } from "../../db";
 
 const boxStyle = {
   position: "absolute",
@@ -72,6 +72,22 @@ function AddTickerModal({ onClose, range }) {
       } catch (error) {
         setError(
           `Error storing data for ${tickerInputValue}: ${error.message}`
+        );
+        setShowError(true);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const fundamentalsData = await LambdaService.fetchFundamentals(
+          tickerInputValue,
+          range.startDate,
+          range.endDate
+        );
+        await saveFundamentals(tickerInputValue, fundamentalsData);
+      } catch (error) {
+        setError(
+          `Error fetching financials for ${tickerInputValue}: ${error.message}`
         );
         setShowError(true);
         setIsLoading(false);

@@ -399,8 +399,6 @@ function App() {
                 onChange={(_, newValue) => setActiveTab(newValue)}
                 indicatorColor="primary"
                 textColor="inherit"
-                // variant="fullWidth"
-                // centered
               >
                 <Tab label="Quarterly Financials" />
                 <Tab label="Annual Financials" />

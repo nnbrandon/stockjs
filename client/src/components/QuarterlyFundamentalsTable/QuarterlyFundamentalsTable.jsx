@@ -37,18 +37,17 @@ export default function QuarterlyFundamentalsTable({
       return { ...row, revenueGrowth: null, netIncomeGrowth: null };
     }
 
-    const revenueGrowth =
-      previousRow?.totalRevenue === 0
-        ? 0
-        : ((row.totalRevenue - previousRow.totalRevenue) /
-            previousRow.totalRevenue) *
-          100;
+    const revenueGrowth = previousRow?.totalRevenue
+      ? ((row.totalRevenue - previousRow.totalRevenue) /
+          Math.abs(previousRow.totalRevenue)) *
+        100
+      : null;
 
-    const netIncomeGrowth =
-      previousRow?.netIncome === 0
-        ? 0
-        : ((row.netIncome - previousRow.netIncome) / previousRow.netIncome) *
-          100;
+    const netIncomeGrowth = previousRow?.netIncome
+      ? ((row.netIncome - previousRow.netIncome) /
+          Math.abs(previousRow.netIncome)) *
+        100
+      : null;
 
     return { ...row, revenueGrowth, netIncomeGrowth };
   });

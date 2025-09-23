@@ -4,7 +4,8 @@ import Dexie from "dexie";
 export const db = new Dexie("StocksDB");
 
 db.version(1).stores({
-  stockData: "[symbol+date], open, close, high, low, volume, adjClose, name",
+  stockData:
+    "[symbol+shortenedDate], open, close, high, low, volume, adjClose, name",
   quarterlyResult: "[symbol+date], symbol, date", // compound key + indexes
   annualResult: "[symbol+date], symbol, date",
   news: "id,symbol,date", // primary key: id, indexes: symbol + date
@@ -12,23 +13,15 @@ db.version(1).stores({
 
 // Add or update multiple stock records
 export const addStockData = async (data) => {
-  // Filter out records with time exactly 13:30:00.000Z because this is when the market opens
-  const filteredData = data.filter((record) => {
-    // Parse date and check time
-    const d = new Date(record.date);
-    // Get UTC hours/minutes/seconds/milliseconds
-    return !(
-      d.getUTCHours() === 13 &&
-      d.getUTCMinutes() === 30 &&
-      d.getUTCSeconds() === 0 &&
-      d.getUTCMilliseconds() === 0
-    );
-  });
+  const dataWithShortenedDate = data.map((item) => ({
+    ...item,
+    shortenedDate: item.date.split("T")[0], // Extract YYYY-MM-DD
+  }));
 
-  // Bulk insert (Dexie automatically dedupes on [symbol+date])
-  await db.stockData.bulkPut(filteredData);
+  // Bulk insert (Dexie automatically dedupes on [symbol+shortenedDate])
+  await db.stockData.bulkPut(dataWithShortenedDate);
 
-  console.log(`✅ Stored ${filteredData.length} closing prices`);
+  console.log(`✅ Stored ${dataWithShortenedDate.length} closing prices`);
 };
 
 // Get stock data for a symbol

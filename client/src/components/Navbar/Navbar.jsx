@@ -8,8 +8,10 @@ import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
+import Tooltip from "@mui/material/Tooltip";
 
 import styles from "./Navbar.module.css";
+import isMarketOpen from "../../utils/isMarketOpen";
 
 function Navbar({
   mode,
@@ -59,14 +61,32 @@ function Navbar({
             Add Ticker
           </Button>
           {!isRefreshingAll ? (
-            <Button
-              variant="outlined"
-              onClick={() => onRefreshAllTickers()}
-              fullWidth
-              style={{ marginTop: "0.5rem" }}
+            <Tooltip
+              title={
+                isMarketOpen()
+                  ? "Disabled while the market is open"
+                  : storedSymbolsWithNames.length === 0
+                    ? "No tickers to refresh"
+                    : ""
+              }
+              disableHoverListener={
+                !isMarketOpen() && storedSymbolsWithNames.length > 0
+              }
             >
-              Refresh all tickers
-            </Button>
+              <span>
+                <Button
+                  variant="outlined"
+                  onClick={() => onRefreshAllTickers()}
+                  fullWidth
+                  disabled={
+                    isMarketOpen() || storedSymbolsWithNames.length === 0
+                  }
+                  style={{ marginTop: "0.5rem" }}
+                >
+                  Refresh all tickers
+                </Button>
+              </span>
+            </Tooltip>
           ) : (
             <Button
               variant="outlined"

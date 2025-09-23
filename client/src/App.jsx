@@ -9,6 +9,7 @@ import {
   Typography,
   Tabs,
   Tab,
+  Tooltip,
 } from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
 import {
@@ -42,6 +43,7 @@ import formatShortNumber from "./utils/formatShortNumber";
 import { SnackbarProvider, useSnackbar } from "./components/SnackbarProvider";
 import { ModeProvider, useMode } from "./components/ModeProvider";
 import NewsList from "./components/NewsList/NewsList";
+import isMarketOpen from "./utils/isMarketOpen";
 
 function App() {
   const { mode, toggleTheme } = useMode();
@@ -436,17 +438,30 @@ function App() {
                   Refreshing...
                 </Button>
               ) : (
-                <Button
-                  variant="outlined"
-                  onClick={refreshData}
-                  disabled={!selectedSymbol}
+                <Tooltip
+                  title={
+                    isMarketOpen()
+                      ? "Disabled while the market is open"
+                      : !selectedSymbol
+                        ? "Select a ticker to refresh"
+                        : ""
+                  }
+                  disableHoverListener={!isMarketOpen() && !!selectedSymbol}
                 >
-                  Refresh Data
-                </Button>
+                  <span>
+                    <Button
+                      variant="outlined"
+                      onClick={refreshData}
+                      disabled={!selectedSymbol || isMarketOpen()}
+                    >
+                      Refresh Data
+                    </Button>
+                  </span>
+                </Tooltip>
               )}
               <Button
                 variant="outlined"
-                color="error" // red color for delete
+                color="error"
                 onClick={() => {
                   deleteSymbolData(selectedSymbol).then(() => {
                     setSelectedSymbol(null);

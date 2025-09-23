@@ -376,11 +376,48 @@ function App() {
           >
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               {selectedSymbol && (
-                <h2>
+                <h2
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
                   {chartData[0]?.name} ({chartData[0]?.symbol})
                 </h2>
               )}
-              {selectedSymbol && <h2>{last(chartData)?.close.toFixed(2)}</h2>}
+              {selectedSymbol && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <h2>{last(chartData)?.close.toFixed(2)}</h2>{" "}
+                  {chartData.length > 1 &&
+                    (() => {
+                      const latest = chartData[chartData.length - 1];
+                      const prev = chartData[chartData.length - 2];
+                      const absChange = latest.close - prev.close;
+                      const pctChange = (absChange / prev.close) * 100;
+                      const color =
+                        absChange > 0
+                          ? "#26a69a"
+                          : absChange < 0
+                            ? "#ef5350"
+                            : "inherit";
+                      const sign = absChange > 0 ? "+" : "";
+                      return (
+                        <span style={{ color, fontWeight: "bold" }}>
+                          {sign}
+                          {absChange.toFixed(2)} ({sign}
+                          {pctChange.toFixed(2)}%)
+                        </span>
+                      );
+                    })()}
+                </div>
+              )}
               {selectedSymbol && <Stock52WeekRange symbol={selectedSymbol} />}
               {selectedSymbol && (
                 <Box>

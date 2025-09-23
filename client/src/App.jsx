@@ -9,6 +9,8 @@ import {
   Typography,
   Tabs,
   Tab,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
 import {
@@ -37,12 +39,15 @@ import Stock52WeekRange from "./components/Stock52WeekRange/Stock52WeekRange";
 import QuarterlyFundamentalsTable from "./components/QuarterlyFundamentalsTable/QuarterlyFundamentalsTable";
 import AnnualFundamentalsTable from "./components/AnnualFundamentalsTable/AnnualFundamentalsTable";
 import formatShortNumber from "./utils/formatShortNumber";
+import { SnackbarProvider, useSnackbar } from "./components/SnackbarProvider";
+import { ModeProvider, useMode } from "./components/ModeProvider";
 
 function App() {
-  const [mode, setMode] = useState("dark");
+  const { mode, toggleTheme } = useMode();
   const [showNavBar, setShowNavBar] = useState(true);
 
   const [isChartLoading, setIsChartLoading] = useState(false);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [chartData, setChartData] = useState([]);
   const [patternTableData, setPatternTableData] = useState([]);
@@ -60,9 +65,7 @@ function App() {
   const [showAddTickerModal, setShowAddTickerModal] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
-  const toggleTheme = () => {
-    setMode((prev) => (prev === "light" ? "dark" : "light"));
-  };
+  const showSnackbar = useSnackbar();
 
   const fetchStoredSymbols = async () => {
     const symbolsWithNames = await getStoredSymbolsWithNames();
@@ -105,7 +108,7 @@ function App() {
   }, [selectedSymbol, range]);
 
   const refreshData = async () => {
-    setIsChartLoading(true);
+    setIsRefreshingData(true);
     try {
       const historicalData = await LambdaService.fetchHistoricalData(
         selectedSymbol,
@@ -117,13 +120,7 @@ function App() {
       addStockData(historicalData);
       const patterns = analyzePatternsFromStockData(historicalData);
       setPatternTableData(patterns);
-    } catch (error) {
-      console.error("Error fetching stock data:", error);
-    } finally {
-      setIsChartLoading(false);
-    }
 
-    try {
       const fundamentalsData = await LambdaService.fetchFundamentals(
         selectedSymbol,
         range.startDate,
@@ -132,8 +129,13 @@ function App() {
       await saveFundamentals(selectedSymbol, fundamentalsData);
       setQuarterlyFundamentalsData(fundamentalsData.quarterlyResult);
       setAnnualFundamentalsData(fundamentalsData.annualResult);
+
+      showSnackbar("Data refreshed!", "success");
     } catch (error) {
-      console.error("Error fetching fundamentals data:", error);
+      console.error("Error fetching stock data:", error);
+      showSnackbar("Error refreshing data", "error");
+    } finally {
+      setIsRefreshingData(false);
     }
   };
 
@@ -143,29 +145,33 @@ function App() {
     try {
       const promises = storedSymbolsWithNames.map(async (symbol) => {
         const historicalData = await LambdaService.fetchHistoricalData(
-          symbol,
+          symbol.symbol,
           range.startDate,
           range.endDate
         );
         await addStockData(historicalData);
 
-        if (symbol === selectedSymbol) {
-          setChartData(historicalData);
-          const patterns = analyzePatternsFromStockData(historicalData);
-          setPatternTableData(patterns);
-        }
-
         const fundamentalsData = await LambdaService.fetchFundamentals(
-          symbol,
+          symbol.symbol,
           range.startDate,
           range.endDate
         );
-        await saveFundamentals(symbol, fundamentalsData);
+        await saveFundamentals(symbol.symbol, fundamentalsData);
+
+        if (symbol.symbol === selectedSymbol) {
+          setChartData(historicalData);
+          const patterns = analyzePatternsFromStockData(historicalData);
+          setPatternTableData(patterns);
+          setQuarterlyFundamentalsData(fundamentalsData.quarterlyResult);
+          setAnnualFundamentalsData(fundamentalsData.annualResult);
+        }
       });
 
       await Promise.allSettled(promises);
+      showSnackbar("All tickers refreshed!", "success");
     } catch (error) {
-      console.error("Error refreshing all tickers:", error);
+      console.error("Error refreshing all tickers:", error.message);
+      showSnackbar("Error refreshing all tickers", "error");
     } finally {
       setIsChartLoading(false);
       setIsRefreshingAll(false);
@@ -364,13 +370,19 @@ function App() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <Button
-                variant="outlined"
-                onClick={refreshData}
-                disabled={!selectedSymbol}
-              >
-                Refresh Data
-              </Button>
+              {isRefreshingData ? (
+                <Button disabled variant="outlined">
+                  Refreshing...
+                </Button>
+              ) : (
+                <Button
+                  variant="outlined"
+                  onClick={refreshData}
+                  disabled={!selectedSymbol}
+                >
+                  Refresh Data
+                </Button>
+              )}
               <Button
                 variant="outlined"
                 color="error" // red color for delete
@@ -414,4 +426,13 @@ function App() {
   );
 }
 
-export default App;
+// Wrap your App export:
+export default function WrappedApp(props) {
+  return (
+    <ModeProvider>
+      <SnackbarProvider>
+        <App {...props} />
+      </SnackbarProvider>
+    </ModeProvider>
+  );
+}

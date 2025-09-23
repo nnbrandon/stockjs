@@ -12,29 +12,23 @@ db.version(1).stores({
 
 // Add or update multiple stock records
 export const addStockData = async (data) => {
-  // Map keyed by symbol+date
-  const grouped = new Map();
-
-  for (const d of data) {
-    const day = d.date.split("T")[0]; // e.g. "2025-09-22"
-    const key = `${d.symbol}_${day}`;
-
-    // Only keep the latest timestamp for that day+symbol
-    if (
-      !grouped.has(key) ||
-      new Date(d.date) > new Date(grouped.get(key).date)
-    ) {
-      grouped.set(key, d);
-    }
-  }
-
-  // Extract the "close" snapshots
-  const closePrices = Array.from(grouped.values());
+  // Filter out records with time exactly 13:30:00.000Z because this is when the market opens
+  const filteredData = data.filter((record) => {
+    // Parse date and check time
+    const d = new Date(record.date);
+    // Get UTC hours/minutes/seconds/milliseconds
+    return !(
+      d.getUTCHours() === 13 &&
+      d.getUTCMinutes() === 30 &&
+      d.getUTCSeconds() === 0 &&
+      d.getUTCMilliseconds() === 0
+    );
+  });
 
   // Bulk insert (Dexie automatically dedupes on [symbol+date])
-  await db.stockData.bulkPut(closePrices);
+  await db.stockData.bulkPut(filteredData);
 
-  console.log(`✅ Stored ${closePrices.length} closing prices`);
+  console.log(`✅ Stored ${filteredData.length} closing prices`);
 };
 
 // Get stock data for a symbol

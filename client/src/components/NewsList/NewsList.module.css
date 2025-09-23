@@ -1,0 +1,11 @@
+.newsLink {
+  color: #1565c0;
+  text-decoration: none;
+  display: block;
+}
+.newsLink:visited {
+  color: #8e24aa;
+}
+.newsLink:hover {
+  background: rgba(21, 101, 192, 0.06);
+}

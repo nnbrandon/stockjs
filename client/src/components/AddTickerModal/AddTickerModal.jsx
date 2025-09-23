@@ -11,7 +11,12 @@ import isObject from "lodash/isObject";
 import styles from "./AddTickerModal.module.css";
 import tickers from "./sp500.json";
 import LambdaService from "../../LambdaService";
-import { addStockData, getStoredSymbols, saveFundamentals } from "../../db";
+import {
+  addStockData,
+  getStoredSymbols,
+  saveFundamentals,
+  saveNewsArticles,
+} from "../../db";
 
 const boxStyle = {
   position: "absolute",
@@ -42,60 +47,47 @@ function AddTickerModal({ onClose, range }) {
     if (!tickerInputValue) {
       setError("A ticker symbol must be provided.");
       setShowError(true);
-    } else {
-      const storedSymbols = await getStoredSymbols();
-      if (storedSymbols.includes(tickerInputValue)) {
-        setError(`${tickerInputValue} is already added.`);
-        setShowError(true);
-        return;
-      }
+      return;
+    }
 
-      setIsLoading(true);
-      let historicalData = [];
-      try {
-        historicalData = await LambdaService.fetchHistoricalData(
+    const storedSymbols = await getStoredSymbols();
+    if (storedSymbols.includes(tickerInputValue)) {
+      setError(`${tickerInputValue} is already added.`);
+      setShowError(true);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Run all fetches in parallel
+      const [historicalData, fundamentalsData, news] = await Promise.all([
+        LambdaService.fetchHistoricalData(
           tickerInputValue,
           range.startDate,
           range.endDate
-        );
-      } catch (error) {
-        setError(
-          `Error fetching data for ${tickerInputValue}: ${error.message}`
-        );
-        setShowError(true);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        await addStockData(historicalData);
-      } catch (error) {
-        setError(
-          `Error storing data for ${tickerInputValue}: ${error.message}`
-        );
-        setShowError(true);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const fundamentalsData = await LambdaService.fetchFundamentals(
+        ),
+        LambdaService.fetchFundamentals(
           tickerInputValue,
           range.startDate,
           range.endDate
-        );
-        await saveFundamentals(tickerInputValue, fundamentalsData);
-      } catch (error) {
-        setError(
-          `Error fetching financials for ${tickerInputValue}: ${error.message}`
-        );
-        setShowError(true);
-        setIsLoading(false);
-        return;
-      }
+        ),
+        LambdaService.fetchNews(tickerInputValue),
+      ]);
+
+      // Run all saves in parallel
+      await Promise.all([
+        addStockData(historicalData),
+        saveFundamentals(tickerInputValue, fundamentalsData),
+        saveNewsArticles(tickerInputValue, news),
+      ]);
 
       setIsLoading(false);
       onClose(tickerInputValue);
+    } catch (error) {
+      setError(`Error adding ${tickerInputValue}: ${error.message}`);
+      setShowError(true);
+      setIsLoading(false);
     }
   }
 

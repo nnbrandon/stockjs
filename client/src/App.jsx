@@ -9,8 +9,6 @@ import {
   Typography,
   Tabs,
   Tab,
-  Snackbar,
-  Alert,
 } from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
 import {
@@ -22,6 +20,8 @@ import {
   getQuarterly,
   getAnnual,
   getAverageVolumePast30Days,
+  getNewsBySymbol,
+  saveNewsArticles,
 } from "./db";
 import { last } from "lodash";
 import CandlestickChart from "./components/CandlestickChart/CandlestickChart";
@@ -41,6 +41,7 @@ import AnnualFundamentalsTable from "./components/AnnualFundamentalsTable/Annual
 import formatShortNumber from "./utils/formatShortNumber";
 import { SnackbarProvider, useSnackbar } from "./components/SnackbarProvider";
 import { ModeProvider, useMode } from "./components/ModeProvider";
+import NewsList from "./components/NewsList/NewsList";
 
 function App() {
   const { mode, toggleTheme } = useMode();
@@ -64,6 +65,8 @@ function App() {
 
   const [showAddTickerModal, setShowAddTickerModal] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+
+  const [news, setNews] = useState([]);
 
   const showSnackbar = useSnackbar();
 
@@ -105,30 +108,41 @@ function App() {
     getAverageVolumePast30Days(selectedSymbol).then((data) => {
       setAverageVolumePast30Days(data);
     });
+
+    getNewsBySymbol(selectedSymbol).then((data) => {
+      setNews(data);
+    });
   }, [selectedSymbol, range]);
 
   const refreshData = async () => {
     setIsRefreshingData(true);
     try {
-      const historicalData = await LambdaService.fetchHistoricalData(
-        selectedSymbol,
-        range.startDate,
-        range.endDate
-      );
-      await addStockData(historicalData); // Update IndexedDB
-      setChartData(historicalData);
-      addStockData(historicalData);
-      const patterns = analyzePatternsFromStockData(historicalData);
-      setPatternTableData(patterns);
+      // Run all fetches in parallel
+      const [historicalData, fundamentalsData, newsData] = await Promise.all([
+        LambdaService.fetchHistoricalData(
+          selectedSymbol,
+          range.startDate,
+          range.endDate
+        ),
+        LambdaService.fetchFundamentals(
+          selectedSymbol,
+          range.startDate,
+          range.endDate
+        ),
+        LambdaService.fetchNews(selectedSymbol),
+      ]);
 
-      const fundamentalsData = await LambdaService.fetchFundamentals(
-        selectedSymbol,
-        range.startDate,
-        range.endDate
-      );
-      await saveFundamentals(selectedSymbol, fundamentalsData);
+      await Promise.all([
+        addStockData(historicalData),
+        saveFundamentals(selectedSymbol, fundamentalsData),
+        saveNewsArticles(selectedSymbol, newsData),
+      ]);
+
+      setChartData(historicalData);
+      setPatternTableData(analyzePatternsFromStockData(historicalData));
       setQuarterlyFundamentalsData(fundamentalsData.quarterlyResult);
       setAnnualFundamentalsData(fundamentalsData.annualResult);
+      setNews(newsData);
 
       showSnackbar("Data refreshed!", "success");
     } catch (error) {
@@ -143,27 +157,37 @@ function App() {
     setIsChartLoading(true);
     setIsRefreshingAll(true);
     try {
+      // Run all tickers in parallel
       const promises = storedSymbolsWithNames.map(async (symbol) => {
-        const historicalData = await LambdaService.fetchHistoricalData(
-          symbol.symbol,
-          range.startDate,
-          range.endDate
-        );
-        await addStockData(historicalData);
+        // Fetch all data for this symbol in parallel
+        const [historicalData, fundamentalsData, newsData] = await Promise.all([
+          LambdaService.fetchHistoricalData(
+            symbol.symbol,
+            range.startDate,
+            range.endDate
+          ),
+          LambdaService.fetchFundamentals(
+            symbol.symbol,
+            range.startDate,
+            range.endDate
+          ),
+          LambdaService.fetchNews(symbol.symbol),
+        ]);
 
-        const fundamentalsData = await LambdaService.fetchFundamentals(
-          symbol.symbol,
-          range.startDate,
-          range.endDate
-        );
-        await saveFundamentals(symbol.symbol, fundamentalsData);
+        await Promise.all([
+          addStockData(historicalData),
+          saveFundamentals(symbol.symbol, fundamentalsData),
+          saveNewsArticles(symbol.symbol, newsData),
+        ]);
 
+        // Update UI for selected symbol only
         if (symbol.symbol === selectedSymbol) {
           setChartData(historicalData);
           const patterns = analyzePatternsFromStockData(historicalData);
           setPatternTableData(patterns);
           setQuarterlyFundamentalsData(fundamentalsData.quarterlyResult);
           setAnnualFundamentalsData(fundamentalsData.annualResult);
+          setNews(newsData);
         }
       });
 
@@ -409,14 +433,16 @@ function App() {
                 indicatorColor="primary"
                 textColor="inherit"
               >
+                <Tab label="News" />
                 <Tab label="Quarterly Financials" />
                 <Tab label="Annual Financials" />
                 <Tab label="Recognized Patterns" />
               </Tabs>
               <Box sx={{ mt: 2 }}>
-                {activeTab === 0 && renderQuarterlyFundamentalsTable()}
-                {activeTab === 1 && renderAnnualFundamentalsTable()}
-                {activeTab === 2 && renderPatternTable()}
+                {activeTab === 0 && <NewsList news={news} />}
+                {activeTab === 1 && renderQuarterlyFundamentalsTable()}
+                {activeTab === 2 && renderAnnualFundamentalsTable()}
+                {activeTab === 3 && renderPatternTable()}
               </Box>
             </Box>
           )}

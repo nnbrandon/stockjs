@@ -7,6 +7,7 @@ db.version(1).stores({
   stockData: "[symbol+date], open, close, high, low, volume, adjClose, name",
   quarterlyResult: "[symbol+date], symbol, date", // compound key + indexes
   annualResult: "[symbol+date], symbol, date",
+  news: "id,symbol,date", // primary key: id, indexes: symbol + date
 });
 
 // Add or update multiple stock records
@@ -145,4 +146,29 @@ export async function getAnnual(symbol, startDate, endDate) {
       return d >= new Date(startDate) && d <= new Date(endDate);
     })
     .toArray();
+}
+
+export async function saveNewsArticles(symbol, articles) {
+  // Attach symbol to each article
+  const articlesWithSymbol = articles.map((item) => ({
+    ...item,
+    symbol,
+    date: new Date(item.date).toISOString(),
+  }));
+
+  try {
+    // Bulk put (insert or update)
+    await db.news.bulkPut(articlesWithSymbol);
+    console.log("News saved successfully");
+  } catch (error) {
+    console.error("Failed to save news", error);
+  }
+}
+
+export async function getNewsBySymbol(symbol) {
+  return await db.news
+    .where("symbol")
+    .equals(symbol)
+    .reverse() // latest first
+    .sortBy("date");
 }

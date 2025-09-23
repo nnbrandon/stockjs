@@ -45,6 +45,25 @@ class LambdaService {
 
     return data;
   }
+
+  async fetchNews(symbol) {
+    let data = [];
+
+    try {
+      const response = await fetch(
+        `${this.API_URL}?symbol=${symbol}&action=news`
+      );
+      data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Error fetching news data");
+      }
+    } catch (error) {
+      console.error("Error fetching news data:", error);
+      throw error;
+    }
+
+    return data;
+  }
 }
 
 export default new LambdaService();

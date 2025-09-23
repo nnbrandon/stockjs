@@ -1,5 +1,5 @@
 import yahooFinance from "yahoo-finance2";
-import googleFinance from "google-finance";
+import axios from "axios";
 
 const allowedOrigins = ["http://localhost:5173", "https://nnbrandon.github.io"];
 
@@ -38,7 +38,8 @@ export const handler = async (event) => {
           "Access-Control-Allow-Origin": corsOrigin,
         },
         body: JSON.stringify({
-          error: "Invalid action. Use ?action=prices or ?action=fundamentals",
+          error:
+            "Invalid action. Use action=prices, action=fundamentals  or action=news",
         }),
       };
   }
@@ -183,7 +184,6 @@ const fetchFundamentals = async (params, corsOrigin) => {
   }
 };
 
-// NOT WORKING ATM
 const fetchNews = async (params, corsOrigin) => {
   const symbol = params.symbol;
 
@@ -199,13 +199,28 @@ const fetchNews = async (params, corsOrigin) => {
   }
 
   try {
+    const { data } = await axios.get(
+      `https://query1.finance.yahoo.com/v1/finance/search?q=${symbol}&lang=en-US&region=US&quotesCount=6&newsCount=20`,
+      {
+        headers: { "User-Agent": "Mozilla/5.0" },
+      }
+    );
+    const news = data?.news.map((item) => ({
+      id: item.uuid,
+      title: item.title,
+      publisher: item.publisher,
+      link: item.link,
+      date: new Date(item.providerPublishTime * 1000).toISOString(),
+      thumbnail: item.thumbnail,
+    }));
+
     return {
       statusCode: 200,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": corsOrigin, // Allow your React frontend
       },
-      body: JSON.stringify([]),
+      body: JSON.stringify(news),
     };
   } catch (err) {
     return {

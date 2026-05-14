@@ -1,235 +1,147 @@
-import yahooFinance from "yahoo-finance2";
-import axios from "axios";
+import YahooFinance from "yahoo-finance2";
+
+// Reuse one client across warm Lambda invocations so cookies/crumb are cached.
+const yahooFinance = new YahooFinance();
 
 const allowedOrigins = ["http://localhost:5173", "https://nnbrandon.github.io"];
 
-export const handler = async (event) => {
-  const origin = event.headers.origin;
-  const corsOrigin = allowedOrigins.includes(origin)
-    ? origin
-    : allowedOrigins[0];
+const jsonResponse = (statusCode, body, corsOrigin, extraHeaders = {}) => ({
+  statusCode,
+  headers: {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": corsOrigin,
+    ...extraHeaders,
+  },
+  body: JSON.stringify(body),
+});
 
-  // Handle CORS preflight
-  if (event.httpMethod === "OPTIONS") {
+const errorResponse = (statusCode, message, corsOrigin) =>
+  jsonResponse(statusCode, { error: message }, corsOrigin);
+
+const requireParams = (params, keys, corsOrigin) => {
+  for (const key of keys) {
+    if (!params[key]) {
+      return errorResponse(400, `Missing ${key} query param`, corsOrigin);
+    }
+  }
+  return null;
+};
+
+export const handler = async (event) => {
+  const headers = event.headers || {};
+  const origin = headers.origin || headers.Origin;
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+
+  // CORS preflight
+  if (event.httpMethod === "OPTIONS" || event.requestContext?.http?.method === "OPTIONS") {
     return {
       statusCode: 200,
       headers: {
         "Access-Control-Allow-Origin": corsOrigin,
         "Access-Control-Allow-Methods": "GET,OPTIONS",
         "Access-Control-Allow-Headers": "*",
+        "Access-Control-Max-Age": "86400",
       },
     };
   }
 
   const params = event.queryStringParameters || {};
   const action = params.action;
-  switch (action) {
-    case "prices":
-      return await fetchPrices(params, corsOrigin);
-    case "fundamentals":
-      return await fetchFundamentals(params, corsOrigin);
-    case "news":
-      return await fetchNews(params, corsOrigin);
-    default:
-      return {
-        statusCode: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": corsOrigin,
-        },
-        body: JSON.stringify({
-          error:
-            "Invalid action. Use action=prices, action=fundamentals  or action=news",
-        }),
-      };
+
+  try {
+    switch (action) {
+      case "prices":
+        return await fetchPrices(params, corsOrigin);
+      case "fundamentals":
+        return await fetchFundamentals(params, corsOrigin);
+      case "news":
+        return await fetchNews(params, corsOrigin);
+      default:
+        return errorResponse(
+          400,
+          "Invalid action. Use action=prices, action=fundamentals, or action=news",
+          corsOrigin,
+        );
+    }
+  } catch (err) {
+    // Catch-all so a Yahoo blip never bubbles up as a 502 from API Gateway.
+    console.error("Unhandled handler error:", err);
+    return errorResponse(500, err.message || "Internal error", corsOrigin);
   }
 };
 
 const fetchPrices = async (params, corsOrigin) => {
+  const missing = requireParams(params, ["symbol", "start", "end"], corsOrigin);
+  if (missing) return missing;
+
   try {
-    // Read query parameters from Lambda Function URL
-    const symbol = params.symbol;
-    const start = params.start;
-    const end = params.end;
-
-    if (!symbol) {
-      return {
-        statusCode: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": corsOrigin,
-        },
-        body: JSON.stringify({ error: "Missing symbol query param" }),
-      };
-    }
-
-    if (!start) {
-      return {
-        statusCode: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": corsOrigin,
-        },
-        body: JSON.stringify({ error: "Missing start query param" }),
-      };
-    }
-
-    if (!end) {
-      return {
-        statusCode: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": corsOrigin,
-        },
-        body: JSON.stringify({ error: "Missing end query param" }),
-      };
-    }
-
-    const data = await yahooFinance.chart(symbol, {
-      period1: start,
-      period2: end,
+    const data = await yahooFinance.chart(params.symbol, {
+      period1: params.start,
+      period2: params.end,
     });
-
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin, // Allow your React frontend
-      },
-      body: JSON.stringify(data),
-    };
+    return jsonResponse(200, data, corsOrigin);
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin,
-      },
-      body: JSON.stringify({ error: err.message }),
-    };
+    console.error("prices error:", err);
+    return errorResponse(502, err.message, corsOrigin);
   }
 };
 
 const fetchFundamentals = async (params, corsOrigin) => {
-  const start = params.start;
-  const end = params.end;
-  const symbol = params.symbol;
-
-  if (!symbol) {
-    return {
-      statusCode: 400,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin,
-      },
-      body: JSON.stringify({ error: "Missing symbol query param" }),
-    };
-  }
-
-  if (!start) {
-    return {
-      statusCode: 400,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin,
-      },
-      body: JSON.stringify({ error: "Missing start query param" }),
-    };
-  }
-
-  if (!end) {
-    return {
-      statusCode: 400,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin,
-      },
-      body: JSON.stringify({ error: "Missing end query param" }),
-    };
-  }
+  const missing = requireParams(params, ["symbol", "start", "end"], corsOrigin);
+  if (missing) return missing;
 
   try {
     const [quarterlyResult, annualResult] = await Promise.all([
-      yahooFinance.fundamentalsTimeSeries(symbol, {
-        period1: start,
-        period2: end,
+      yahooFinance.fundamentalsTimeSeries(params.symbol, {
+        period1: params.start,
+        period2: params.end,
         type: "quarterly",
         module: "financials",
       }),
-      yahooFinance.fundamentalsTimeSeries(symbol, {
-        period1: start,
-        period2: end,
+      yahooFinance.fundamentalsTimeSeries(params.symbol, {
+        period1: params.start,
+        period2: params.end,
         type: "annual",
         module: "financials",
       }),
     ]);
-
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin,
-      },
-      body: JSON.stringify({ quarterlyResult, annualResult }),
-    };
+    return jsonResponse(200, { quarterlyResult, annualResult }, corsOrigin);
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin,
-      },
-      body: JSON.stringify({ error: err.message }),
-    };
+    console.error("fundamentals error:", err);
+    return errorResponse(502, err.message, corsOrigin);
   }
 };
 
 const fetchNews = async (params, corsOrigin) => {
-  const symbol = params.symbol;
-
-  if (!symbol) {
-    return {
-      statusCode: 400,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin,
-      },
-      body: JSON.stringify({ error: "Missing symbol query param" }),
-    };
-  }
+  const missing = requireParams(params, ["symbol"], corsOrigin);
+  if (missing) return missing;
 
   try {
-    const { data } = await axios.get(
-      `https://query1.finance.yahoo.com/v1/finance/search?q=${symbol}&lang=en-US&region=US&quotesCount=6&newsCount=20`,
-      {
-        headers: { "User-Agent": "Mozilla/5.0" },
-      }
-    );
-    const news = data?.news.map((item) => ({
+    const result = await yahooFinance.search(params.symbol, {
+      lang: "en-US",
+      region: "US",
+      quotesCount: 6,
+      newsCount: 20,
+    });
+
+    const news = (result?.news ?? []).map((item) => ({
       id: item.uuid,
       title: item.title,
       publisher: item.publisher,
       link: item.link,
-      date: new Date(item.providerPublishTime * 1000).toISOString(),
+      // v3 returns a Date for providerPublishTime; older shape was a unix-seconds number.
+      date:
+        item.providerPublishTime instanceof Date
+          ? item.providerPublishTime.toISOString()
+          : typeof item.providerPublishTime === "number"
+            ? new Date(item.providerPublishTime * 1000).toISOString()
+            : new Date(item.providerPublishTime).toISOString(),
       thumbnail: item.thumbnail,
     }));
 
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin, // Allow your React frontend
-      },
-      body: JSON.stringify(news),
-    };
+    return jsonResponse(200, news, corsOrigin);
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": corsOrigin,
-      },
-      body: JSON.stringify({ error: err.message }),
-    };
+    console.error("news error:", err);
+    return errorResponse(502, err.message, corsOrigin);
   }
 };

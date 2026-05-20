@@ -1,13 +1,16 @@
+const LAMBDA_URL =
+  "https://fwedwy4in5lnbkpm5yuczew6gm0vnfmj.lambda-url.us-east-1.on.aws/";
+const LOCAL_URL = "http://localhost:3001";
+
 class LambdaService {
-  API_URL =
-    "https://fwedwy4in5lnbkpm5yuczew6gm0vnfmj.lambda-url.us-east-1.on.aws/";
+  API_URL = import.meta.env.DEV ? LOCAL_URL : LAMBDA_URL;
 
   async fetchHistoricalData(symbol, start, end) {
     let data = [];
 
     try {
       const response = await fetch(
-        `${this.API_URL}?symbol=${symbol}&start=${start}&end=${end}&action=prices`
+        `${this.API_URL}?symbol=${symbol}&start=${start}&end=${end}&action=prices`,
       );
       data = await response.json();
       if (!response.ok) {
@@ -31,7 +34,7 @@ class LambdaService {
 
     try {
       const response = await fetch(
-        `${this.API_URL}?symbol=${symbol}&start=${start}&end=${end}&action=fundamentals`
+        `${this.API_URL}?symbol=${symbol}&start=${start}&end=${end}&action=fundamentals`,
       );
 
       data = await response.json();
@@ -51,7 +54,7 @@ class LambdaService {
 
     try {
       const response = await fetch(
-        `${this.API_URL}?symbol=${symbol}&action=news`
+        `${this.API_URL}?symbol=${symbol}&action=news`,
       );
       data = await response.json();
       if (!response.ok) {

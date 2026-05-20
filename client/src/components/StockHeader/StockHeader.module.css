@@ -1,0 +1,29 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.priceGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.priceChange {
+  font-weight: bold;
+}
+
+.priceChangeUp {
+  color: #26a69a;
+}
+
+.priceChangeDown {
+  color: #ef5350;
+}

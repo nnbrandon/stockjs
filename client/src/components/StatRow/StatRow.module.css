@@ -1,0 +1,89 @@
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--palette-divider);
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.stat {
+  background: var(--palette-bg-paper);
+  padding: 14px 18px;
+}
+
+.statLabel {
+  font-size: 10.5px;
+  color: var(--palette-text-disabled);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.statValue {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--palette-text-primary);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.statSub {
+  font-size: 11px;
+  color: var(--palette-text-disabled);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+}
+
+/* Skeletons match the real content's rhythm so the row doesn't jump
+   when the data arrives. */
+.skeletonValue {
+  border-radius: 4px !important;
+}
+
+.skeletonSub {
+  margin-top: 4px !important;
+  border-radius: 3px !important;
+}
+
+.skeletonRange {
+  margin: 8px 0 6px !important;
+}
+
+/* 52-Week Range slider */
+.rangeTrack {
+  position: relative;
+  height: 4px;
+  margin: 8px 0 4px;
+  background: linear-gradient(
+    to right,
+    rgba(239, 68, 68, 0.4),
+    rgba(255, 255, 255, 0.1),
+    rgba(34, 197, 94, 0.4)
+  );
+  border-radius: 2px;
+}
+
+.rangeMarker {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--palette-text-primary);
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 0 3px var(--palette-bg-paper),
+    0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+.rangeExtremes {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--palette-text-disabled);
+}

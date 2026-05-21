@@ -1,3 +1,16 @@
+.tabsPanel {
+  margin-top: 24px;
+  background: var(--palette-bg-paper);
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+.tabPanel {
+  padding: 20px;
+}
+
 .tableContainer {
-  padding-right: 6rem;
+  overflow-x: auto;
 }

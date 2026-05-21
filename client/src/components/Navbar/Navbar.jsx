@@ -1,17 +1,22 @@
+import { useEffect, useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
-import Button from "@mui/material/Button";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
-import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
+import AddIcon from "@mui/icons-material/Add";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import Tooltip from "@mui/material/Tooltip";
 
 import styles from "./Navbar.module.css";
 import isMarketOpen from "../../utils/isMarketOpen";
+
+function formatNyTime() {
+  return new Date().toLocaleTimeString("en-US", {
+    timeZone: "America/New_York",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
 
 function Navbar({
   mode,
@@ -24,94 +29,117 @@ function Navbar({
   toggleTheme,
   isRefreshingAll,
 }) {
-  const renderNavData = storedSymbolsWithNames.map((symbolWithName, index) => {
-    return (
-      <ListItem key={index}>
-        <ListItemButton
-          selected={selectedSymbol === symbolWithName.symbol}
-          onClick={() => onClickSymbol(symbolWithName.symbol)}
-        >
-          <ListItemText primary={symbolWithName.name} />
-        </ListItemButton>
-      </ListItem>
-    );
-  });
+  const marketOpen = isMarketOpen();
+  const [nyTime, setNyTime] = useState(formatNyTime);
+
+  useEffect(() => {
+    const id = setInterval(() => setNyTime(formatNyTime()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const tickerCount = storedSymbolsWithNames.length;
+
+  const refreshDisabled = marketOpen || tickerCount === 0 || isRefreshingAll;
+  const refreshTooltip = marketOpen
+    ? "Disabled while the market is open"
+    : tickerCount === 0
+      ? "No tickers to refresh"
+      : "";
 
   return (
-    <div className={styles.sidebar}>
-      <span>
-        <CloseIcon
-          className={styles.closeButton}
-          alt="Close"
-          onClick={onCloseNav}
-          fontSize="large"
-        />
-      </span>
-      <Divider />
-      <nav
-        className={styles.nav}
-        aria-label="navigation sidebar of ticker symbols"
-      >
-        <List>{renderNavData}</List>
-      </nav>
-      <Divider />
-      <div className={styles.bottomNav}>
-        <div className={styles.buttons}>
-          <Button variant="outlined" onClick={onClickAddTickerModal} fullWidth>
-            Add Ticker
-          </Button>
-          {!isRefreshingAll ? (
-            <Tooltip
-              title={
-                isMarketOpen()
-                  ? "Disabled while the market is open"
-                  : storedSymbolsWithNames.length === 0
-                    ? "No tickers to refresh"
-                    : ""
-              }
-              disableHoverListener={
-                !isMarketOpen() && storedSymbolsWithNames.length > 0
-              }
-            >
-              <span>
-                <Button
-                  variant="outlined"
-                  onClick={() => onRefreshAllTickers()}
-                  fullWidth
-                  disabled={
-                    isMarketOpen() || storedSymbolsWithNames.length === 0
-                  }
-                  style={{ marginTop: "0.5rem" }}
-                >
-                  Refresh all tickers
-                </Button>
-              </span>
-            </Tooltip>
-          ) : (
-            <Button
-              variant="outlined"
-              disabled
-              fullWidth
-              style={{ marginTop: "0.5rem" }}
-            >
-              Refreshing all tickers...
-            </Button>
-          )}
-        </div>
-        <div>
-          {mode === "dark" && (
-            <IconButton onClick={toggleTheme}>
-              <LightModeIcon />
-            </IconButton>
-          )}
-          {mode === "light" && (
-            <IconButton onClick={toggleTheme}>
-              <DarkModeIcon />
-            </IconButton>
-          )}
+    <aside className={styles.sidebar}>
+      <div className={styles.header}>
+        <div className={styles.logo}>stockjs</div>
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={toggleTheme}
+            title={
+              mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+          >
+            {mode === "dark" ? (
+              <LightModeIcon fontSize="small" />
+            ) : (
+              <DarkModeIcon fontSize="small" />
+            )}
+          </button>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={onCloseNav}
+            title="Close sidebar"
+          >
+            <CloseIcon fontSize="small" />
+          </button>
         </div>
       </div>
-    </div>
+
+      <div className={styles.watchlistLabel}>
+        Watchlist
+        <span className={styles.chipCount}>
+          {tickerCount.toString().padStart(2, "0")}
+        </span>
+      </div>
+
+      <ul className={styles.tickerList} aria-label="Watchlist">
+        {tickerCount === 0 && (
+          <li className={styles.emptyState}>No tickers yet.</li>
+        )}
+        {storedSymbolsWithNames.map(({ symbol, name }) => {
+          const isSelected = selectedSymbol === symbol;
+          return (
+            <li key={symbol}>
+              <button
+                type="button"
+                className={`${styles.tickerCard} ${isSelected ? styles.selected : ""}`}
+                onClick={() => onClickSymbol(symbol)}
+                aria-pressed={isSelected}
+              >
+                <div className={styles.tickerSymbol}>{symbol}</div>
+                {name && <div className={styles.tickerName}>{name}</div>}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className={styles.footer}>
+        <button
+          type="button"
+          className={styles.btnOutlined}
+          onClick={onClickAddTickerModal}
+        >
+          <AddIcon fontSize="small" />
+          Add ticker
+        </button>
+
+        <Tooltip title={refreshTooltip} disableHoverListener={!refreshTooltip}>
+          <span>
+            <button
+              type="button"
+              className={styles.btnOutlined}
+              onClick={onRefreshAllTickers}
+              disabled={refreshDisabled}
+            >
+              <RefreshIcon fontSize="small" />
+              {isRefreshingAll ? "Refreshing…" : "Refresh all"}
+            </button>
+          </span>
+        </Tooltip>
+
+        <div className={styles.footerMeta}>
+          <span>
+            <span
+              className={`${styles.statusDot} ${marketOpen ? styles.live : styles.closed}`}
+            />
+            {marketOpen ? "LIVE" : "CLOSED"}
+          </span>
+          <span>{nyTime} ET</span>
+        </div>
+      </div>
+    </aside>
   );
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -6,53 +6,45 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   TableSortLabel,
 } from "@mui/material";
 import formatShortNumber from "../../utils/formatShortNumber";
-import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import GrowthCell from "../Fundamentals/GrowthCell";
+import styles from "../PatternTable/PatternTable.module.css";
 
 export default function AnnualFundamentalsTable({ annualFundamentalsData }) {
   const [order, setOrder] = useState("desc");
-  const [orderBy] = useState("date");
+  const orderBy = "date";
 
-  const handleSort = () => {
-    setOrder(order === "asc" ? "desc" : "asc");
-  };
+  const handleSort = () => setOrder(order === "asc" ? "desc" : "asc");
 
-  const sortedData = [...annualFundamentalsData].sort((a, b) => {
-    if (order === "asc") {
-      return new Date(a.date) - new Date(b.date);
-    } else {
-      return new Date(b.date) - new Date(a.date);
-    }
-  });
+  const sortedData = [...annualFundamentalsData].sort((a, b) =>
+    order === "asc"
+      ? new Date(a.date) - new Date(b.date)
+      : new Date(b.date) - new Date(a.date),
+  );
 
   const dataWithGrowth = sortedData.map((row) => {
     const previousRow = sortedData.find((r) => r.date < row.date);
     if (!previousRow) {
       return { ...row, revenueGrowth: null, netIncomeGrowth: null };
     }
-
-    const revenueGrowth = previousRow?.totalRevenue
+    const revenueGrowth = previousRow.totalRevenue
       ? ((row.totalRevenue - previousRow.totalRevenue) /
           Math.abs(previousRow.totalRevenue)) *
         100
       : null;
-
-    const netIncomeGrowth = previousRow?.netIncome
+    const netIncomeGrowth = previousRow.netIncome
       ? ((row.netIncome - previousRow.netIncome) /
           Math.abs(previousRow.netIncome)) *
         100
       : null;
-
     return { ...row, revenueGrowth, netIncomeGrowth };
   });
 
   return (
-    <TableContainer component={Paper}>
-      <Table>
+    <TableContainer>
+      <Table size="small">
         <TableHead>
           <TableRow>
             <TableCell sortDirection={orderBy === "date" ? order : false}>
@@ -64,91 +56,36 @@ export default function AnnualFundamentalsTable({ annualFundamentalsData }) {
                 Date
               </TableSortLabel>
             </TableCell>
-            <TableCell>Revenue</TableCell>
-            <TableCell>Revenue Growth (%)</TableCell>
-            <TableCell>Cost of Revenue</TableCell>
-            <TableCell>Net Income</TableCell>
-            <TableCell>Net Income Growth (%)</TableCell>
-            <TableCell>EBIT</TableCell>
-            <TableCell>EPS (Diluted)</TableCell>
+            <TableCell align="right">Revenue</TableCell>
+            <TableCell align="right">Revenue Growth</TableCell>
+            <TableCell align="right">Cost of Revenue</TableCell>
+            <TableCell align="right">Net Income</TableCell>
+            <TableCell align="right">Net Income Growth</TableCell>
+            <TableCell align="right">EBIT</TableCell>
+            <TableCell align="right">EPS (Diluted)</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {dataWithGrowth.map((row) => (
-            <TableRow key={row.date}>
+            <TableRow key={row.date} hover>
               <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
-              <TableCell>{formatShortNumber(row.totalRevenue)}</TableCell>
-              <TableCell
-                sx={{
-                  color:
-                    row.revenueGrowth > 0
-                      ? "#26a69a"
-                      : row.revenueGrowth < 0
-                        ? "#ef5350"
-                        : "inherit",
-                  fontWeight: "bold",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                {row.revenueGrowth !== null && isFinite(row.revenueGrowth) ? (
-                  <>
-                    {row.revenueGrowth.toFixed(2) + "%"}
-                    {row.revenueGrowth > 0 && (
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        sx={{ verticalAlign: "middle" }}
-                      />
-                    )}
-                    {row.revenueGrowth < 0 && (
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        sx={{ verticalAlign: "middle" }}
-                      />
-                    )}
-                  </>
-                ) : (
-                  "--"
-                )}
+              <TableCell align="right" className={styles.numericCell}>
+                {formatShortNumber(row.totalRevenue)}
               </TableCell>
-              <TableCell>{formatShortNumber(row.costOfRevenue)}</TableCell>
-              <TableCell>{formatShortNumber(row.netIncome)}</TableCell>
-              <TableCell
-                sx={{
-                  color:
-                    row.netIncomeGrowth > 0
-                      ? "#26a69a"
-                      : row.netIncomeGrowth < 0
-                        ? "#ef5350"
-                        : "inherit",
-                  fontWeight: "bold",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                {row.netIncomeGrowth !== null &&
-                isFinite(row.netIncomeGrowth) ? (
-                  <>
-                    {row.netIncomeGrowth.toFixed(2) + "%"}
-                    {row.netIncomeGrowth > 0 && (
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        sx={{ verticalAlign: "middle" }}
-                      />
-                    )}
-                    {row.netIncomeGrowth < 0 && (
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        sx={{ verticalAlign: "middle" }}
-                      />
-                    )}
-                  </>
-                ) : (
-                  "--"
-                )}
+              <GrowthCell value={row.revenueGrowth} />
+              <TableCell align="right" className={styles.numericCell}>
+                {formatShortNumber(row.costOfRevenue)}
               </TableCell>
-              <TableCell>{formatShortNumber(row.EBIT)}</TableCell>
-              <TableCell>{row.dilutedEPS}</TableCell>
+              <TableCell align="right" className={styles.numericCell}>
+                {formatShortNumber(row.netIncome)}
+              </TableCell>
+              <GrowthCell value={row.netIncomeGrowth} />
+              <TableCell align="right" className={styles.numericCell}>
+                {formatShortNumber(row.EBIT)}
+              </TableCell>
+              <TableCell align="right" className={styles.numericCell}>
+                {row.dilutedEPS}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

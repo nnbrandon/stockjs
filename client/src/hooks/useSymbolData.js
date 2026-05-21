@@ -29,7 +29,12 @@ export default function useSymbolData(symbol, range) {
           setPatternTableData(analyzePatternsFromStockData(data));
         }
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setTimeout(() => {
+          // Simulate a delay to show the loading state
+          setIsLoading(false);
+        }, 300);
+      });
 
     getQuarterly(symbol, range.startDate, range.endDate).then(
       setQuarterlyFundamentalsData,

@@ -1,70 +1,59 @@
-import { Box, Typography } from "@mui/material";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { last } from "lodash";
-import Stock52WeekRange from "../Stock52WeekRange/Stock52WeekRange";
-import TimerangeSelector from "../TimerangeSelector/TimerangeSelector";
-import formatShortNumber from "../../utils/formatShortNumber";
 import styles from "./StockHeader.module.css";
 
 function PriceChange({ chartData }) {
-  if (chartData.length < 2) return null;
+  if (!chartData || chartData.length < 2) return null;
 
   const latest = chartData[chartData.length - 1];
   const prev = chartData[chartData.length - 2];
   const absChange = latest.close - prev.close;
   const pctChange = (absChange / prev.close) * 100;
-  const sign = absChange > 0 ? "+" : "";
 
-  const changeClass =
-    absChange > 0
-      ? styles.priceChangeUp
-      : absChange < 0
-        ? styles.priceChangeDown
-        : "";
+  const isUp = absChange >= 0;
+  const sign = isUp ? "+" : "−";
+  const Arrow = isUp ? KeyboardArrowUpIcon : KeyboardArrowDownIcon;
 
   return (
-    <span className={`${styles.priceChange} ${changeClass}`}>
+    <div className={`${styles.changePill} ${isUp ? styles.up : styles.down}`}>
+      <Arrow className={styles.arrow} />
       {sign}
-      {absChange.toFixed(2)} ({sign}
-      {pctChange.toFixed(2)}%)
-    </span>
+      {Math.abs(absChange).toFixed(2)} ({sign}
+      {Math.abs(pctChange).toFixed(2)}%)
+    </div>
   );
 }
 
-function StockHeader({
-  selectedSymbol,
-  chartData,
-  averageVolumePast30Days,
-  onRangeChange,
-}) {
-  if (!selectedSymbol) {
-    return (
-      <div className={styles.header}>
-        <TimerangeSelector onChange={onRangeChange} />
-      </div>
-    );
-  }
+function StockHeader({ selectedSymbol, chartData, children }) {
+  if (!selectedSymbol) return null;
+
+  const company = chartData[0]?.name;
+  const symbol = chartData[0]?.symbol ?? selectedSymbol;
+  const latest = last(chartData);
 
   return (
-    <div className={styles.header}>
-      <h2 className={styles.titleGroup}>
-        {chartData[0]?.name} ({chartData[0]?.symbol})
-      </h2>
+    <div className={styles.wrapper}>
+      <header className={styles.header}>
+        <div className={styles.headerLeft}>
+          <div className={styles.tickerHeadline}>
+            <h1 className={styles.companyName}>{company || symbol}</h1>
+            {company && <span className={styles.chip}>{symbol}</span>}
+          </div>
 
-      <div className={styles.priceGroup}>
-        <h2>{last(chartData)?.close.toFixed(2)}</h2>
-        <PriceChange chartData={chartData} />
-      </div>
+          {latest && (
+            <div className={styles.priceRow}>
+              <div className={styles.priceMain}>
+                <span className={styles.priceCurrency}>$</span>
+                {latest.close.toFixed(2)}
+              </div>
+              <PriceChange chartData={chartData} />
+            </div>
+          )}
+        </div>
 
-      <Stock52WeekRange symbol={selectedSymbol} />
-
-      <Box>
-        <Typography variant="h8">Average Volume (30 days)</Typography>
-        <Box display="flex" justifyContent="space-between">
-          {formatShortNumber(averageVolumePast30Days)}
-        </Box>
-      </Box>
-
-      <TimerangeSelector onChange={onRangeChange} />
+        {children && <div className={styles.headerActions}>{children}</div>}
+      </header>
     </div>
   );
 }

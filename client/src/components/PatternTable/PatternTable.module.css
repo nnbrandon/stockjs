@@ -1,8 +1,15 @@
-.patternTableHeader {
-  display: flex;
-  align-items: center;
+.helpIcon {
+  font-size: 14px !important;
+  color: var(--palette-text-disabled);
+  cursor: help;
+  transition: color 120ms ease;
 }
 
-.patternTableHeaderText {
-  padding-right: 5px;
+.helpIcon:hover {
+  color: var(--palette-text-secondary);
+}
+
+.numericCell {
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums;
 }

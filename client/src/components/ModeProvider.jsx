@@ -15,6 +15,7 @@ export function ModeProvider({ children }) {
 
   useEffect(() => {
     localStorage.setItem("themeMode", mode);
+    document.documentElement.setAttribute("data-theme", mode);
   }, [mode]);
 
   const toggleTheme = () => {

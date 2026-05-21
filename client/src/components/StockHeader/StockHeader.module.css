@@ -1,29 +1,106 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
 .header {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
 }
 
-.titleGroup {
+.headerLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+.tickerHeadline {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
-.priceGroup {
+.companyName {
+  font-family: var(--font-display);
+  font-size: 38px;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  color: var(--palette-text-primary);
+  font-weight: 400;
+  margin: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  background: var(--palette-bg-elevated);
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius-chip);
+  color: var(--palette-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.priceRow {
   display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.priceMain {
+  font-family: var(--font-mono);
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: var(--palette-text-primary);
+  line-height: 1;
+}
+
+.priceCurrency {
+  font-size: 16px;
+  color: var(--palette-text-disabled);
+  font-weight: 400;
+  margin-right: 4px;
+}
+
+.changePill {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--shape-radius-chip);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+.changePill.up {
+  background: var(--palette-success-soft);
+  color: var(--palette-success);
+}
+.changePill.down {
+  background: var(--palette-error-soft);
+  color: var(--palette-error);
+}
+.changePill .arrow {
+  width: 16px;
+  height: 16px;
 }
 
-.priceChange {
-  font-weight: bold;
-}
-
-.priceChangeUp {
-  color: #26a69a;
-}
-
-.priceChangeDown {
-  color: #ef5350;
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }

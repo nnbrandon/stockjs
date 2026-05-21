@@ -7,6 +7,35 @@ import AnnualFundamentalsTable from "../AnnualFundamentalsTable/AnnualFundamenta
 import PatternTable from "../PatternTable/PatternTable";
 import styles from "./StockTabs.module.css";
 
+const TAB_DEFINITIONS = [
+  { id: "news", label: "News" },
+  { id: "quarterly", label: "Quarterly Financials" },
+  { id: "annual", label: "Annual Financials" },
+  { id: "patterns", label: "Recognized Patterns" },
+];
+
+const tabsSx = {
+  borderBottom: "1px solid var(--palette-divider)",
+  minHeight: 44,
+  "& .MuiTabs-indicator": {
+    height: 2,
+    backgroundColor: "var(--palette-success)",
+  },
+  "& .MuiTab-root": {
+    textTransform: "none",
+    fontFamily: "var(--font-body)",
+    fontSize: 13,
+    fontWeight: 500,
+    letterSpacing: "-0.005em",
+    minHeight: 44,
+    padding: "10px 16px",
+    color: "var(--palette-text-secondary)",
+    transition: "color 150ms ease",
+    "&:hover": { color: "var(--palette-text-primary)" },
+    "&.Mui-selected": { color: "var(--palette-text-primary)" },
+  },
+};
+
 function StockTabs({
   isLoading,
   news,
@@ -23,19 +52,18 @@ function StockTabs({
   const hasAnnual = annualFundamentalsData && annualFundamentalsData.length > 0;
 
   return (
-    <Box sx={{ width: "100%", mt: 2, ml: 2, mb: 2 }}>
+    <div className={styles.tabsPanel}>
       <Tabs
         value={activeTab}
         onChange={(_, newValue) => setActiveTab(newValue)}
-        indicatorColor="primary"
-        textColor="inherit"
+        sx={tabsSx}
       >
-        <Tab label="News" />
-        <Tab label="Quarterly Financials" />
-        <Tab label="Annual Financials" />
-        <Tab label="Recognized Patterns" />
+        {TAB_DEFINITIONS.map((tab) => (
+          <Tab key={tab.id} label={tab.label} disableRipple />
+        ))}
       </Tabs>
-      <Box sx={{ mt: 2 }}>
+
+      <Box className={styles.tabPanel}>
         {activeTab === 0 && <NewsList news={news} />}
         {activeTab === 1 && (
           <LoadingPanel loading={isLoading} isEmpty={!hasQuarterly}>
@@ -63,7 +91,7 @@ function StockTabs({
           </LoadingPanel>
         )}
       </Box>
-    </Box>
+    </div>
   );
 }
 

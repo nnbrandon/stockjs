@@ -8,6 +8,7 @@ import Tooltip from "@mui/material/Tooltip";
 
 import styles from "./Navbar.module.css";
 import isMarketOpen from "../../utils/isMarketOpen";
+import NavItem from "./NavItem";
 
 function formatNyTime() {
   return new Date().toLocaleTimeString("en-US", {
@@ -91,15 +92,12 @@ function Navbar({
           const isSelected = selectedSymbol === symbol;
           return (
             <li key={symbol}>
-              <button
-                type="button"
-                className={`${styles.tickerCard} ${isSelected ? styles.selected : ""}`}
-                onClick={() => onClickSymbol(symbol)}
-                aria-pressed={isSelected}
-              >
-                <div className={styles.tickerSymbol}>{symbol}</div>
-                {name && <div className={styles.tickerName}>{name}</div>}
-              </button>
+              <NavItem
+                symbol={symbol}
+                name={name}
+                isSelected={isSelected}
+                onClickSymbol={onClickSymbol}
+              />
             </li>
           );
         })}

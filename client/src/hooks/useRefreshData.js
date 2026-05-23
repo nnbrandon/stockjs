@@ -3,6 +3,7 @@ import { addStockData, saveFundamentals, saveNewsArticles } from "../db";
 import LambdaService from "../LambdaService";
 import { analyzePatternsFromStockData } from "../utils/patternRecognizer";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { emitRefreshSignal } from "./useRefreshSignal";
 
 // Fetch from Lambda, persist to IndexedDB, and return the shape useSymbolData expects.
 async function fetchAndPersist(symbol, range) {
@@ -42,6 +43,9 @@ export default function useRefreshData({
     try {
       const updates = await fetchAndPersist(selectedSymbol, range);
       applyRefresh(updates);
+      // Wake up any other subscribers (sidebar sparklines, etc.) so they
+      // re-read this symbol's data from IndexedDB.
+      emitRefreshSignal(selectedSymbol);
       showSnackbar("Data refreshed!", "success");
     } catch (error) {
       console.error("Error fetching stock data:", error);
@@ -59,6 +63,7 @@ export default function useRefreshData({
         if (symbol === selectedSymbol) {
           applyRefresh(updates);
         }
+        emitRefreshSignal(symbol);
       });
 
       await Promise.allSettled(promises);

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
-
-const formatDate = (date) => date.toISOString().split("T")[0];
+import calculateRange from "../../utils/calculateRange";
 
 const RANGES = [
   { id: "1W", label: "1W", days: 7 },
@@ -14,16 +13,6 @@ const RANGES = [
 ];
 
 const DEFAULT_RANGE = "1Y";
-
-function calculateRange(days) {
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  return {
-    startDate: formatDate(startDate),
-    endDate: formatDate(endDate),
-  };
-}
 
 const groupSx = {
   background: "var(--palette-bg-paper)",

@@ -7,6 +7,7 @@ import {
   getNewsBySymbol,
 } from "../db";
 import { analyzePatternsFromStockData } from "../utils/patternRecognizer";
+import { useRefreshSignal } from "./useRefreshSignal";
 
 export default function useSymbolData(symbol, range) {
   const [chartData, setChartData] = useState([]);
@@ -17,6 +18,10 @@ export default function useSymbolData(symbol, range) {
   const [averageVolumePast30Days, setAverageVolumePast30Days] = useState(null);
   const [news, setNews] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Re-read from IndexedDB whenever a refresh for this symbol is signaled
+  // (e.g. by useRefreshData after writing fresh Lambda data to IDB).
+  const refreshVersion = useRefreshSignal(symbol);
 
   useEffect(() => {
     if (!symbol || !range) return;
@@ -44,7 +49,7 @@ export default function useSymbolData(symbol, range) {
     );
     getAverageVolumePast30Days(symbol).then(setAverageVolumePast30Days);
     getNewsBySymbol(symbol).then(setNews);
-  }, [symbol, range]);
+  }, [symbol, range, refreshVersion]);
 
   const applyRefresh = useCallback((updates) => {
     if (updates.chartData !== undefined) setChartData(updates.chartData);

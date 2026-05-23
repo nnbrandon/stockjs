@@ -118,7 +118,7 @@ function StatRow({ symbol, chartData, averageVolumePast30Days, isLoading }) {
         }
         sub={
           Number.isFinite(averageVolumePast30Days)
-            ? `avg ${formatShortNumber(averageVolumePast30Days)}`
+            ? `avg ${formatShortNumber(averageVolumePast30Days)} past 30 days`
             : undefined
         }
         loading={isLoading}

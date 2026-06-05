@@ -67,6 +67,23 @@ class LambdaService {
 
     return data;
   }
+
+  // Fetch + extract an article's readable text server-side (the browser can't
+  // do this directly because publishers omit CORS headers). Best-effort:
+  // resolves to `{ ok: false }` on any failure rather than throwing, so the
+  // enrichment pipeline can keep going.
+  async fetchArticleText(url) {
+    try {
+      const response = await fetch(
+        `${this.API_URL}?action=article&url=${encodeURIComponent(url)}`,
+      );
+      const data = await response.json();
+      if (!response.ok) return { url, ok: false };
+      return data;
+    } catch {
+      return { url, ok: false };
+    }
+  }
 }
 
 export default new LambdaService();

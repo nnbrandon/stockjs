@@ -40,12 +40,8 @@ function Navbar({
 
   const tickerCount = storedSymbolsWithNames.length;
 
-  const refreshDisabled = marketOpen || tickerCount === 0 || isRefreshingAll;
-  const refreshTooltip = marketOpen
-    ? "Disabled while the market is open"
-    : tickerCount === 0
-      ? "No tickers to refresh"
-      : "";
+  const refreshDisabled = tickerCount === 0 || isRefreshingAll;
+  const refreshTooltip = tickerCount === 0 ? "No tickers to refresh" : "";
 
   return (
     <aside className={styles.sidebar}>

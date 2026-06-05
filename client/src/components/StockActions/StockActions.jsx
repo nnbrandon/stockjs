@@ -10,30 +10,21 @@ function StockActions({
   onRefresh,
   onDelete,
 }) {
-  const marketOpen = isMarketOpen();
-
-  const refreshDisabled = !selectedSymbol || marketOpen || isRefreshingData;
-  const refreshTooltip = marketOpen
-    ? "Disabled while the market is open"
-    : !selectedSymbol
-      ? "Select a ticker to refresh"
-      : "";
+  const refreshDisabled = !selectedSymbol || isRefreshingData;
 
   return (
     <div className={styles.actions}>
-      <Tooltip title={refreshTooltip} disableHoverListener={!refreshTooltip}>
-        <span>
-          <button
-            type="button"
-            className={styles.btnAction}
-            onClick={onRefresh}
-            disabled={refreshDisabled}
-          >
-            <RefreshIcon fontSize="small" />
-            {isRefreshingData ? "Refreshing…" : "Refresh"}
-          </button>
-        </span>
-      </Tooltip>
+      <span>
+        <button
+          type="button"
+          className={styles.btnAction}
+          onClick={onRefresh}
+          disabled={refreshDisabled}
+        >
+          <RefreshIcon fontSize="small" />
+          {isRefreshingData ? "Refreshing…" : "Refresh"}
+        </button>
+      </span>
 
       <Tooltip
         title={!selectedSymbol ? "Select a ticker to delete" : "Remove ticker"}

@@ -1,0 +1,474 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.empty {
+  padding: 32px 12px;
+  text-align: center;
+  color: var(--palette-text-disabled);
+  font-size: 13px;
+}
+
+/* ───────────────────────── Verdict banner ───────────────────────── */
+.verdict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-radius: var(--shape-radius);
+  border: 1px solid var(--palette-divider);
+  background: var(--palette-bg-elevated);
+  position: relative;
+  overflow: hidden;
+}
+.verdict::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+.verdict.buy::before {
+  background: var(--palette-success);
+}
+.verdict.sell::before {
+  background: var(--palette-error);
+}
+.verdict.hold::before {
+  background: var(--palette-text-disabled);
+}
+
+.verdictMain {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.verdictIcon {
+  width: 34px !important;
+  height: 34px !important;
+}
+.buy .verdictIcon {
+  color: var(--palette-success);
+}
+.sell .verdictIcon {
+  color: var(--palette-error);
+}
+.hold .verdictIcon {
+  color: var(--palette-text-secondary);
+}
+
+.verdictAction {
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--palette-text-primary);
+}
+.buy .verdictAction {
+  color: var(--palette-success);
+}
+.sell .verdictAction {
+  color: var(--palette-error);
+}
+
+.verdictTier {
+  font-size: 12px;
+  color: var(--palette-text-secondary);
+  margin-top: 2px;
+}
+
+.verdictMeta {
+  text-align: right;
+}
+.verdictScore {
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 2px;
+}
+.verdictScoreValue {
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--palette-text-primary);
+  letter-spacing: -0.01em;
+}
+.verdictScoreMax {
+  font-size: 13px;
+  color: var(--palette-text-disabled);
+}
+.verdictConviction {
+  font-size: 11px;
+  color: var(--palette-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* ───────────────────────── Pillars ───────────────────────── */
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.pillar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pillarHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.pillarLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--palette-text-disabled);
+  font-weight: 500;
+}
+.pillarScore {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--palette-text-primary);
+  font-weight: 500;
+}
+.pillarTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--palette-bg-elevated);
+  overflow: hidden;
+}
+.pillarFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tone_pos {
+  background: var(--palette-success);
+}
+.tone_mid {
+  background: #eab308;
+}
+.tone_neg {
+  background: var(--palette-error);
+}
+.tone_na {
+  background: var(--palette-text-disabled);
+}
+
+/* ───────────────────────── Risk plan ───────────────────────── */
+.riskCard {
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  background: var(--palette-bg-paper);
+  padding: 14px 16px;
+}
+.riskHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--palette-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+.riskRule {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--palette-text-secondary);
+  background: var(--palette-bg-elevated);
+  border: 1px solid var(--palette-divider);
+  padding: 2px 8px;
+  border-radius: var(--shape-radius-chip);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.riskNote {
+  font-size: 11px;
+  color: var(--palette-text-disabled);
+  margin: 0 0 10px;
+}
+.riskGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.riskItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.riskLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--palette-text-disabled);
+}
+.riskValue {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--palette-text-primary);
+}
+.stopText {
+  color: var(--palette-error);
+}
+.targetText {
+  color: var(--palette-success);
+}
+.riskSub {
+  font-size: 10px;
+  color: var(--palette-text-disabled);
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 720px) {
+  .pillars {
+    grid-template-columns: 1fr;
+  }
+  .riskGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ───────────────────────── Committee ───────────────────────── */
+.committee {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.committeeLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--palette-text-disabled);
+  font-weight: 500;
+}
+
+.agentCard {
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  background: var(--palette-bg-paper);
+  padding: 14px 16px;
+}
+.agentHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agentIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--shape-radius-sm);
+  background: var(--palette-bg-elevated);
+  border: 1px solid var(--palette-divider);
+  display: grid;
+  place-items: center;
+  color: var(--palette-text-secondary);
+  flex-shrink: 0;
+}
+.agentIcon svg {
+  width: 16px;
+  height: 16px;
+}
+.agentTitle {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.agentName {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--palette-text-primary);
+  letter-spacing: -0.01em;
+}
+.agentRole {
+  font-size: 11px;
+  color: var(--palette-text-disabled);
+}
+.agentChip {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--palette-text-secondary);
+  background: var(--palette-bg-elevated);
+  border: 1px solid var(--palette-divider);
+  padding: 3px 9px;
+  border-radius: var(--shape-radius-chip);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.agentSummary {
+  font-size: 12.5px;
+  color: var(--palette-text-secondary);
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
+.findingList {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.finding {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--palette-text-secondary);
+}
+.findingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+  background: var(--palette-text-disabled);
+}
+.finding.bull .findingDot {
+  background: var(--palette-success);
+}
+.finding.bear .findingDot {
+  background: var(--palette-error);
+}
+.finding.neutral .findingDot {
+  background: var(--palette-text-disabled);
+}
+
+/* ───────────────────── News intelligence agent ───────────────────── */
+.newsAgent {
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  background: var(--palette-bg-paper);
+  padding: 14px 16px;
+}
+.naHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.naTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--palette-text-primary);
+}
+.naTitle svg {
+  color: var(--palette-success);
+}
+.naButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--shape-radius-sm);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  background: var(--palette-text-primary);
+  border: 1px solid var(--palette-text-primary);
+  color: var(--palette-bg-default);
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+.naButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.naButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.naCoverage {
+  font-size: 12px;
+  color: var(--palette-text-secondary);
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
+.stepList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.stepLabel {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--palette-text-primary);
+}
+.stepDetail {
+  font-size: 11.5px;
+  color: var(--palette-text-disabled);
+  margin-top: 1px;
+}
+.stepProgress {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--palette-text-secondary);
+}
+.stepSpinner {
+  color: var(--palette-text-secondary) !important;
+  margin-top: 1px;
+}
+.stepDone {
+  color: var(--palette-success);
+  margin-top: 1px;
+}
+.stepPending {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--palette-divider-strong);
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.naResult {
+  font-size: 11.5px;
+  color: var(--palette-success);
+  margin: 12px 0 0;
+}
+.naError {
+  font-size: 11.5px;
+  color: var(--palette-error);
+  margin: 12px 0 0;
+}
+
+.disclaimer {
+  font-size: 11px;
+  color: var(--palette-text-disabled);
+  line-height: 1.5;
+  margin: 4px 0 0;
+  font-style: italic;
+}

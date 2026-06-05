@@ -1,4 +1,7 @@
 import YahooFinance from "yahoo-finance2";
+import http from "node:http";
+import https from "node:https";
+import zlib from "node:zlib";
 
 // Reuse one client across warm Lambda invocations so cookies/crumb are cached.
 const yahooFinance = new YahooFinance();
@@ -60,10 +63,12 @@ export const handler = async (event) => {
         return await fetchFundamentals(params, corsOrigin);
       case "news":
         return await fetchNews(params, corsOrigin);
+      case "article":
+        return await fetchArticle(params, corsOrigin);
       default:
         return errorResponse(
           400,
-          "Invalid action. Use action=prices, action=fundamentals, or action=news",
+          "Invalid action. Use action=prices, action=fundamentals, action=news, or action=article",
           corsOrigin,
         );
     }
@@ -78,10 +83,14 @@ const fetchPrices = async (params, corsOrigin) => {
   if (missing) return missing;
 
   try {
-    const data = await yahooFinance.chart(params.symbol, {
-      period1: params.start,
-      period2: params.end,
-    });
+    const data = await yahooFinance.chart(
+      params.symbol,
+      {
+        period1: params.start,
+        period2: params.end,
+      },
+      { validateResult: false },
+    );
 
     return jsonResponse(200, data, corsOrigin);
   } catch (err) {
@@ -96,18 +105,26 @@ const fetchFundamentals = async (params, corsOrigin) => {
 
   try {
     const [quarterlyResult, annualResult] = await Promise.all([
-      yahooFinance.fundamentalsTimeSeries(params.symbol, {
-        period1: params.start,
-        period2: params.end,
-        type: "quarterly",
-        module: "financials",
-      }),
-      yahooFinance.fundamentalsTimeSeries(params.symbol, {
-        period1: params.start,
-        period2: params.end,
-        type: "annual",
-        module: "financials",
-      }),
+      yahooFinance.fundamentalsTimeSeries(
+        params.symbol,
+        {
+          period1: params.start,
+          period2: params.end,
+          type: "quarterly",
+          module: "financials",
+        },
+        { validateResult: false },
+      ),
+      yahooFinance.fundamentalsTimeSeries(
+        params.symbol,
+        {
+          period1: params.start,
+          period2: params.end,
+          type: "annual",
+          module: "financials",
+        },
+        { validateResult: false },
+      ),
     ]);
 
     return jsonResponse(200, { quarterlyResult, annualResult }, corsOrigin);
@@ -122,12 +139,16 @@ const fetchNews = async (params, corsOrigin) => {
   if (missing) return missing;
 
   try {
-    const result = await yahooFinance.search(params.symbol, {
-      lang: "en-US",
-      region: "US",
-      quotesCount: 6,
-      newsCount: 20,
-    });
+    const result = await yahooFinance.search(
+      params.symbol,
+      {
+        lang: "en-US",
+        region: "US",
+        quotesCount: 6,
+        newsCount: 20,
+      },
+      { validateResult: false },
+    );
 
     const news = (result?.news ?? []).map((item) => ({
       id: item.uuid,
@@ -148,5 +169,247 @@ const fetchNews = async (params, corsOrigin) => {
   } catch (err) {
     console.error("news error:", err);
     return errorResponse(502, err.message, corsOrigin);
+  }
+};
+
+// ─────────────────────── Article text extraction ───────────────────────
+// Server-side fetch of a news article URL + lightweight readable-text
+// extraction. Done here (not in the browser) because publishers don't send
+// CORS headers, so the browser can't read their responses. Best-effort:
+// returns { ok:false } for timeouts, non-HTML, paywalls, or blocked requests
+// rather than failing the request.
+
+const ARTICLE_TIMEOUT_MS = 4500;
+const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
+
+const decodeEntities = (s = "") =>
+  s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)));
+
+const stripTags = (html = "") => html.replace(/<[^>]+>/g, " ");
+const collapse = (s = "") => s.replace(/\s+/g, " ").trim();
+const clean = (s) => collapse(decodeEntities(stripTags(s)));
+
+const metaContent = (html, ...names) => {
+  for (const name of names) {
+    const re = new RegExp(
+      `<meta[^>]+(?:property|name)=["']${name}["'][^>]*>`,
+      "i",
+    );
+    const tag = html.match(re)?.[0];
+    const content = tag?.match(/content=["']([^"']*)["']/i)?.[1];
+    if (content) return collapse(decodeEntities(content));
+  }
+  return "";
+};
+
+const extractParagraphs = (html) => {
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ");
+
+  const paragraphs = [];
+  const re = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+  let match;
+  while ((match = re.exec(cleaned)) && paragraphs.length < 12) {
+    const text = clean(match[1]);
+    // Skip nav/cookie/boilerplate fragments.
+    if (text.length >= 40) paragraphs.push(text);
+  }
+  return paragraphs.join(" ");
+};
+
+const MAX_ARTICLE_BYTES = 600_000;
+// Yahoo (and many news sites) reply with a huge stack of Set-Cookie/consent
+// headers that exceed Node's default 16KB HTTP header limit, which makes the
+// global `fetch` (undici) throw UND_ERR_HEADERS_OVERFLOW before we ever see the
+// body. Node's http/https modules accept a per-request `maxHeaderSize`, so we
+// use them directly — no `--max-http-header-size` launch flag required.
+const MAX_HEADER_SIZE = 256 * 1024;
+
+const USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+const httpGetHtml = (
+  urlStr,
+  { timeout = ARTICLE_TIMEOUT_MS, maxRedirects = 5 } = {},
+) =>
+  new Promise((resolve, reject) => {
+    let redirects = 0;
+
+    const visit = (current) => {
+      let target;
+      try {
+        target = new URL(current);
+      } catch {
+        return reject(new Error("invalid-url"));
+      }
+      if (!ALLOWED_PROTOCOLS.has(target.protocol)) {
+        return reject(new Error("bad-protocol"));
+      }
+
+      const lib = target.protocol === "https:" ? https : http;
+      const req = lib.request(
+        target,
+        {
+          method: "GET",
+          maxHeaderSize: MAX_HEADER_SIZE,
+          headers: {
+            "User-Agent": USER_AGENT,
+            Accept: "text/html,application/xhtml+xml",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Accept-Language": "en-US,en;q=0.9",
+          },
+        },
+        (res) => {
+          const status = res.statusCode || 0;
+          const location = res.headers.location;
+
+          // Follow redirects manually.
+          if (status >= 300 && status < 400 && location) {
+            res.resume();
+            if (redirects++ >= maxRedirects) {
+              return reject(new Error("too-many-redirects"));
+            }
+            return visit(new URL(location, target).toString());
+          }
+
+          const contentType = res.headers["content-type"] || "";
+          const encoding = (
+            res.headers["content-encoding"] || ""
+          ).toLowerCase();
+          let stream = res;
+          if (encoding === "gzip") stream = res.pipe(zlib.createGunzip());
+          else if (encoding === "deflate")
+            stream = res.pipe(zlib.createInflate());
+          else if (encoding === "br")
+            stream = res.pipe(zlib.createBrotliDecompress());
+
+          const chunks = [];
+          let bytes = 0;
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            resolve({
+              status,
+              contentType,
+              html: Buffer.concat(chunks).toString("utf8"),
+            });
+          };
+
+          stream.on("data", (c) => {
+            bytes += c.length;
+            if (bytes <= MAX_ARTICLE_BYTES) {
+              chunks.push(c);
+            } else {
+              // Got enough — stop reading and resolve with what we have.
+              res.destroy();
+              finish();
+            }
+          });
+          stream.on("end", finish);
+          stream.on("error", (e) => {
+            if (!settled) reject(e);
+          });
+        },
+      );
+
+      req.on("error", reject);
+      req.setTimeout(timeout, () => req.destroy(new Error("timeout")));
+      req.end();
+    };
+
+    visit(urlStr);
+  });
+
+const fetchArticle = async (params, corsOrigin) => {
+  const missing = requireParams(params, ["url"], corsOrigin);
+  if (missing) return missing;
+
+  let target;
+  try {
+    target = new URL(params.url);
+  } catch {
+    return errorResponse(400, "Invalid url", corsOrigin);
+  }
+  if (!ALLOWED_PROTOCOLS.has(target.protocol)) {
+    return errorResponse(400, "Unsupported protocol", corsOrigin);
+  }
+
+  try {
+    const {
+      status,
+      contentType,
+      html: raw,
+    } = await httpGetHtml(target.toString());
+
+    if (status !== 200 || !contentType.includes("html")) {
+      return jsonResponse(
+        200,
+        {
+          url: params.url,
+          ok: false,
+          reason: status !== 200 ? `status-${status}` : "not-html",
+        },
+        corsOrigin,
+      );
+    }
+
+    // Cap the bytes we parse so a giant page can't blow the Lambda's memory.
+    const html = raw.slice(0, MAX_ARTICLE_BYTES);
+
+    const description = metaContent(
+      html,
+      "og:description",
+      "description",
+      "twitter:description",
+    );
+    const title =
+      metaContent(html, "og:title", "twitter:title") ||
+      clean(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "");
+    const body = extractParagraphs(html);
+
+    const text = collapse([description, body].filter(Boolean).join(" ")).slice(
+      0,
+      2000,
+    );
+
+    return jsonResponse(
+      200,
+      {
+        url: params.url,
+        ok: text.length > 0,
+        title,
+        excerpt: description.slice(0, 300),
+        text,
+        wordCount: text ? text.split(" ").length : 0,
+        fetchedAt: new Date().toISOString(),
+      },
+      corsOrigin,
+    );
+  } catch (err) {
+    const cause = err.cause;
+    const detail = cause?.code || cause?.message || err.message;
+    console.error(
+      "article fetch error:",
+      params.url,
+      "→",
+      detail,
+      cause || err,
+    );
+    return jsonResponse(
+      200,
+      { url: params.url, ok: false, reason: detail },
+      corsOrigin,
+    );
   }
 };

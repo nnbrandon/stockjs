@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Tabs, Tab } from "@mui/material";
 import LoadingPanel from "../LoadingPanel/LoadingPanel";
 import NewsList from "../NewsList/NewsList";
 import QuarterlyFundamentalsTable from "../QuarterlyFundamentalsTable/QuarterlyFundamentalsTable";
 import AnnualFundamentalsTable from "../AnnualFundamentalsTable/AnnualFundamentalsTable";
 import PatternTable from "../PatternTable/PatternTable";
+import AnalystPanel from "../AnalystPanel/AnalystPanel";
 import styles from "./StockTabs.module.css";
 
 const TAB_DEFINITIONS = [
@@ -12,6 +13,7 @@ const TAB_DEFINITIONS = [
   { id: "quarterly", label: "Quarterly Financials" },
   { id: "annual", label: "Annual Financials" },
   { id: "patterns", label: "Recognized Patterns" },
+  { id: "analyst", label: "AI Committee" },
 ];
 
 const tabsSx = {
@@ -38,6 +40,7 @@ const tabsSx = {
 
 function StockTabs({
   isLoading,
+  selectedSymbol,
   news,
   quarterlyFundamentalsData,
   annualFundamentalsData,
@@ -45,6 +48,10 @@ function StockTabs({
   chartData,
 }) {
   const [activeTab, setActiveTab] = useState(0);
+
+  useEffect(() => {
+    setActiveTab(0);
+  }, [selectedSymbol]);
 
   const hasChartData = chartData && chartData.length > 0;
   const hasQuarterly =
@@ -88,6 +95,19 @@ function StockTabs({
             <div className={styles.tableContainer}>
               <PatternTable patternsData={patternTableData} />
             </div>
+          </LoadingPanel>
+        )}
+        {activeTab === 4 && (
+          <LoadingPanel
+            loading={isLoading}
+            isEmpty={!hasChartData && !hasQuarterly && !(news && news.length)}
+          >
+            <AnalystPanel
+              symbol={selectedSymbol}
+              quarterly={quarterlyFundamentalsData}
+              annual={annualFundamentalsData}
+              news={news}
+            />
           </LoadingPanel>
         )}
       </Box>

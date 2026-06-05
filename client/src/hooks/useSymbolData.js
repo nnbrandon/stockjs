@@ -8,6 +8,7 @@ import {
 } from "../db";
 import { analyzePatternsFromStockData } from "../utils/patternRecognizer";
 import { useRefreshSignal } from "./useRefreshSignal";
+import calculateRange from "../utils/calculateRange";
 
 export default function useSymbolData(symbol, range) {
   const [chartData, setChartData] = useState([]);
@@ -41,10 +42,11 @@ export default function useSymbolData(symbol, range) {
         }, 300);
       });
 
-    getQuarterly(symbol, range.startDate, range.endDate).then(
+    const ALL_RANGE = calculateRange(365 * 25);
+    getQuarterly(symbol, ALL_RANGE.startDate, ALL_RANGE.endDate).then(
       setQuarterlyFundamentalsData,
     );
-    getAnnual(symbol, range.startDate, range.endDate).then(
+    getAnnual(symbol, ALL_RANGE.startDate, ALL_RANGE.endDate).then(
       setAnnualFundamentalsData,
     );
     getAverageVolumePast30Days(symbol).then(setAverageVolumePast30Days);

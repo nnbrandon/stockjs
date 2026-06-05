@@ -10,7 +10,7 @@ import CandlestickChart from "./components/CandlestickChart/CandlestickChart";
 import ChartSkeleton from "./components/CandlestickChart/ChartSkeleton";
 import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
 import Navbar from "./components/Navbar/Navbar";
-import MenuIcon from "@mui/icons-material/Menu";
+import NavbarMini from "./components/Navbar/NavbarMini";
 import StockHeader from "./components/StockHeader/StockHeader";
 import StockActions from "./components/StockActions/StockActions";
 import StatRow from "./components/StatRow/StatRow";
@@ -78,11 +78,14 @@ function App() {
           />
         )}
         {!showNavBar && (
-          <MenuIcon
-            className={styles.hamburgerButton}
-            alt="menu"
-            onClick={() => setShowNavBar(true)}
-            fontSize="large"
+          <NavbarMini
+            storedSymbolsWithNames={storedSymbolsWithNames}
+            selectedSymbol={selectedSymbol}
+            onExpandNav={() => setShowNavBar(true)}
+            onClickAddTickerModal={() => setShowAddTickerModal(true)}
+            onClickSymbol={setSelectedSymbol}
+            onRefreshAllTickers={refreshAll}
+            isRefreshingAll={isRefreshingAll}
           />
         )}
 
@@ -123,6 +126,7 @@ function App() {
           {selectedSymbol && (
             <StockTabs
               isLoading={isChartLoading}
+              selectedSymbol={selectedSymbol}
               news={symbolData.news}
               quarterlyFundamentalsData={symbolData.quarterlyFundamentalsData}
               annualFundamentalsData={symbolData.annualFundamentalsData}

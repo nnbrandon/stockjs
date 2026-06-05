@@ -23,8 +23,4 @@ dist-ssr
 *.sln
 *.sw?
 
-create-lambda.sh
-update-lambda.sh
-get-lambda-url.sh
-zip.sh
 function.zip

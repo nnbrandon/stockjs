@@ -1,5 +1,7 @@
-const LAMBDA_URL =
-  "https://fwedwy4in5lnbkpm5yuczew6gm0vnfmj.lambda-url.us-east-1.on.aws/";
+// Production points at the AWS Lambda Function URL, injected at build time via
+// the VITE_LAMBDA_URL env var (set as a GitHub Actions repository variable).
+// Dev always talks to the local server (npm run dev in /server).
+const LAMBDA_URL = import.meta.env.VITE_LAMBDA_URL || "";
 const LOCAL_URL = "http://localhost:3001";
 
 class LambdaService {

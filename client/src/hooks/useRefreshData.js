@@ -1,15 +1,30 @@
 import { useState } from "react";
-import { addStockData, saveFundamentals, saveNewsArticles } from "../db";
+import {
+  addStockData,
+  saveFundamentals,
+  saveNewsArticles,
+  saveEarnings,
+  getQuarterly,
+  getEarnings,
+} from "../db";
 import LambdaService from "../LambdaService";
 import { analyzePatternsFromStockData } from "../utils/patternRecognizer";
+import { mergeEarningsIntoQuarterly } from "../utils/mergeEarningsIntoQuarterly";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { emitRefreshSignal } from "./useRefreshSignal";
+import calculateRange from "../utils/calculateRange";
+
+const FUNDAMENTALS_RANGE = calculateRange(365 * 25);
 
 // Fetch from Lambda, persist to IndexedDB, and return the shape useSymbolData expects.
 async function fetchAndPersist(symbol, range) {
   const [historicalData, fundamentalsData, newsData] = await Promise.all([
     LambdaService.fetchHistoricalData(symbol, range.startDate, range.endDate),
-    LambdaService.fetchFundamentals(symbol, range.startDate, range.endDate),
+    LambdaService.fetchFundamentals(
+      symbol,
+      FUNDAMENTALS_RANGE.startDate,
+      FUNDAMENTALS_RANGE.endDate,
+    ),
     LambdaService.fetchNews(symbol),
   ]);
 
@@ -17,13 +32,27 @@ async function fetchAndPersist(symbol, range) {
     addStockData(historicalData),
     saveFundamentals(symbol, fundamentalsData),
     saveNewsArticles(symbol, newsData),
+    saveEarnings(symbol, fundamentalsData.earningsResult),
+  ]);
+
+  const [quarterlyRaw, earningsRows] = await Promise.all([
+    getQuarterly(
+      symbol,
+      FUNDAMENTALS_RANGE.startDate,
+      FUNDAMENTALS_RANGE.endDate,
+    ),
+    getEarnings(symbol),
   ]);
 
   return {
     chartData: historicalData,
     patternTableData: analyzePatternsFromStockData(historicalData),
-    quarterlyFundamentalsData: fundamentalsData.quarterlyResult,
+    quarterlyFundamentalsData: mergeEarningsIntoQuarterly(
+      quarterlyRaw ?? [],
+      earningsRows ?? [],
+    ),
     annualFundamentalsData: fundamentalsData.annualResult,
+    earnings: earningsRows ?? [],
     news: newsData,
   };
 }

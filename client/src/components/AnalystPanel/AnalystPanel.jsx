@@ -245,7 +245,7 @@ function NewsIntelligence({ symbol, news, finbert }) {
   );
 }
 
-export default function AnalystPanel({ symbol, quarterly, annual, news }) {
+export default function AnalystPanel({ symbol, quarterly, annual, earnings, news }) {
   const finbert = useFinbert();
 
   // The committee always evaluates a fixed 1-year window, independent of the
@@ -283,9 +283,10 @@ export default function AnalystPanel({ symbol, quarterly, annual, news }) {
         chartData: yearCandles,
         quarterly,
         annual,
+        earnings,
         news: mergedNews,
       }),
-    [symbol, yearCandles, quarterly, annual, mergedNews],
+    [symbol, yearCandles, quarterly, annual, earnings, mergedNews],
   );
 
   if (!report) {

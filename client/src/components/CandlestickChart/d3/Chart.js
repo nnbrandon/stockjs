@@ -13,6 +13,10 @@ import {
   renderVolumeIndicator,
 } from "./volume";
 import { renderLatestCloseLine } from "./priceLine";
+import {
+  matchEarningsToChart,
+  renderEarningsMarkers,
+} from "./earningsMarkers";
 import { createTooltip, attachTooltipOverlay } from "./chartTooltip";
 import { attachZoom, getZoomTransform } from "./zoom";
 
@@ -44,12 +48,19 @@ const ZOOM_END_DEBOUNCE_MS = 500;
  * factory — see ./axes, ./grid, ./candlestick, ./volume, ./priceLine,
  * ./chartTooltip, ./zoom for the individual concerns.
  */
-export function createChart(svgElement, { chartData, width, height, colors }) {
+export function createChart(
+  svgElement,
+  { chartData, width, height, colors, earnings = [], onEarningsClick },
+) {
   const palette = { ...DEFAULT_COLORS, ...colors };
   const data = chartData.map((d) => ({ ...d, date: new Date(d.date) }));
   const dates = data.map((d) => d.date);
+  const earningsMarkers = matchEarningsToChart(earnings, data);
 
   const { svgGroup, chartBody } = initSvg(svgElement, { width, height });
+  const earningsLayer = svgGroup
+    .append("g")
+    .attr("class", "earnings-markers-layer");
 
   // ─── Scales ─────────────────────────────────────────────────────────────
   const xScale = scaleLinear([-1, dates.length], [0, width]);
@@ -90,6 +101,7 @@ export function createChart(svgElement, { chartData, width, height, colors }) {
 
   drawVolume(data, { xScale, bandwidth: xBand.bandwidth() });
   drawLatestCloseLine();
+  drawEarningsMarkers();
 
   // ─── Interactions ───────────────────────────────────────────────────────
   attachZoom(svgGroup, { width, height, onZoom, onZoomEnd });
@@ -147,6 +159,16 @@ export function createChart(svgElement, { chartData, width, height, colors }) {
     });
   }
 
+  function drawEarningsMarkers(xScaleToUse = xScale) {
+    if (!earningsMarkers.length) return;
+    renderEarningsMarkers(earningsLayer, earningsMarkers, {
+      xScale: xScaleToUse,
+      height,
+      colors: palette,
+      onClick: onEarningsClick,
+    });
+  }
+
   function onZoom(event) {
     const t = event.transform;
     const xScaleZ = t.rescaleX(xScale);
@@ -177,6 +199,7 @@ export function createChart(svgElement, { chartData, width, height, colors }) {
 
     drawVolume(visibleData, { xScale: xScaleZ, bandwidth });
     drawLatestCloseLine();
+    drawEarningsMarkers(xScaleZ);
 
     renderGrid(svgGroup, {
       xScale: xScaleZ,
@@ -230,6 +253,7 @@ export function createChart(svgElement, { chartData, width, height, colors }) {
     }, ZOOM_END_DEBOUNCE_MS);
 
     drawLatestCloseLine();
+    drawEarningsMarkers(xScaleZ);
   }
 
   // ─── Public controller ──────────────────────────────────────────────────

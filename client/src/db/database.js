@@ -32,22 +32,17 @@ const schemaVersions = [
       news: "id, symbol, date",
     },
   },
-  // Template for the next version:
-  // {
-  //   version: 2,
-  //   stores: {
-  //     stockData:
-  //       "[symbol+shortenedDate], symbol, open, close, high, low, volume, adjClose, name",
-  //     quarterlyResult: "[symbol+date], symbol, date",
-  //     annualResult: "[symbol+date], symbol, date",
-  //     news: "id, symbol, date",
-  //   },
-  //   async upgrade(tx) {
-  //     await tx.table("stockData").toCollection().modify((row) => {
-  //       row.symbol = row.symbol ?? row.shortenedDate?.split("-")[0];
-  //     });
-  //   },
-  // },
+  {
+    version: 2,
+    stores: {
+      stockData:
+        "[symbol+shortenedDate], open, close, high, low, volume, adjClose, name",
+      quarterlyResult: "[symbol+date], symbol, date",
+      annualResult: "[symbol+date], symbol, date",
+      news: "id, symbol, date",
+      earnings: "[symbol+date], symbol, date",
+    },
+  },
 ];
 
 export const db = new Dexie("StocksDB");

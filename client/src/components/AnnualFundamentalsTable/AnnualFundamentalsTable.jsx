@@ -7,10 +7,15 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
+  Tooltip,
 } from "@mui/material";
 import formatShortNumber from "../../utils/formatShortNumber";
 import GrowthCell from "../Fundamentals/GrowthCell";
 import styles from "../PatternTable/PatternTable.module.css";
+
+function fmtEpsCell(v) {
+  return Number.isFinite(v) ? v.toFixed(2) : "—";
+}
 
 export default function AnnualFundamentalsTable({ annualFundamentalsData }) {
   const [order, setOrder] = useState("desc");
@@ -56,13 +61,59 @@ export default function AnnualFundamentalsTable({ annualFundamentalsData }) {
                 Date
               </TableSortLabel>
             </TableCell>
-            <TableCell align="right">Revenue</TableCell>
-            <TableCell align="right">Revenue Growth</TableCell>
-            <TableCell align="right">Cost of Revenue</TableCell>
-            <TableCell align="right">Net Income</TableCell>
-            <TableCell align="right">Net Income Growth</TableCell>
-            <TableCell align="right">EBIT</TableCell>
-            <TableCell align="right">EPS (Diluted)</TableCell>
+            <TableCell align="right">
+              <Tooltip title="Total sales the company made this year" arrow>
+                <span>Revenue</span>
+              </Tooltip>
+            </TableCell>
+            <TableCell align="right">
+              <Tooltip
+                title="How much revenue grew vs. the previous year"
+                arrow
+              >
+                <span>Revenue Growth</span>
+              </Tooltip>
+            </TableCell>
+            <TableCell align="right">
+              <Tooltip
+                title="How much it cost the company to deliver its products/services"
+                arrow
+              >
+                <span>Cost of Sales</span>
+              </Tooltip>
+            </TableCell>
+            <TableCell align="right">
+              <Tooltip
+                title="Profit after all expenses — what the company actually keeps"
+                arrow
+              >
+                <span>Profit</span>
+              </Tooltip>
+            </TableCell>
+            <TableCell align="right">
+              <Tooltip
+                title="How much profit grew vs. the previous year"
+                arrow
+              >
+                <span>Profit Growth</span>
+              </Tooltip>
+            </TableCell>
+            <TableCell align="right">
+              <Tooltip
+                title="Earnings before interest and taxes — profit from core operations"
+                arrow
+              >
+                <span>Operating Earnings</span>
+              </Tooltip>
+            </TableCell>
+            <TableCell align="right">
+              <Tooltip
+                title="Earnings per share (diluted) — profit divided by total shares outstanding"
+                arrow
+              >
+                <span>EPS</span>
+              </Tooltip>
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -84,7 +135,7 @@ export default function AnnualFundamentalsTable({ annualFundamentalsData }) {
                 {formatShortNumber(row.EBIT)}
               </TableCell>
               <TableCell align="right" className={styles.numericCell}>
-                {row.dilutedEPS}
+                {fmtEpsCell(row.dilutedEPS)}
               </TableCell>
             </TableRow>
           ))}

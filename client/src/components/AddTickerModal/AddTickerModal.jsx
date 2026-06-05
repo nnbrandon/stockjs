@@ -12,6 +12,7 @@ import {
   addStockData,
   getStoredSymbols,
   saveFundamentals,
+  saveEarnings,
   saveNewsArticles,
 } from "../../db";
 import calculateRange from "../../utils/calculateRange";
@@ -133,6 +134,7 @@ function AddTickerModal({ onClose, range }) {
       await Promise.all([
         addStockData(historicalData),
         saveFundamentals(tickerInputValue, fundamentalsData),
+        saveEarnings(tickerInputValue, fundamentalsData.earningsResult),
         saveNewsArticles(tickerInputValue, news),
       ]);
 

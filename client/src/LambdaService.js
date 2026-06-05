@@ -24,11 +24,13 @@ class LambdaService {
     }
 
     const quotes = data.quotes;
-    return quotes.map((item) => ({
-      name: data.meta.shortName,
-      symbol: symbol,
-      ...item,
-    }));
+    return quotes
+      .filter((item) => item.close != null)
+      .map((item) => ({
+        name: data.meta.shortName,
+        symbol: symbol,
+        ...item,
+      }));
   }
 
   async fetchFundamentals(symbol, start, end) {

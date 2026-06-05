@@ -121,7 +121,10 @@ function App() {
             (isChartLoading ? (
               <ChartSkeleton />
             ) : hasChartData ? (
-              <CandlestickChart chartData={symbolData.chartData} />
+              <CandlestickChart
+                chartData={symbolData.chartData}
+                earnings={symbolData.earnings}
+              />
             ) : null)}
           {selectedSymbol && (
             <StockTabs
@@ -130,6 +133,7 @@ function App() {
               news={symbolData.news}
               quarterlyFundamentalsData={symbolData.quarterlyFundamentalsData}
               annualFundamentalsData={symbolData.annualFundamentalsData}
+              earnings={symbolData.earnings}
               patternTableData={symbolData.patternTableData}
               chartData={symbolData.chartData}
             />

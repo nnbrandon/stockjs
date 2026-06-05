@@ -6,6 +6,7 @@ import QuarterlyFundamentalsTable from "../QuarterlyFundamentalsTable/QuarterlyF
 import AnnualFundamentalsTable from "../AnnualFundamentalsTable/AnnualFundamentalsTable";
 import PatternTable from "../PatternTable/PatternTable";
 import AnalystPanel from "../AnalystPanel/AnalystPanel";
+import RecentEarningsBanner from "../RecentEarningsBanner/RecentEarningsBanner";
 import styles from "./StockTabs.module.css";
 
 const TAB_DEFINITIONS = [
@@ -44,6 +45,7 @@ function StockTabs({
   news,
   quarterlyFundamentalsData,
   annualFundamentalsData,
+  earnings,
   patternTableData,
   chartData,
 }) {
@@ -60,6 +62,7 @@ function StockTabs({
 
   return (
     <div className={styles.tabsPanel}>
+      <RecentEarningsBanner symbol={selectedSymbol} earnings={earnings} />
       <Tabs
         value={activeTab}
         onChange={(_, newValue) => setActiveTab(newValue)}
@@ -77,6 +80,7 @@ function StockTabs({
             <div className={styles.tableContainer}>
               <QuarterlyFundamentalsTable
                 quarterlyFundamentalsData={quarterlyFundamentalsData}
+                earnings={earnings}
               />
             </div>
           </LoadingPanel>
@@ -106,6 +110,7 @@ function StockTabs({
               symbol={selectedSymbol}
               quarterly={quarterlyFundamentalsData}
               annual={annualFundamentalsData}
+              earnings={earnings}
               news={news}
             />
           </LoadingPanel>

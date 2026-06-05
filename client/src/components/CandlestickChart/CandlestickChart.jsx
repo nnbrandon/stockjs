@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "lodash";
 import { createChart, CHART_MARGIN } from "./d3/Chart";
 import { useMode } from "../ModeProvider";
+import EarningsChartPopover from "./EarningsChartPopover";
 import styles from "./CandlestickChart.module.css";
 
 function readThemeColors() {
@@ -20,18 +21,34 @@ function readThemeColors() {
   };
 }
 
-export default function CandlestickChart({ chartData }) {
+export default function CandlestickChart({ chartData, earnings = [] }) {
   const svgRef = useRef(null);
+  const paperRef = useRef(null);
   const chartRef = useRef(null);
+  const onEarningsClickRef = useRef(null);
   const { mode } = useMode();
+  const [popover, setPopover] = useState(null);
+
+  const handleEarningsClick = useCallback((earning, anchor) => {
+    setPopover((prev) =>
+      prev?.earning.reportedDate === earning.reportedDate &&
+      prev?.earning.date === earning.date
+        ? null
+        : { earning, anchor },
+    );
+  }, []);
+
+  onEarningsClickRef.current = handleEarningsClick;
+
+  useEffect(() => {
+    setPopover(null);
+  }, [chartData, earnings]);
 
   useEffect(() => {
     const svgElement = svgRef.current;
     if (!svgElement) return;
 
     const drawChart = () => {
-      // Tear down the previous chart (removes its body-attached tooltip div)
-      // before clearing the SVG and rebuilding from scratch.
       if (chartRef.current) {
         chartRef.current.destroy();
         chartRef.current = null;
@@ -40,11 +57,9 @@ export default function CandlestickChart({ chartData }) {
         svgElement.removeChild(svgElement.firstChild);
       }
       const svgRect = svgElement.getBoundingClientRect();
-      // Subtract the chart's internal margins so the SVG's intrinsic width/height
-      // (set inside createChart > initSvg) matches its rendered CSS size — otherwise
-      // labels in the right margin (close price, volume tag) get clipped.
       chartRef.current = createChart(svgElement, {
         chartData,
+        earnings,
         width: Math.max(
           0,
           svgRect.width - CHART_MARGIN.left - CHART_MARGIN.right,
@@ -54,6 +69,8 @@ export default function CandlestickChart({ chartData }) {
           svgRect.height - CHART_MARGIN.top - CHART_MARGIN.bottom,
         ),
         colors: readThemeColors(),
+        onEarningsClick: (earning, anchor) =>
+          onEarningsClickRef.current?.(earning, anchor),
       });
     };
 
@@ -71,11 +88,19 @@ export default function CandlestickChart({ chartData }) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartData, mode]);
+  }, [chartData, earnings, mode]);
 
   return (
-    <div className={styles.paper}>
+    <div className={styles.paper} ref={paperRef}>
       <svg ref={svgRef} className={styles.container} />
+      {popover && (
+        <EarningsChartPopover
+          earning={popover.earning}
+          anchor={popover.anchor}
+          containerRef={paperRef}
+          onClose={() => setPopover(null)}
+        />
+      )}
     </div>
   );
 }

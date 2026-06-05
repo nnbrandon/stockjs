@@ -5,8 +5,10 @@ import {
   getAnnual,
   getAverageVolumePast30Days,
   getNewsBySymbol,
+  getEarnings,
 } from "../db";
 import { analyzePatternsFromStockData } from "../utils/patternRecognizer";
+import { mergeEarningsIntoQuarterly } from "../utils/mergeEarningsIntoQuarterly";
 import { useRefreshSignal } from "./useRefreshSignal";
 import calculateRange from "../utils/calculateRange";
 
@@ -17,6 +19,7 @@ export default function useSymbolData(symbol, range) {
     useState(null);
   const [annualFundamentalsData, setAnnualFundamentalsData] = useState(null);
   const [averageVolumePast30Days, setAverageVolumePast30Days] = useState(null);
+  const [earnings, setEarnings] = useState([]);
   const [news, setNews] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,13 +46,18 @@ export default function useSymbolData(symbol, range) {
       });
 
     const ALL_RANGE = calculateRange(365 * 25);
-    getQuarterly(symbol, ALL_RANGE.startDate, ALL_RANGE.endDate).then(
-      setQuarterlyFundamentalsData,
-    );
+    Promise.all([
+      getQuarterly(symbol, ALL_RANGE.startDate, ALL_RANGE.endDate),
+      getEarnings(symbol),
+    ]).then(([quarterly, earningsRows]) => {
+      setEarnings(earningsRows ?? []);
+      setQuarterlyFundamentalsData(
+        mergeEarningsIntoQuarterly(quarterly ?? [], earningsRows ?? []),
+      );
+    });
     getAnnual(symbol, ALL_RANGE.startDate, ALL_RANGE.endDate).then(
       setAnnualFundamentalsData,
     );
-    getAverageVolumePast30Days(symbol).then(setAverageVolumePast30Days);
     getNewsBySymbol(symbol).then(setNews);
   }, [symbol, range, refreshVersion]);
 
@@ -61,6 +69,7 @@ export default function useSymbolData(symbol, range) {
       setQuarterlyFundamentalsData(updates.quarterlyFundamentalsData);
     if (updates.annualFundamentalsData !== undefined)
       setAnnualFundamentalsData(updates.annualFundamentalsData);
+    if (updates.earnings !== undefined) setEarnings(updates.earnings);
     if (updates.news !== undefined) setNews(updates.news);
   }, []);
 
@@ -70,6 +79,7 @@ export default function useSymbolData(symbol, range) {
     quarterlyFundamentalsData,
     annualFundamentalsData,
     averageVolumePast30Days,
+    earnings,
     news,
     isLoading,
     applyRefresh,

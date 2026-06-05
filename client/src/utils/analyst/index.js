@@ -23,11 +23,12 @@ export function runAnalystCommittee(input = {}) {
   const chartData = Array.isArray(input.chartData) ? input.chartData : [];
   const quarterly = Array.isArray(input.quarterly) ? input.quarterly : [];
   const annual = Array.isArray(input.annual) ? input.annual : [];
+  const earnings = Array.isArray(input.earnings) ? input.earnings : [];
   const news = Array.isArray(input.news) ? input.news : [];
 
   if (!chartData.length && !news.length && !quarterly.length) return null;
 
-  const dataScout = runDataScout({ candles: chartData, quarterly, annual });
+  const dataScout = runDataScout({ candles: chartData, quarterly, annual, earnings });
   const sentiment = runSentimentAnalyst({ news });
 
   const bear = runBear({

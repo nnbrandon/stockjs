@@ -99,15 +99,6 @@ export async function runNewsAgentPipeline({
     while (cursor < targets.length) {
       const item = targets[cursor++];
       const res = await fetchArticleText(item.link);
-      console.log("[newsAgent] fetched article", {
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        ok: res?.ok,
-        reason: res?.reason,
-        textLength: res?.text?.length ?? 0,
-        preview: res?.text?.slice(0, 200),
-      });
       done += 1;
       emit("fetch", {
         detail: `Fetched ${done}/${targets.length}`,
@@ -136,10 +127,6 @@ export async function runNewsAgentPipeline({
       excerpt: r.res.excerpt,
       fetchedAt: r.res.fetchedAt,
     }));
-    console.log(
-      "[newsAgent] persisting bodies to IndexedDB",
-      updates.map((u) => ({ id: u.id, bodyLength: u.body?.length ?? 0 })),
-    );
     await saveNewsBodies(updates);
     emit("persist", {
       tool: "persist_to_cache",

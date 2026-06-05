@@ -21,11 +21,6 @@ export async function saveNewsArticles(symbol, articles) {
 // by the article's primary key (id); fields are merged, not replaced.
 export async function saveNewsBodies(updates = []) {
   const valid = updates.filter((u) => u && u.id != null && u.body);
-  console.log("[db] saveNewsBodies called", {
-    received: updates.length,
-    valid: valid.length,
-    ids: valid.map((u) => u.id),
-  });
   if (!valid.length) return 0;
 
   await withLog(`news: enriched ${valid.length} article bodies`, () =>
@@ -36,24 +31,12 @@ export async function saveNewsBodies(updates = []) {
           ...(u.excerpt ? { excerpt: u.excerpt } : {}),
           enrichedAt: u.fetchedAt || new Date().toISOString(),
         });
-        console.log("[db] update result for", u.id, {
-          rowsModified: updated, // 0 means the id didn't match an existing row
-          bodyLength: u.body?.length ?? 0,
-        });
       }
     }),
   );
 
   // Read back to prove the text is actually stored.
   const stored = await db[STORE].bulkGet(valid.map((u) => u.id));
-  console.log(
-    "[db] read-back after save",
-    stored.map((row) => ({
-      id: row?.id,
-      hasBody: Boolean(row?.body),
-      bodyLength: row?.body?.length ?? 0,
-    })),
-  );
 
   return valid.length;
 }

@@ -1,0 +1,109 @@
+.card {
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  background: var(--palette-bg-paper);
+  padding: 14px 16px;
+}
+
+.cardCompact {
+  padding: 12px 14px;
+}
+
+.head {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--palette-text-disabled);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.gridFive {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.gridCompact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.gridCompactFive {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 10.5px;
+  color: var(--palette-text-disabled);
+  white-space: nowrap;
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--palette-text-primary);
+  white-space: nowrap;
+}
+
+.cardCompact .value {
+  font-size: 12.5px;
+}
+
+.gainLossStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.gainLossPrimary {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.gainLossSub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.up {
+  color: var(--palette-success);
+}
+
+.down {
+  color: var(--palette-error);
+}
+
+.skeleton {
+  height: 16px;
+  width: 70%;
+  border-radius: 4px;
+  background: var(--palette-bg-elevated);
+}
+
+@media (max-width: 720px) {
+  .grid,
+  .gridFive {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

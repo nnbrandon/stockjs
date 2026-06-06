@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
 import AddIcon from "@mui/icons-material/Add";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Tooltip from "@mui/material/Tooltip";
 
 import styles from "./NavbarMini.module.css";
@@ -17,14 +20,20 @@ function formatNyTime() {
   });
 }
 
+const FIDELITY_IMPORT_TOOLTIP =
+  "In Fidelity: Positions tab → ⋮ menu → Download. Upload or paste that CSV here.";
+
 function NavbarMini({
+  mode,
   selectedSymbol,
   storedSymbolsWithNames,
   onExpandNav,
   onClickAddTickerModal,
+  onClickImportPortfolioModal,
   onClickSymbol,
   onClickHome,
   onRefreshAllTickers,
+  toggleTheme,
   isRefreshingAll,
 }) {
   const marketOpen = isMarketOpen();
@@ -52,15 +61,34 @@ function NavbarMini({
         >
           stockjs
         </button>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={onExpandNav}
-          title="Expand sidebar"
-          aria-label="Expand sidebar"
-        >
-          <KeyboardDoubleArrowRightIcon fontSize="small" />
-        </button>
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={toggleTheme}
+            title={
+              mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+            aria-label={
+              mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+          >
+            {mode === "dark" ? (
+              <LightModeIcon fontSize="small" />
+            ) : (
+              <DarkModeIcon fontSize="small" />
+            )}
+          </button>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={onExpandNav}
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+          >
+            <KeyboardDoubleArrowRightIcon fontSize="small" />
+          </button>
+        </div>
       </div>
 
       <div className={styles.watchlistLabel}>
@@ -117,6 +145,17 @@ function NavbarMini({
                 />
               </button>
             </span>
+          </Tooltip>
+
+          <Tooltip title={FIDELITY_IMPORT_TOOLTIP}>
+            <button
+              type="button"
+              className={styles.iconActionBtn}
+              onClick={onClickImportPortfolioModal}
+              aria-label="Import Fidelity portfolio"
+            >
+              <UploadFileIcon fontSize="small" />
+            </button>
           </Tooltip>
         </div>
 

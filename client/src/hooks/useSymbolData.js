@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getStockDataByDateRange,
   getQuarterly,
@@ -20,43 +20,102 @@ export default function useSymbolData(symbol, range) {
   const [earnings, setEarnings] = useState([]);
   const [news, setNews] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSupplementalDataReady, setIsSupplementalDataReady] = useState(false);
+  const hasChartDataRef = useRef(false);
 
   // Re-read from IndexedDB whenever a refresh for this symbol is signaled
   // (e.g. by useRefreshData after writing fresh Lambda data to IDB).
   const refreshVersion = useRefreshSignal(symbol);
 
   useEffect(() => {
+    hasChartDataRef.current = false;
+    setChartData([]);
+    setIsLoading(false);
+    setIsSupplementalDataReady(false);
+  }, [symbol]);
+
+  useEffect(() => {
     if (!symbol || !range) return;
 
-    setIsLoading(true);
+    let cancelled = false;
+
+    if (!hasChartDataRef.current) {
+      setIsLoading(true);
+    }
+
     getStockDataByDateRange(symbol, range.startDate, range.endDate)
       .then((data) => {
-        if (data && data.length) {
+        if (cancelled) return;
+        if (data?.length) {
           setChartData(data);
+          hasChartDataRef.current = true;
         }
       })
       .finally(() => {
-        setTimeout(() => {
-          // Simulate a delay to show the loading state
-          setIsLoading(false);
-        }, 300);
+        if (!cancelled) setIsLoading(false);
       });
 
     const ALL_RANGE = calculateRange(365 * 25);
+    let quarterlyDone = false;
+    let annualDone = false;
+    let newsDone = false;
+    const markSupplementalReady = () => {
+      if (quarterlyDone && annualDone && newsDone && !cancelled) {
+        setIsSupplementalDataReady(true);
+      }
+    };
+
     Promise.all([
       getQuarterly(symbol, ALL_RANGE.startDate, ALL_RANGE.endDate),
       getEarnings(symbol),
-    ]).then(([quarterly, earningsRows]) => {
-      setEarnings(earningsRows ?? []);
-      setQuarterlyFundamentalsData(
-        mergeEarningsIntoQuarterly(quarterly ?? [], earningsRows ?? []),
-      );
-    });
-    getAnnual(symbol, ALL_RANGE.startDate, ALL_RANGE.endDate).then(
-      setAnnualFundamentalsData,
-    );
-    getNewsBySymbol(symbol).then(setNews);
-  }, [symbol, range, refreshVersion]);
+    ])
+      .then(([quarterly, earningsRows]) => {
+        if (cancelled) return;
+        setEarnings(earningsRows ?? []);
+        setQuarterlyFundamentalsData(
+          mergeEarningsIntoQuarterly(quarterly ?? [], earningsRows ?? []),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEarnings([]);
+        setQuarterlyFundamentalsData([]);
+      })
+      .finally(() => {
+        quarterlyDone = true;
+        markSupplementalReady();
+      });
+    getAnnual(symbol, ALL_RANGE.startDate, ALL_RANGE.endDate)
+      .then((rows) => {
+        if (cancelled) return;
+        setAnnualFundamentalsData(rows);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAnnualFundamentalsData([]);
+      })
+      .finally(() => {
+        annualDone = true;
+        markSupplementalReady();
+      });
+    getNewsBySymbol(symbol)
+      .then((rows) => {
+        if (cancelled) return;
+        setNews(rows);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setNews([]);
+      })
+      .finally(() => {
+        newsDone = true;
+        markSupplementalReady();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, range?.startDate, range?.endDate, refreshVersion]);
 
   const applyRefresh = useCallback((updates) => {
     if (updates.chartData !== undefined) setChartData(updates.chartData);
@@ -76,6 +135,7 @@ export default function useSymbolData(symbol, range) {
     earnings,
     news,
     isLoading,
+    isSupplementalDataReady,
     applyRefresh,
   };
 }

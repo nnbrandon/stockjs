@@ -12,6 +12,9 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import { runAnalystCommittee } from "../../utils/analyst";
+import { getVerdictContext } from "../../utils/analyst/verdictContext";
+import { computePositionMetrics } from "../../utils/computePositionMetrics";
+import PositionHolding from "../PositionHolding/PositionHolding";
 import { getStockDataByDateRange } from "../../db";
 import calculateRange from "../../utils/calculateRange";
 import { useRefreshSignal } from "../../hooks/useRefreshSignal";
@@ -245,28 +248,53 @@ function NewsIntelligence({ symbol, news, finbert }) {
   );
 }
 
-export default function AnalystPanel({ symbol, quarterly, annual, earnings, news }) {
+export default function AnalystPanel({
+  symbol,
+  quarterly,
+  annual,
+  earnings,
+  news,
+  position,
+  positionsLoading = false,
+  supplementalDataReady = false,
+  compact = false,
+}) {
   const finbert = useFinbert();
 
   // The committee always evaluates a fixed 1-year window, independent of the
   // chart's selected range — so the verdict is consistent no matter what range
   // the user is viewing. Loaded straight from IndexedDB (whatever is cached).
   const [yearCandles, setYearCandles] = useState([]);
+  const [yearCandlesReady, setYearCandlesReady] = useState(false);
   const refreshVersion = useRefreshSignal(symbol);
   useEffect(() => {
     if (!symbol) {
       setYearCandles([]);
+      setYearCandlesReady(false);
       return undefined;
     }
     let active = true;
+    setYearCandlesReady(false);
     const { startDate, endDate } = calculateRange(365);
-    getStockDataByDateRange(symbol, startDate, endDate).then((rows) => {
-      if (active) setYearCandles(rows || []);
-    });
+    getStockDataByDateRange(symbol, startDate, endDate)
+      .then((rows) => {
+        if (!active) return;
+        setYearCandles(rows || []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setYearCandles([]);
+      })
+      .finally(() => {
+        if (active) setYearCandlesReady(true);
+      });
     return () => {
       active = false;
     };
   }, [symbol, refreshVersion]);
+
+  const committeeInputsReady =
+    yearCandlesReady && supplementalDataReady && !positionsLoading;
 
   // Merge any FinBERT per-article scores into the news so the committee
   // re-scores on neural sentiment instead of the lexicon fallback.
@@ -289,6 +317,20 @@ export default function AnalystPanel({ symbol, quarterly, annual, earnings, news
     [symbol, yearCandles, quarterly, annual, earnings, mergedNews],
   );
 
+  const positionMetrics = useMemo(
+    () =>
+      position ? computePositionMetrics(position, yearCandles) : null,
+    [position, yearCandles],
+  );
+
+  if (!committeeInputsReady) {
+    return (
+      <div className={styles.loading}>
+        <CircularProgress size={24} />
+      </div>
+    );
+  }
+
   if (!report) {
     return (
       <div className={styles.empty}>
@@ -298,6 +340,9 @@ export default function AnalystPanel({ symbol, quarterly, annual, earnings, news
   }
 
   const { verdict, pillars, agents } = report;
+  const verdictContext = getVerdictContext(verdict.action, {
+    hasPosition: Boolean(position),
+  });
   const VerdictIcon =
     verdict.action === "BUY"
       ? TrendingUpIcon
@@ -306,14 +351,17 @@ export default function AnalystPanel({ symbol, quarterly, annual, earnings, news
         : TrendingFlatIcon;
 
   return (
-    <div className={styles.panel}>
+    <div className={`${styles.panel} ${compact ? styles.panelCompact : ""}`}>
       {/* Verdict banner */}
-      <div className={`${styles.verdict} ${actionClass(verdict.action)}`}>
+      <div
+        className={`${styles.verdict} ${compact ? styles.verdictCompact : ""} ${actionClass(verdict.action)}`}
+      >
         <div className={styles.verdictMain}>
           <VerdictIcon className={styles.verdictIcon} />
           <div>
             <div className={styles.verdictAction}>{verdict.action}</div>
             <div className={styles.verdictTier}>{verdict.tier}</div>
+            <p className={styles.verdictContext}>{verdictContext}</p>
           </div>
         </div>
         <div className={styles.verdictMeta}>
@@ -329,8 +377,18 @@ export default function AnalystPanel({ symbol, quarterly, annual, earnings, news
         </div>
       </div>
 
+      {position && (
+        <PositionHolding
+          position={position}
+          metrics={positionMetrics}
+          compact={compact}
+        />
+      )}
+
       {/* Pillars */}
-      <div className={styles.pillars}>
+      <div
+        className={`${styles.pillars} ${compact ? styles.pillarsCompact : ""}`}
+      >
         <PillarBar label="Price trend" score={pillars.technical} />
         <PillarBar label="Company finances" score={pillars.fundamental} />
         <PillarBar label="News mood" score={pillars.sentiment} />

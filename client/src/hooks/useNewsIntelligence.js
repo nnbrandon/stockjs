@@ -1,17 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import LambdaService from "../LambdaService";
-import { saveNewsSentiment } from "../db";
-import { runNewsAgentPipeline } from "../utils/analyst/newsAgent";
-
-const BASE_CAP = 20; // analyze at least the 20 most recent articles
-const WINDOW_DAYS = 30; // when there are more than 20, widen to the last 30 days
-const MAX = 60; // hard ceiling so a flood of articles can't run away
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// An article is considered already analyzed if it carries a cached FinBERT
-// score (persisted on the news row) — so we never re-score it.
-const hasScore = (n) => Boolean(n?.model && Number.isFinite(n.model.sentiment));
+import { scoreSymbolNews } from "../utils/scoreSymbolNews";
+import {
+  hasFinbertScore,
+  selectNewsForAnalysis,
+} from "../utils/selectNewsForAnalysis";
 
 /**
  * Unified "news intelligence" for the AI Committee: crawl the selected
@@ -33,35 +25,7 @@ export default function useNewsIntelligence({ symbol, news, finbert }) {
   const autoRunSymbol = useRef(null);
 
   const total = news?.length || 0;
-
-  // Decide which articles to analyze (news is newest-first).
-  const selected = useMemo(() => {
-    const list = news || [];
-    if (list.length <= BASE_CAP) return list.slice(0, BASE_CAP);
-
-    const cutoff = Date.now() - WINDOW_DAYS * DAY_MS;
-    const window = list.filter((n) => {
-      const t = new Date(n.date).getTime();
-      return Number.isFinite(t) && t >= cutoff;
-    });
-
-    // If the 30-day window is small, take it all (but never fewer than the
-    // 20 most recent). If it fits under MAX, analyze the whole window.
-    if (window.length <= MAX) {
-      return window.length >= BASE_CAP ? window : list.slice(0, BASE_CAP);
-    }
-
-    // The window has more articles than we can afford. Rather than cutting it
-    // off at the newest MAX (which would only cover the last few days), spread
-    // the picks evenly across the full 30 days so older articles are sampled
-    // too. The newest and oldest in-window articles are always included.
-    const step = (window.length - 1) / (MAX - 1);
-    const picks = [];
-    for (let i = 0; i < MAX; i += 1) {
-      picks.push(window[Math.round(i * step)]);
-    }
-    return picks;
-  }, [news]);
+  const selected = useMemo(() => selectNewsForAnalysis(news), [news]);
 
   // An article is "scored" if it has a persisted score (from a prior session)
   // or a fresh FinBERT score from this session's worker run. Including the
@@ -69,7 +33,7 @@ export default function useNewsIntelligence({ symbol, news, finbert }) {
   // from IndexedDB (which is what caused the loading-state flicker).
   const liveScores = finbert.scores;
   const isScored = useCallback(
-    (n) => hasScore(n) || Boolean(n && liveScores?.[n.id]),
+    (n) => hasFinbertScore(n) || Boolean(n && liveScores?.[n.id]),
     [liveScores],
   );
 
@@ -98,67 +62,27 @@ export default function useNewsIntelligence({ symbol, news, finbert }) {
       setStats(null);
 
       try {
-        // 1) Crawl article bodies for these targets (only those missing a body).
-        let crawlSteps = [];
-        const { stats: crawlStats, bodies } = await runNewsAgentPipeline({
-          news: targets,
-          cap: targets.length,
-          fetchArticleText: (url) => LambdaService.fetchArticleText(url),
-          onStep: (s) => {
-            crawlSteps = s;
-            setSteps([...s]);
-          },
+        const { stats } = await scoreSymbolNews({
+          news,
+          finbertRun: finbert.run,
+          force,
         });
 
-        // 2) Score with FinBERT, using the freshest text available.
-        const items = targets
-          .filter((n) => n && n.id != null)
-          .map((n) => {
-            const text = (
-              bodies?.[n.id] ||
-              n.body ||
-              n.summary ||
-              n.title ||
-              ""
-            ).trim();
-            return { id: n.id, text };
-          })
-          .filter((it) => it.text);
-
-        const fbStep = {
-          id: "finbert",
-          tool: "score_finbert",
-          label: "Tool: FinBERT sentiment",
-          status: "running",
-          detail: `Scoring ${items.length} article${items.length === 1 ? "" : "s"} on-device…`,
-        };
-        setSteps([...crawlSteps, fbStep]);
-
-        const scores = await finbert.run(items);
-
-        // 3) Persist the scores so they're reused next time (no re-run).
-        const updates = items
-          .map((it) =>
-            scores[it.id] ? { id: it.id, model: scores[it.id] } : null,
-          )
-          .filter(Boolean);
-        if (updates.length) {
-          await saveNewsSentiment(updates);
-        }
-
         setSteps([
-          ...crawlSteps,
           {
-            ...fbStep,
+            id: "finbert",
+            tool: "score_finbert",
+            label: "Tool: FinBERT sentiment",
             status: "done",
-            detail: `Scored ${updates.length} article${updates.length === 1 ? "" : "s"} with FinBERT`,
+            detail: `Scored ${stats.scored} article${stats.scored === 1 ? "" : "s"} with FinBERT`,
           },
         ]);
 
         setStats({
-          ...crawlStats,
-          scored: updates.length,
-          cached: count - targets.length,
+          requested: stats.pending,
+          fetched: stats.scored,
+          scored: stats.scored,
+          cached: stats.cached,
         });
         setStatus("done");
       } catch {

@@ -4,6 +4,7 @@ import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import AddIcon from "@mui/icons-material/Add";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Tooltip from "@mui/material/Tooltip";
 
 import styles from "./Navbar.module.css";
@@ -19,12 +20,16 @@ function formatNyTime() {
   });
 }
 
+const FIDELITY_IMPORT_TOOLTIP =
+  "In Fidelity: open the Positions tab, click the ⋮ menu at the top-right of the positions table, then choose Download. Upload or paste that CSV here.";
+
 function Navbar({
   mode,
   selectedSymbol,
   storedSymbolsWithNames,
   onCloseNav,
   onClickAddTickerModal,
+  onClickImportPortfolioModal,
   onClickSymbol,
   onClickHome,
   onRefreshAllTickers,
@@ -129,6 +134,17 @@ function Navbar({
               {isRefreshingAll ? "Refreshing…" : "Refresh all"}
             </button>
           </span>
+        </Tooltip>
+
+        <Tooltip title={FIDELITY_IMPORT_TOOLTIP}>
+          <button
+            type="button"
+            className={styles.btnOutlined}
+            onClick={onClickImportPortfolioModal}
+          >
+            <UploadFileIcon fontSize="small" />
+            Import Fidelity portfolio
+          </button>
         </Tooltip>
 
         <div className={styles.footerMeta}>

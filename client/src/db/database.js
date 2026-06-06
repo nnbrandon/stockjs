@@ -43,6 +43,18 @@ const schemaVersions = [
       earnings: "[symbol+date], symbol, date",
     },
   },
+  {
+    version: 3,
+    stores: {
+      stockData:
+        "[symbol+shortenedDate], open, close, high, low, volume, adjClose, name",
+      quarterlyResult: "[symbol+date], symbol, date",
+      annualResult: "[symbol+date], symbol, date",
+      news: "id, symbol, date",
+      earnings: "[symbol+date], symbol, date",
+      positions: "symbol, quantity, averageCostBasis, importedAt, source",
+    },
+  },
 ];
 
 export const db = new Dexie("StocksDB");

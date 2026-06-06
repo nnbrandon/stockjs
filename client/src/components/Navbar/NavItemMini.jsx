@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./NavItemMini.module.css";
 import useSymbolData from "../../hooks/useSymbolData";
 import calculateRange from "../../utils/calculateRange";
 import prepareSparklineData from "../../utils/prepareSparklineData";
-import { useRefreshSignal } from "../../hooks/useRefreshSignal";
 
 export default function NavItemMini({
   symbol,
@@ -12,16 +11,10 @@ export default function NavItemMini({
   isSelected,
   onClickSymbol,
 }) {
-  const refreshVersion = useRefreshSignal(symbol);
-
-  const [range, setRange] = useState(calculateRange(7));
+  const range = useMemo(() => calculateRange(7), []);
   const { chartData } = useSymbolData(symbol, range);
 
   const { price, changePct, isUp } = prepareSparklineData(chartData);
-
-  useEffect(() => {
-    setRange(calculateRange(7));
-  }, [refreshVersion]);
 
   const hasPrice = Number.isFinite(price);
   const hasChange = Number.isFinite(changePct);

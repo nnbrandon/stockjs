@@ -19,6 +19,7 @@ import { deleteStockDataForSymbol } from "./stores/stockData";
 import { deleteFundamentalsForSymbol } from "./stores/fundamentals";
 import { deleteNewsForSymbol } from "./stores/news";
 import { deleteEarningsForSymbol } from "./stores/earnings";
+import { deletePositionForSymbol } from "./stores/positions";
 
 export { db, CURRENT_DB_VERSION, STORE_NAMES } from "./database";
 
@@ -30,6 +31,7 @@ export {
   getStoredSymbolsWithNames,
   get52WeekStats,
   getAverageVolumePast30Days,
+  getLatestCandles,
 } from "./stores/stockData";
 
 export {
@@ -47,6 +49,14 @@ export {
 
 export { saveEarnings, getEarnings } from "./stores/earnings";
 
+export {
+  getAllPositions,
+  getPosition,
+  upsertPosition,
+  upsertPositions,
+  deletePositionForSymbol,
+} from "./stores/positions";
+
 /**
  * Remove every trace of a symbol across every store. Add new stores' delete
  * helpers to this list as the schema grows.
@@ -58,6 +68,7 @@ export async function deleteSymbolData(symbol) {
       deleteFundamentalsForSymbol(symbol),
       deleteNewsForSymbol(symbol),
       deleteEarningsForSymbol(symbol),
+      deletePositionForSymbol(symbol),
     ]),
   );
 }

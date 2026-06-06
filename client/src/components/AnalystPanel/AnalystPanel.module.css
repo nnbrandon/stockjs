@@ -4,11 +4,22 @@
   gap: 18px;
 }
 
+.panelCompact {
+  gap: 14px;
+}
+
 .empty {
   padding: 32px 12px;
   text-align: center;
   color: var(--palette-text-disabled);
   font-size: 13px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
 }
 
 /* ───────────────────────── Verdict banner ───────────────────────── */
@@ -110,11 +121,52 @@
   margin-top: 2px;
 }
 
+.verdictCompact {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.verdictCompact .verdictMain {
+  align-items: flex-start;
+}
+
+.verdictCompact .verdictIcon {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.verdictCompact .verdictAction {
+  font-size: 24px;
+}
+
+.verdictCompact .verdictMeta {
+  text-align: left;
+}
+
+.verdictCompact .verdictScore {
+  justify-content: flex-start;
+}
+
+.verdictContext {
+  margin: 8px 0 0;
+  max-width: 420px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--palette-text-secondary);
+}
+
 /* ───────────────────────── Pillars ───────────────────────── */
 .pillars {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+}
+
+.pillarsCompact {
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 .pillar {
   display: flex;

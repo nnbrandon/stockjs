@@ -1,24 +1,21 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import styles from "./NavItem.module.css";
 import useSymbolData from "../../hooks/useSymbolData";
 import TickerSparkline from "../SparklineChart/SparklineChart";
 import calculateRange from "../../utils/calculateRange";
 import prepareSparklineData from "../../utils/prepareSparklineData";
-import { useRefreshSignal } from "../../hooks/useRefreshSignal";
 
-export default function NavItem({ symbol, name, isSelected, onClickSymbol }) {
-  // Subscribe to refresh signals for this symbol
-  const refreshVersion = useRefreshSignal(symbol);
-
-  const [range, setRange] = useState(calculateRange(7));
+export default function NavItem({
+  symbol,
+  name,
+  isSelected,
+  onClickSymbol,
+}) {
+  const range = useMemo(() => calculateRange(7), []);
   const { chartData, isLoading } = useSymbolData(symbol, range);
 
   const sparklineData = prepareSparklineData(chartData);
-
-  useEffect(() => {
-    // Recalculate the range whenever the refresh version changes
-    setRange(calculateRange(7));
-  }, [refreshVersion]);
+  const showSparklineLoading = isLoading && sparklineData.data.length === 0;
 
   const { price, changePct, isUp } = sparklineData;
   const hasPrice = Number.isFinite(price);
@@ -52,7 +49,7 @@ export default function NavItem({ symbol, name, isSelected, onClickSymbol }) {
       <TickerSparkline
         data={sparklineData.data}
         isUp={isUp}
-        isLoading={isLoading}
+        isLoading={showSparklineLoading}
       />
     </button>
   );

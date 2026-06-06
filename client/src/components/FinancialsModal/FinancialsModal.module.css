@@ -1,0 +1,37 @@
+.dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 48px);
+  max-width: 1080px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--palette-bg-paper);
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  box-shadow:
+    0 20px 50px -10px rgba(0, 0, 0, 0.5),
+    0 8px 20px -8px rgba(0, 0, 0, 0.4);
+  outline: none;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 0;
+}
+
+.body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 22px 22px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}

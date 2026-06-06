@@ -4,6 +4,7 @@ import { last } from "lodash";
 import { get52WeekStats } from "../../db";
 import formatShortNumber from "../../utils/formatShortNumber";
 import styles from "./StatRow.module.css";
+import PositionStatRow from "./PositionStatRow";
 
 const fmt = (n, decimals = 2) =>
   Number.isFinite(n) ? n.toFixed(decimals) : "—";
@@ -80,7 +81,13 @@ function RangeStat({ stats, loading }) {
   );
 }
 
-function StatRow({ symbol, chartData, averageVolumePast30Days, isLoading }) {
+function StatRow({
+  symbol,
+  chartData,
+  averageVolumePast30Days,
+  position,
+  isLoading,
+}) {
   const [weekStats, setWeekStats] = useState(null);
 
   useEffect(() => {
@@ -96,34 +103,43 @@ function StatRow({ symbol, chartData, averageVolumePast30Days, isLoading }) {
   const latest = last(chartData) || {};
 
   return (
-    <div className={styles.statRow}>
-      <Stat
-        label="Open"
-        value={`$${fmt(latest.open)}`}
-        sub="latest session"
-        loading={isLoading}
+    <div className={styles.statBlock}>
+      <div className={styles.statWrap}>
+        <div className={styles.statRow}>
+          <Stat
+            label="Open"
+            value={`$${fmt(latest.open)}`}
+            sub="latest session"
+            loading={isLoading}
+          />
+          <Stat
+            label="Day Range"
+            value={`${fmt(latest.low)} — ${fmt(latest.high)}`}
+            sub="low / high"
+            loading={isLoading}
+          />
+          <Stat
+            label="Volume"
+            value={
+              Number.isFinite(latest.volume)
+                ? formatShortNumber(latest.volume)
+                : "—"
+            }
+            sub={
+              Number.isFinite(averageVolumePast30Days)
+                ? `avg ${formatShortNumber(averageVolumePast30Days)} past 30 days`
+                : undefined
+            }
+            loading={isLoading}
+          />
+          <RangeStat stats={weekStats} loading={isLoading} />
+        </div>
+      </div>
+      <PositionStatRow
+        position={position}
+        chartData={chartData}
+        isLoading={isLoading}
       />
-      <Stat
-        label="Day Range"
-        value={`${fmt(latest.low)} — ${fmt(latest.high)}`}
-        sub="low / high"
-        loading={isLoading}
-      />
-      <Stat
-        label="Volume"
-        value={
-          Number.isFinite(latest.volume)
-            ? formatShortNumber(latest.volume)
-            : "—"
-        }
-        sub={
-          Number.isFinite(averageVolumePast30Days)
-            ? `avg ${formatShortNumber(averageVolumePast30Days)} past 30 days`
-            : undefined
-        }
-        loading={isLoading}
-      />
-      <RangeStat stats={weekStats} loading={isLoading} />
     </div>
   );
 }

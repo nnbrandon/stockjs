@@ -4,8 +4,8 @@ export default function prepareSparklineData(stockData, days = 30) {
       data: [],
       dates: [],
       price: null,
-      change: 0,
-      changePct: 0,
+      change: null,
+      changePct: null,
       isUp: true,
     };
   }

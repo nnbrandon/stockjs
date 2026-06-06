@@ -45,6 +45,7 @@ function StockTabs({
   annualFundamentalsData,
   earnings,
   chartData,
+  position,
 }) {
   const [activeTab, setActiveTab] = useState(0);
 
@@ -102,6 +103,7 @@ function StockTabs({
               annual={annualFundamentalsData}
               earnings={earnings}
               news={news}
+              position={position}
             />
           </LoadingPanel>
         )}

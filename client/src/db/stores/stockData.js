@@ -77,6 +77,12 @@ export async function getAverageVolumePast30Days(symbol) {
   return total / data.length;
 }
 
+/** Last N candles for a symbol (newest last). */
+export async function getLatestCandles(symbol, count = 2) {
+  const rows = await db[STORE].where("symbol").equals(symbol).sortBy("date");
+  return rows.slice(-count);
+}
+
 export function deleteStockDataForSymbol(symbol) {
   return db[STORE].where("symbol").equals(symbol).delete();
 }

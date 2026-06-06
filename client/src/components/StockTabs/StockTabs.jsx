@@ -4,7 +4,6 @@ import LoadingPanel from "../LoadingPanel/LoadingPanel";
 import NewsList from "../NewsList/NewsList";
 import QuarterlyFundamentalsTable from "../QuarterlyFundamentalsTable/QuarterlyFundamentalsTable";
 import AnnualFundamentalsTable from "../AnnualFundamentalsTable/AnnualFundamentalsTable";
-import PatternTable from "../PatternTable/PatternTable";
 import AnalystPanel from "../AnalystPanel/AnalystPanel";
 import RecentEarningsBanner from "../RecentEarningsBanner/RecentEarningsBanner";
 import styles from "./StockTabs.module.css";
@@ -13,7 +12,6 @@ const TAB_DEFINITIONS = [
   { id: "news", label: "News" },
   { id: "quarterly", label: "Quarterly Financials" },
   { id: "annual", label: "Annual Financials" },
-  { id: "patterns", label: "Recognized Patterns" },
   { id: "analyst", label: "AI Committee" },
 ];
 
@@ -46,7 +44,6 @@ function StockTabs({
   quarterlyFundamentalsData,
   annualFundamentalsData,
   earnings,
-  patternTableData,
   chartData,
 }) {
   const [activeTab, setActiveTab] = useState(0);
@@ -95,13 +92,6 @@ function StockTabs({
           </LoadingPanel>
         )}
         {activeTab === 3 && (
-          <LoadingPanel loading={isLoading} isEmpty={!hasChartData}>
-            <div className={styles.tableContainer}>
-              <PatternTable patternsData={patternTableData} />
-            </div>
-          </LoadingPanel>
-        )}
-        {activeTab === 4 && (
           <LoadingPanel
             loading={isLoading}
             isEmpty={!hasChartData && !hasQuarterly && !(news && news.length)}

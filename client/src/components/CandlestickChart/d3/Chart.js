@@ -13,10 +13,12 @@ import {
   renderVolumeIndicator,
 } from "./volume";
 import { renderLatestCloseLine } from "./priceLine";
+import { findEngulfingMarkerIndices } from "../../../utils/patternRecognizer";
 import {
   matchEarningsToChart,
-  renderEarningsMarkers,
-} from "./earningsMarkers";
+  buildMarkerStacks,
+  renderChartMarkers,
+} from "./chartMarkers";
 import { createTooltip, attachTooltipOverlay } from "./chartTooltip";
 import { attachZoom, getZoomTransform } from "./zoom";
 
@@ -50,28 +52,39 @@ const ZOOM_END_DEBOUNCE_MS = 500;
  */
 export function createChart(
   svgElement,
-  { chartData, width, height, colors, earnings = [], onEarningsClick },
+  {
+    chartData,
+    width,
+    height,
+    colors,
+    earnings = [],
+    onEarningsClick,
+    markerVisibility = {},
+  },
 ) {
   const palette = { ...DEFAULT_COLORS, ...colors };
   const data = chartData.map((d) => ({ ...d, date: new Date(d.date) }));
   const dates = data.map((d) => d.date);
   const earningsMarkers = matchEarningsToChart(earnings, data);
+  const { bullish, bearish } = findEngulfingMarkerIndices(data);
 
   const { svgGroup, chartBody } = initSvg(svgElement, { width, height });
-  const earningsLayer = svgGroup
-    .append("g")
-    .attr("class", "earnings-markers-layer");
+  const markersLayer = svgGroup.append("g").attr("class", "chart-markers-layer");
 
   // ─── Scales ─────────────────────────────────────────────────────────────
   const xScale = scaleLinear([-1, dates.length], [0, width]);
   const xDateScale = scaleQuantize([0, dates.length], dates);
   const xBand = scaleBand(range(-1, dates.length), [0, width]).padding(0.3);
 
+  const { volumeY } = getVolumeLayout(height);
   const initialYDomain = computeYDomain(data);
   if (!initialYDomain) {
     throw new Error("Unable to chart data: empty or invalid high/low values");
   }
-  const yScale = scaleLinear().domain(initialYDomain).range([height, 0]).nice();
+  const yScale = scaleLinear()
+    .domain(initialYDomain)
+    .range([volumeY, 0])
+    .nice();
 
   // ─── Axes + grid ────────────────────────────────────────────────────────
   const { g: gX, axis: xAxis } = renderXAxis(svgGroup, {
@@ -101,7 +114,7 @@ export function createChart(
 
   drawVolume(data, { xScale, bandwidth: xBand.bandwidth() });
   drawLatestCloseLine();
-  drawEarningsMarkers();
+  drawChartMarkers();
 
   // ─── Interactions ───────────────────────────────────────────────────────
   attachZoom(svgGroup, { width, height, onZoom, onZoomEnd });
@@ -155,17 +168,23 @@ export function createChart(
       width,
       height,
       yScale,
+      plotBottom: volumeY,
       colors: palette,
     });
   }
 
-  function drawEarningsMarkers(xScaleToUse = xScale) {
-    if (!earningsMarkers.length) return;
-    renderEarningsMarkers(earningsLayer, earningsMarkers, {
+  function drawChartMarkers(xScaleToUse = xScale) {
+    const markerNodes = buildMarkerStacks({
+      earningsMarkers,
+      bullishIndices: bullish,
+      bearishIndices: bearish,
+      visibility: markerVisibility,
+    });
+    renderChartMarkers(markersLayer, markerNodes, {
       xScale: xScaleToUse,
       height,
       colors: palette,
-      onClick: onEarningsClick,
+      onEarningsClick,
     });
   }
 
@@ -199,7 +218,7 @@ export function createChart(
 
     drawVolume(visibleData, { xScale: xScaleZ, bandwidth });
     drawLatestCloseLine();
-    drawEarningsMarkers(xScaleZ);
+    drawChartMarkers(xScaleZ);
 
     renderGrid(svgGroup, {
       xScale: xScaleZ,
@@ -253,7 +272,7 @@ export function createChart(
     }, ZOOM_END_DEBOUNCE_MS);
 
     drawLatestCloseLine();
-    drawEarningsMarkers(xScaleZ);
+    drawChartMarkers(xScaleZ);
   }
 
   // ─── Public controller ──────────────────────────────────────────────────
@@ -305,7 +324,7 @@ function computeYDomain(data) {
   const minP = min(data, (d) => d.low);
   const maxP = max(data, (d) => d.high);
   if (minP == null || maxP == null) return null;
-  const buffer = Math.floor((maxP - minP) * 0.1);
+  const buffer = (maxP - minP) * 0.1;
   return [minP - buffer, maxP + buffer];
 }
 

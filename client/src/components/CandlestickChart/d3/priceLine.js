@@ -12,7 +12,7 @@ const LABEL_FONT_SIZE = "12px";
 export function renderLatestCloseLine(
   parent,
   datum,
-  { width, height, yScale, colors },
+  { width, height, yScale, plotBottom = height, colors },
 ) {
   parent.selectAll(".latest-close-line").remove();
   parent.selectAll(".latest-close-label").remove();
@@ -21,7 +21,7 @@ export function renderLatestCloseLine(
   if (!datum) return;
 
   const yPos = yScale(datum.close);
-  if (yPos < 0 || yPos > height) return;
+  if (yPos < 0 || yPos > plotBottom) return;
 
   const color = datum.open > datum.close ? colors.error : colors.success;
 

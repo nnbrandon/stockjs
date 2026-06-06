@@ -7,14 +7,12 @@ import {
   getNewsBySymbol,
   getEarnings,
 } from "../db";
-import { analyzePatternsFromStockData } from "../utils/patternRecognizer";
 import { mergeEarningsIntoQuarterly } from "../utils/mergeEarningsIntoQuarterly";
 import { useRefreshSignal } from "./useRefreshSignal";
 import calculateRange from "../utils/calculateRange";
 
 export default function useSymbolData(symbol, range) {
   const [chartData, setChartData] = useState([]);
-  const [patternTableData, setPatternTableData] = useState([]);
   const [quarterlyFundamentalsData, setQuarterlyFundamentalsData] =
     useState(null);
   const [annualFundamentalsData, setAnnualFundamentalsData] = useState(null);
@@ -35,7 +33,6 @@ export default function useSymbolData(symbol, range) {
       .then((data) => {
         if (data && data.length) {
           setChartData(data);
-          setPatternTableData(analyzePatternsFromStockData(data));
         }
       })
       .finally(() => {
@@ -63,8 +60,6 @@ export default function useSymbolData(symbol, range) {
 
   const applyRefresh = useCallback((updates) => {
     if (updates.chartData !== undefined) setChartData(updates.chartData);
-    if (updates.patternTableData !== undefined)
-      setPatternTableData(updates.patternTableData);
     if (updates.quarterlyFundamentalsData !== undefined)
       setQuarterlyFundamentalsData(updates.quarterlyFundamentalsData);
     if (updates.annualFundamentalsData !== undefined)
@@ -75,7 +70,6 @@ export default function useSymbolData(symbol, range) {
 
   return {
     chartData,
-    patternTableData,
     quarterlyFundamentalsData,
     annualFundamentalsData,
     averageVolumePast30Days,

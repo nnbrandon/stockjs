@@ -149,7 +149,6 @@ function App() {
               quarterlyFundamentalsData={symbolData.quarterlyFundamentalsData}
               annualFundamentalsData={symbolData.annualFundamentalsData}
               earnings={symbolData.earnings}
-              patternTableData={symbolData.patternTableData}
               chartData={symbolData.chartData}
             />
           )}

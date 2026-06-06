@@ -1,5 +1,11 @@
 // Pattern recognition functions for candlestick chart analysis
 
+export const BULLISH_ENGULFING_DESCRIPTION =
+  "A bullish engulfing pattern forms when a small red candlestick is followed by a larger green candlestick whose body completely engulfs the previous day's body, signaling potential upward momentum.";
+
+export const BEARISH_ENGULFING_DESCRIPTION =
+  "A bearish engulfing pattern forms when a small green candlestick is followed by a larger red candlestick whose body completely engulfs the previous day's body, signaling potential downward momentum.";
+
 // Hammer pattern: indicates lots of selling but also a lot of buyback to push closing price up
 function isHammer(candle) {
   const body = Math.abs(candle.open - candle.close);
@@ -37,6 +43,32 @@ function isBullishEngulfing(candles, index) {
     return true;
   }
   return false;
+}
+
+// Bearish engulfing pattern
+function isBearishEngulfing(candles, index) {
+  const currentDay = candles[index];
+  const previousDay = candles[index - 1];
+
+  if (
+    isBullishCandlestick(previousDay) &&
+    parseFloat(currentDay.close) < parseFloat(previousDay.open) &&
+    parseFloat(currentDay.open) > parseFloat(previousDay.close)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Candle indices for chart markers (oldest → newest). */
+export function findEngulfingMarkerIndices(candles = []) {
+  const bullish = [];
+  const bearish = [];
+  for (let i = 1; i < candles.length; i++) {
+    if (isBullishEngulfing(candles, i)) bullish.push(i);
+    if (isBearishEngulfing(candles, i)) bearish.push(i);
+  }
+  return { bullish, bearish };
 }
 
 // Doji pattern - small body relative to the range
@@ -124,6 +156,7 @@ export {
   isBearishCandlestick,
   isBullishCandlestick,
   isBullishEngulfing,
+  isBearishEngulfing,
   isDoji,
   isThreeLineStrike,
   findPatterns,

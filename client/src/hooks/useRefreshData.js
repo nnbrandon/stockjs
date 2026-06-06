@@ -8,7 +8,6 @@ import {
   getEarnings,
 } from "../db";
 import LambdaService from "../LambdaService";
-import { analyzePatternsFromStockData } from "../utils/patternRecognizer";
 import { mergeEarningsIntoQuarterly } from "../utils/mergeEarningsIntoQuarterly";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { emitRefreshSignal } from "./useRefreshSignal";
@@ -46,7 +45,6 @@ async function fetchAndPersist(symbol, range) {
 
   return {
     chartData: historicalData,
-    patternTableData: analyzePatternsFromStockData(historicalData),
     quarterlyFundamentalsData: mergeEarningsIntoQuarterly(
       quarterlyRaw ?? [],
       earningsRows ?? [],

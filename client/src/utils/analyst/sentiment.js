@@ -245,6 +245,7 @@ export function analyzeNewsSentiment(news = []) {
     return {
       id: item.id,
       title: item.title,
+      link: item.link,
       date: item.date,
       hasBody,
       usedModel,

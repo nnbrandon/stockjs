@@ -19,7 +19,7 @@ function getSortValue(row, key) {
   const metrics = row.metrics;
   switch (key) {
     case SORT_KEYS.symbol:
-      return row.symbol;
+      return row.quantity ?? null;
     case SORT_KEYS.lastPrice:
       return metrics?.lastPrice ?? null;
     case SORT_KEYS.todayGainLoss:
@@ -141,7 +141,7 @@ function LastPriceCell({ price, change }) {
 function PortfolioSummary({ positions, onSelectSymbol }) {
   const { summary, isLoading, tradeablePositions, tradeableCount } =
     usePortfolioSummary(positions);
-  const [sortKey, setSortKey] = useState(SORT_KEYS.currentValue);
+  const [sortKey, setSortKey] = useState(SORT_KEYS.totalGainLoss);
   const [sortDirection, setSortDirection] = useState("desc");
 
   const holdings = summary?.holdings ?? tradeablePositions;
@@ -157,7 +157,7 @@ function PortfolioSummary({ positions, onSelectSymbol }) {
       setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDirection(key === SORT_KEYS.symbol ? "asc" : "desc");
+      setSortDirection("desc");
     }
   };
 

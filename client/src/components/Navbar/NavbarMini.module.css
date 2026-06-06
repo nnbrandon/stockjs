@@ -75,8 +75,56 @@
   height: 16px;
 }
 
+.homeNav {
+  padding: 10px 8px 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.homeBtn {
+  width: 100%;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--shape-radius-sm);
+  background: transparent;
+  color: var(--palette-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.homeBtn:hover {
+  background: var(--palette-hover-overlay);
+  color: var(--palette-text-primary);
+}
+
+.homeBtn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.homeBtnActive {
+  background: var(--palette-bg-elevated);
+  color: var(--palette-text-primary);
+}
+
+.homeBtnActive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--palette-text-primary);
+  border-radius: 0 2px 2px 0;
+}
+
 .watchlistLabel {
-  padding: 12px 12px 6px;
+  padding: 8px 12px 6px;
   font-size: 9.5px;
   font-weight: 500;
   letter-spacing: 0.12em;

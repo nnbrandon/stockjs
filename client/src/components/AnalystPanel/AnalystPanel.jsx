@@ -66,6 +66,26 @@ function findingClass(polarity) {
   return styles.neutral;
 }
 
+function FindingText({ finding }) {
+  if (finding.link && finding.linkText) {
+    return (
+      <>
+        {finding.text}
+        <a
+          href={finding.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.findingLink}
+        >
+          &ldquo;{finding.linkText}&rdquo;
+        </a>
+      </>
+    );
+  }
+
+  return finding.text;
+}
+
 function AgentCard({ agent }) {
   const Icon = AGENT_ICONS[agent.key] || ArticleIcon;
 
@@ -104,7 +124,7 @@ function AgentCard({ agent }) {
               className={`${styles.finding} ${findingClass(f.polarity)}`}
             >
               <span className={styles.findingDot} />
-              {f.text}
+              <FindingText finding={f} />
             </li>
           ))}
         </ul>

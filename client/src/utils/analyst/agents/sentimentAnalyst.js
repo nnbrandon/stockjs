@@ -61,14 +61,26 @@ export function runSentimentAnalyst({ news = [] }) {
       findings.push(
         neutral(`Most stories are about: ${result.dominantEvent}`, 1),
       );
-    if (topPositive)
-      findings.push(
-        bull(`Most upbeat story: "${truncate(topPositive.title)}"`, 1),
-      );
-    if (topNegative)
-      findings.push(
-        bear(`Most negative story: "${truncate(topNegative.title)}"`, 1),
-      );
+    if (topPositive) {
+      const finding = bull("Most upbeat story: ", 1);
+      if (topPositive.link) {
+        finding.link = topPositive.link;
+        finding.linkText = truncate(topPositive.title);
+      } else {
+        finding.text = `Most upbeat story: "${truncate(topPositive.title)}"`;
+      }
+      findings.push(finding);
+    }
+    if (topNegative) {
+      const finding = bear("Most negative story: ", 1);
+      if (topNegative.link) {
+        finding.link = topNegative.link;
+        finding.linkText = truncate(topNegative.title);
+      } else {
+        finding.text = `Most negative story: "${truncate(topNegative.title)}"`;
+      }
+      findings.push(finding);
+    }
     if (counts.total < 3)
       findings.push(
         neutral("Only a few articles, so this read is less reliable", 1),

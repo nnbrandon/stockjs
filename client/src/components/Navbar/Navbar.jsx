@@ -3,6 +3,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import AddIcon from "@mui/icons-material/Add";
+import HomeIcon from "@mui/icons-material/Home";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Tooltip from "@mui/material/Tooltip";
@@ -84,6 +85,18 @@ function Navbar({
             <CloseIcon fontSize="small" />
           </button>
         </div>
+      </div>
+
+      <div className={styles.homeNav}>
+        <button
+          type="button"
+          className={`${styles.homeBtn} ${!selectedSymbol ? styles.homeBtnActive : ""}`}
+          onClick={onClickHome}
+          aria-current={!selectedSymbol ? "page" : undefined}
+        >
+          <HomeIcon fontSize="small" />
+          Home
+        </button>
       </div>
 
       <div className={styles.watchlistLabel}>

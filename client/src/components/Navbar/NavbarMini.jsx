@@ -3,6 +3,7 @@ import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArro
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import AddIcon from "@mui/icons-material/Add";
+import HomeIcon from "@mui/icons-material/Home";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Tooltip from "@mui/material/Tooltip";
@@ -89,6 +90,20 @@ function NavbarMini({
             <KeyboardDoubleArrowRightIcon fontSize="small" />
           </button>
         </div>
+      </div>
+
+      <div className={styles.homeNav}>
+        <Tooltip title="Home">
+          <button
+            type="button"
+            className={`${styles.homeBtn} ${!selectedSymbol ? styles.homeBtnActive : ""}`}
+            onClick={onClickHome}
+            aria-label="Home"
+            aria-current={!selectedSymbol ? "page" : undefined}
+          >
+            <HomeIcon fontSize="small" />
+          </button>
+        </Tooltip>
       </div>
 
       <div className={styles.watchlistLabel}>

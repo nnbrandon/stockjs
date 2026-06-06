@@ -17,7 +17,9 @@ export async function fetchTrending(corsOrigin) {
       return jsonResponse(200, [], corsOrigin);
     }
 
-    const quotes = await yahooFinance.quote(symbols);
+    // Trending lists include private companies & other types that fail
+    // yahoo-finance2's quote schema — skip validation, filter to equities below.
+    const quotes = await yahooFinance.quote(symbols, {}, { validateResult: false });
     const quoteList = Array.isArray(quotes) ? quotes : [quotes];
 
     const stocks = quoteList

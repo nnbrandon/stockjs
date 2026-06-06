@@ -82,7 +82,7 @@ echo "==> Installing production dependencies"
 
 echo "==> Zipping function"
 ZIP_PATH="$(mktemp -d)/function.zip"
-( cd "$SERVER_DIR" && zip -qr "$ZIP_PATH" index.js package.json node_modules )
+( cd "$SERVER_DIR" && zip -qr "$ZIP_PATH" index.js package.json handlers lib node_modules )
 
 # ── 3. Create or update the function ─────────────────────────────────────
 if aws lambda get-function --function-name "$FUNCTION_NAME" --region "$REGION" >/dev/null 2>&1; then
@@ -106,24 +106,33 @@ else
   aws lambda wait function-active --function-name "$FUNCTION_NAME" --region "$REGION"
 fi
 
-# ── 4. Public Function URL (CORS handled in the function code) ───────────
+# ── 4. Public Function URL + CORS (app code also sets CORS headers) ──────
+CORS_CONFIG='{"AllowMethods":["GET","OPTIONS"],"AllowOrigins":["http://localhost:5173","https://nnbrandon.github.io"],"AllowHeaders":["*"],"MaxAge":86400}'
+
 if aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$REGION" >/dev/null 2>&1; then
-  echo "==> Function URL already configured"
+  echo "==> Updating Function URL CORS"
+  aws lambda update-function-url-config \
+    --function-name "$FUNCTION_NAME" \
+    --auth-type NONE \
+    --cors "$CORS_CONFIG" \
+    --region "$REGION" >/dev/null
 else
   echo "==> Creating Function URL (auth: NONE)"
   aws lambda create-function-url-config \
     --function-name "$FUNCTION_NAME" \
     --auth-type NONE \
+    --cors "$CORS_CONFIG" \
     --region "$REGION" >/dev/null
-  # Allow public invoke of the Function URL.
-  aws lambda add-permission \
-    --function-name "$FUNCTION_NAME" \
-    --statement-id FunctionURLAllowPublicAccess \
-    --action lambda:InvokeFunctionUrl \
-    --principal "*" \
-    --function-url-auth-type NONE \
-    --region "$REGION" >/dev/null 2>&1 || true
 fi
+
+# Allow public invoke of the Function URL (idempotent — ignore if already set).
+aws lambda add-permission \
+  --function-name "$FUNCTION_NAME" \
+  --statement-id FunctionURLAllowPublicAccess \
+  --action lambda:InvokeFunctionUrl \
+  --principal "*" \
+  --function-url-auth-type NONE \
+  --region "$REGION" >/dev/null 2>&1 || true
 
 FUNCTION_URL="$(aws lambda get-function-url-config \
   --function-name "$FUNCTION_NAME" \

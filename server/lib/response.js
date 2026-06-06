@@ -3,12 +3,17 @@ export const allowedOrigins = [
   "https://nnbrandon.github.io",
 ];
 
+const corsHeaders = (corsOrigin) => ({
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": corsOrigin,
+  "Access-Control-Allow-Methods": "GET,OPTIONS",
+  "Access-Control-Allow-Headers": "*",
+  Vary: "Origin",
+});
+
 export const jsonResponse = (statusCode, body, corsOrigin) => ({
   statusCode,
-  headers: {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": corsOrigin,
-  },
+  headers: corsHeaders(corsOrigin),
   body: JSON.stringify(body),
 });
 
@@ -32,9 +37,7 @@ export const resolveCorsOrigin = (headers = {}) => {
 export const corsPreflightResponse = (corsOrigin) => ({
   statusCode: 200,
   headers: {
-    "Access-Control-Allow-Origin": corsOrigin,
-    "Access-Control-Allow-Methods": "GET,OPTIONS",
-    "Access-Control-Allow-Headers": "*",
+    ...corsHeaders(corsOrigin),
     "Access-Control-Max-Age": "86400",
   },
 });

@@ -30,7 +30,7 @@ jobs:
       - run: npm ci --omit=dev
 
       - name: Package function
-        run: zip -r ../function.zip index.js package.json node_modules
+        run: zip -r ../function.zip index.js package.json handlers lib node_modules
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:

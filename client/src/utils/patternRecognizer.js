@@ -146,7 +146,7 @@ function findPatterns(candles) {
 // Function to analyze patterns from CSV data URL
 function analyzePatternsFromStockData(stockData) {
   return findPatterns(stockData).sort(
-    (a, b) => new Date(b.date) - new Date(a.date)
+    (a, b) => new Date(b.date) - new Date(a.date),
   );
 }
 

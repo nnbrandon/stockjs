@@ -12,8 +12,8 @@ import styles from "./CandlestickChart.module.css";
 
 const DEFAULT_MARKER_VISIBILITY = {
   earnings: true,
-  bullishEngulfing: true,
-  bearishEngulfing: true,
+  bullishEngulfing: false,
+  bearishEngulfing: false,
 };
 
 const LEGEND_ITEMS = [

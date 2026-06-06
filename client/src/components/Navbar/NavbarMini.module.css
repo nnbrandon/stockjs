@@ -25,14 +25,22 @@
   gap: 6px;
 }
 
-.logo {
+.logoBtn {
   font-family: var(--font-display);
   font-size: 18px;
   letter-spacing: -0.01em;
   color: var(--palette-text-primary);
   font-style: italic;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
-.logo::after {
+.logoBtn:hover {
+  opacity: 0.75;
+}
+.logoBtn::after {
   content: ".";
   color: var(--palette-success);
 }

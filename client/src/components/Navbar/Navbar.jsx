@@ -26,6 +26,7 @@ function Navbar({
   onCloseNav,
   onClickAddTickerModal,
   onClickSymbol,
+  onClickHome,
   onRefreshAllTickers,
   toggleTheme,
   isRefreshingAll,
@@ -46,7 +47,14 @@ function Navbar({
   return (
     <aside className={styles.sidebar}>
       <div className={styles.header}>
-        <div className={styles.logo}>stockjs</div>
+        <button
+          type="button"
+          className={styles.logoBtn}
+          onClick={onClickHome}
+          title="Back to home"
+        >
+          stockjs
+        </button>
         <div className={styles.headerActions}>
           <button
             type="button"

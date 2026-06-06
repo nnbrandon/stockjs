@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Modal from "@mui/material/Modal";
 import TextField from "@mui/material/TextField";
 import CloseIcon from "@mui/icons-material/Close";
@@ -6,16 +6,15 @@ import Autocomplete from "@mui/material/Autocomplete";
 import isObject from "lodash/isObject";
 
 import styles from "./AddTickerModal.module.css";
-import tickers from "./sp500.json";
-import LambdaService from "../../LambdaService";
-import {
-  addStockData,
-  getStoredSymbols,
-  saveFundamentals,
-  saveEarnings,
-  saveNewsArticles,
-} from "../../db";
-import calculateRange from "../../utils/calculateRange";
+import sp500 from "./sp500.json";
+import useSymbolSearch from "../../hooks/useSymbolSearch";
+import { getStoredSymbols } from "../../db";
+import { addSymbolToWatchlist } from "../../utils/addSymbolToWatchlist";
+
+const SP500_OPTIONS = sp500.map(({ Symbol, Name }) => ({
+  symbol: Symbol,
+  name: Name,
+}));
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
@@ -86,16 +85,16 @@ const popperSlotProps = {
   },
 };
 
-function AddTickerModal({ onClose, range }) {
+function AddTickerModal({ onClose }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [tickerList, setTickerList] = useState([]);
   const [tickerInputValue, setTickerInputValue] = useState("");
   const [error, setError] = useState("");
   const [showError, setShowError] = useState(false);
 
-  useEffect(() => {
-    setTickerList(tickers);
-  }, []);
+  const query = tickerInputValue.trim();
+  const { results: searchResults, isSearching } =
+    useSymbolSearch(tickerInputValue);
+  const options = query ? searchResults : SP500_OPTIONS;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -114,30 +113,8 @@ function AddTickerModal({ onClose, range }) {
 
     setIsLoading(true);
 
-    const ALL_RANGE = calculateRange(365 * 25);
-
     try {
-      const [historicalData, fundamentalsData, news] = await Promise.all([
-        LambdaService.fetchHistoricalData(
-          tickerInputValue,
-          ALL_RANGE.startDate,
-          ALL_RANGE.endDate,
-        ),
-        LambdaService.fetchFundamentals(
-          tickerInputValue,
-          ALL_RANGE.startDate,
-          ALL_RANGE.endDate,
-        ),
-        LambdaService.fetchNews(tickerInputValue),
-      ]);
-
-      await Promise.all([
-        addStockData(historicalData),
-        saveFundamentals(tickerInputValue, fundamentalsData),
-        saveEarnings(tickerInputValue, fundamentalsData.earningsResult),
-        saveNewsArticles(tickerInputValue, news),
-      ]);
-
+      await addSymbolToWatchlist(tickerInputValue);
       setIsLoading(false);
       onClose(tickerInputValue);
     } catch (error) {
@@ -162,7 +139,7 @@ function AddTickerModal({ onClose, range }) {
               Add ticker
             </h2>
             <p id="add-ticker-subtitle" className={styles.subtitle}>
-              Search the S&amp;P 500 or enter a custom symbol.
+              Browse the S&amp;P 500 or search by symbol or company name.
             </p>
           </div>
           <button
@@ -183,14 +160,21 @@ function AddTickerModal({ onClose, range }) {
               fullWidth
               autoHighlight
               id="ticker-symbol"
-              options={tickerList}
+              options={options}
+              loading={isSearching}
+              filterOptions={(x) => x}
               slotProps={popperSlotProps}
               getOptionLabel={(option) => {
                 if (isObject(option)) {
-                  return `${option.Symbol} | ${option.Name}`;
+                  return `${option.symbol} | ${option.name}`;
                 }
                 return option;
               }}
+              isOptionEqualToValue={(option, value) =>
+                isObject(option) &&
+                isObject(value) &&
+                option.symbol === value.symbol
+              }
               renderOption={(props, option) => {
                 const { key, ...rest } = props;
                 if (!isObject(option)) {
@@ -206,15 +190,15 @@ function AddTickerModal({ onClose, range }) {
                   <li key={key} {...rest}>
                     <div className={styles.optionRow}>
                       <span className={styles.optionSymbol}>
-                        {option.Symbol}
+                        {option.symbol}
                       </span>
-                      <span className={styles.optionName}>{option.Name}</span>
+                      <span className={styles.optionName}>{option.name}</span>
                     </div>
                   </li>
                 );
               }}
               inputValue={tickerInputValue}
-              onInputChange={(event, newInputValue) => {
+              onInputChange={(_, newInputValue) => {
                 setError("");
                 setShowError(false);
                 if (!newInputValue) {
@@ -224,11 +208,19 @@ function AddTickerModal({ onClose, range }) {
                 const symbol = newInputValue.split("|")[0].trim();
                 setTickerInputValue(symbol);
               }}
+              onChange={(_, newValue) => {
+                if (!newValue) return;
+                const symbol = isObject(newValue)
+                  ? newValue.symbol
+                  : newValue.trim();
+                if (symbol) setTickerInputValue(symbol);
+              }}
+              noOptionsText="No matches found"
               renderInput={(params) => (
                 <TextField
                   {...params}
                   error={showError}
-                  placeholder="e.g. AAPL"
+                  placeholder="e.g. AAPL or Apple"
                   label="Ticker symbol"
                   variant="outlined"
                   fullWidth

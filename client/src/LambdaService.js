@@ -53,6 +53,39 @@ class LambdaService {
     return data;
   }
 
+  async searchSymbols(query) {
+    const q = query?.trim();
+    if (!q) return [];
+
+    try {
+      const response = await fetch(
+        `${this.API_URL}?action=search&q=${encodeURIComponent(q)}`,
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Error searching symbols");
+      }
+      return data;
+    } catch (error) {
+      console.error("Error searching symbols:", error);
+      throw error;
+    }
+  }
+
+  async fetchTrending() {
+    try {
+      const response = await fetch(`${this.API_URL}?action=trending`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Error fetching trending stocks");
+      }
+      return data;
+    } catch (error) {
+      console.error("Error fetching trending stocks:", error);
+      throw error;
+    }
+  }
+
   async fetchNews(symbol) {
     let data = [];
 

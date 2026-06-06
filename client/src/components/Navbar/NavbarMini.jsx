@@ -23,6 +23,7 @@ function NavbarMini({
   onExpandNav,
   onClickAddTickerModal,
   onClickSymbol,
+  onClickHome,
   onRefreshAllTickers,
   isRefreshingAll,
 }) {
@@ -43,7 +44,14 @@ function NavbarMini({
   return (
     <aside className={styles.sidebar}>
       <div className={styles.header}>
-        <div className={styles.logo}>stockjs</div>
+        <button
+          type="button"
+          className={styles.logoBtn}
+          onClick={onClickHome}
+          title="Back to home"
+        >
+          stockjs
+        </button>
         <button
           type="button"
           className={styles.iconBtn}

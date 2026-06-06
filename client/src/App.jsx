@@ -16,9 +16,12 @@ import StockActions from "./components/StockActions/StockActions";
 import StatRow from "./components/StatRow/StatRow";
 import StockTabs from "./components/StockTabs/StockTabs";
 import TimerangeSelector from "./components/TimerangeSelector/TimerangeSelector";
+import TrendingStocks from "./components/TrendingStocks/TrendingStocks";
 import styles from "./App.module.css";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { SnackbarProvider } from "./components/SnackbarProvider";
 import { ModeProvider, useMode } from "./components/ModeProvider";
+import { queryClient } from "./queryClient";
 
 function App() {
   const { mode, toggleTheme } = useMode();
@@ -73,6 +76,7 @@ function App() {
             onCloseNav={() => setShowNavBar(false)}
             onClickAddTickerModal={() => setShowAddTickerModal(true)}
             onClickSymbol={setSelectedSymbol}
+            onClickHome={() => setSelectedSymbol(null)}
             onRefreshAllTickers={refreshAll}
             isRefreshingAll={isRefreshingAll}
           />
@@ -84,6 +88,7 @@ function App() {
             onExpandNav={() => setShowNavBar(true)}
             onClickAddTickerModal={() => setShowAddTickerModal(true)}
             onClickSymbol={setSelectedSymbol}
+            onClickHome={() => setSelectedSymbol(null)}
             onRefreshAllTickers={refreshAll}
             isRefreshingAll={isRefreshingAll}
           />
@@ -113,9 +118,19 @@ function App() {
             isLoading={isChartLoading}
           />
 
-          <div className={styles.chartControls}>
-            <TimerangeSelector onChange={setRange} />
-          </div>
+          {selectedSymbol && (
+            <div className={styles.chartControls}>
+              <TimerangeSelector onChange={setRange} />
+            </div>
+          )}
+
+          {!selectedSymbol && (
+            <TrendingStocks
+              watchlistSymbols={storedSymbolsWithNames.map((s) => s.symbol)}
+              onSelectSymbol={setSelectedSymbol}
+              onWatchlistChange={refreshStoredSymbols}
+            />
+          )}
 
           {selectedSymbol &&
             (isChartLoading ? (
@@ -146,10 +161,12 @@ function App() {
 
 export default function WrappedApp(props) {
   return (
-    <ModeProvider>
-      <SnackbarProvider>
-        <App {...props} />
-      </SnackbarProvider>
-    </ModeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ModeProvider>
+        <SnackbarProvider>
+          <App {...props} />
+        </SnackbarProvider>
+      </ModeProvider>
+    </QueryClientProvider>
   );
 }

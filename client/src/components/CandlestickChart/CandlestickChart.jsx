@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { debounce } from "lodash";
+import useResizeObserver from "../../hooks/useResizeObserver";
 import Tooltip from "@mui/material/Tooltip";
 import { createChart, CHART_MARGIN } from "./d3/Chart";
 import { useMode } from "../ModeProvider";
@@ -134,11 +134,22 @@ export default function CandlestickChart({ chartData, earnings = [] }) {
     setPopover(null);
   }, [chartData, earnings]);
 
-  useEffect(() => {
-    const svgElement = svgRef.current;
-    if (!svgElement) return;
+  useEffect(
+    () => () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
+    },
+    [chartData, earnings, mode, markerVisibility],
+  );
 
-    const drawChart = () => {
+  useResizeObserver(
+    svgRef,
+    () => {
+      const svgElement = svgRef.current;
+      if (!svgElement) return;
+
       if (chartRef.current) {
         chartRef.current.destroy();
         chartRef.current = null;
@@ -163,23 +174,9 @@ export default function CandlestickChart({ chartData, earnings = [] }) {
         onEarningsClick: (earning, anchor) =>
           onEarningsClickRef.current?.(earning, anchor),
       });
-    };
-
-    const debouncedRedraw = debounce(drawChart, 150);
-
-    drawChart();
-    window.addEventListener("resize", debouncedRedraw);
-
-    return () => {
-      window.removeEventListener("resize", debouncedRedraw);
-      debouncedRedraw.cancel();
-      if (chartRef.current) {
-        chartRef.current.destroy();
-        chartRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartData, earnings, mode, markerVisibility]);
+    },
+    [chartData, earnings, mode, markerVisibility],
+  );
 
   return (
     <div className={styles.paper} ref={paperRef}>

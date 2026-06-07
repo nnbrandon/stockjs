@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { debounce } from "lodash";
 import { createLineChart } from "./d3/LineChart";
 import { CHART_MARGIN } from "./d3/Chart";
+import useResizeObserver from "../../hooks/useResizeObserver";
 import { useMode } from "../ModeProvider";
 import styles from "./CandlestickChart.module.css";
 
@@ -26,11 +26,22 @@ export default function NavPriceChart({ chartData }) {
   const chartRef = useRef(null);
   const { mode } = useMode();
 
-  useEffect(() => {
-    const svgElement = svgRef.current;
-    if (!svgElement) return;
+  useEffect(
+    () => () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
+    },
+    [chartData, mode],
+  );
 
-    const drawChart = () => {
+  useResizeObserver(
+    svgRef,
+    () => {
+      const svgElement = svgRef.current;
+      if (!svgElement) return;
+
       if (chartRef.current) {
         chartRef.current.destroy();
         chartRef.current = null;
@@ -51,22 +62,9 @@ export default function NavPriceChart({ chartData }) {
         ),
         colors: readThemeColors(),
       });
-    };
-
-    const debouncedRedraw = debounce(drawChart, 150);
-
-    drawChart();
-    window.addEventListener("resize", debouncedRedraw);
-
-    return () => {
-      window.removeEventListener("resize", debouncedRedraw);
-      debouncedRedraw.cancel();
-      if (chartRef.current) {
-        chartRef.current.destroy();
-        chartRef.current = null;
-      }
-    };
-  }, [chartData, mode]);
+    },
+    [chartData, mode],
+  );
 
   return (
     <div className={styles.paper}>

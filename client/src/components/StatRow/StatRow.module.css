@@ -24,30 +24,30 @@
 
 .stat {
   background: var(--palette-bg-paper);
-  padding: 14px 18px;
+  padding: 10px 14px;
 }
 
 .statLabel {
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--palette-text-disabled);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   font-weight: 500;
 }
 
 .statValue {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 14px;
   color: var(--palette-text-primary);
   font-weight: 500;
   letter-spacing: -0.01em;
 }
 
 .statSub {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--palette-text-disabled);
-  margin-top: 4px;
+  margin-top: 2px;
   font-family: var(--font-mono);
 }
 
@@ -58,7 +58,7 @@
 }
 
 .skeletonSub {
-  margin-top: 4px !important;
+  margin-top: 2px !important;
   border-radius: 3px !important;
 }
 

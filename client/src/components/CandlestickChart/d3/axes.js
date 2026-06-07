@@ -2,18 +2,32 @@ import { axisBottom, axisRight } from "d3-axis";
 
 const AXIS_FONT_SIZE = "12px";
 
-// One x-axis label per ~110 px of chart width. Prevents d3-axis from
-// generating fractional-index ticks (and duplicate labels) on wide charts
-// with few candles, and keeps labels from overlapping on narrow ones.
-const X_AXIS_PX_PER_TICK = 110;
+// Target horizontal space per x-axis label. Also capped by data density below
+// so short ranges (e.g. 1M) don't get a tick every 2–3 sessions.
+const X_AXIS_PX_PER_TICK = 140;
+
+function resolveXTickCount(width, dataPointCount) {
+  const byWidth = Math.max(2, Math.floor(width / X_AXIS_PX_PER_TICK));
+  if (!dataPointCount || dataPointCount < 2) return byWidth;
+
+  // At least ~5 sessions between labels when the series is dense.
+  const byDensity = Math.max(2, Math.ceil(dataPointCount / 5));
+  return Math.min(byWidth, byDensity);
+}
 
 /**
  * Create and render the bottom x-axis in a new `<g class="axis x-axis">`.
  * Returns the group selection and the axis generator (so the caller can
  * rebind a zoomed scale later via `axis.scale(xScaleZ)`).
  */
-export function renderXAxis(parent, { xScale, height, width, tickFormat }) {
-  const tickCount = Math.max(2, Math.floor(width / X_AXIS_PX_PER_TICK));
+export function renderXAxis(parent, {
+  xScale,
+  height,
+  width,
+  tickFormat,
+  dataPointCount,
+}) {
+  const tickCount = resolveXTickCount(width, dataPointCount);
   const axis = axisBottom(xScale).ticks(tickCount).tickFormat(tickFormat);
   const g = parent
     .append("g")

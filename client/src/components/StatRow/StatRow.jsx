@@ -4,8 +4,6 @@ import { last } from "lodash";
 import { get52WeekStats } from "../../db";
 import formatShortNumber from "../../utils/formatShortNumber";
 import styles from "./StatRow.module.css";
-import PositionStatRow from "./PositionStatRow";
-
 const fmt = (n, decimals = 2) =>
   Number.isFinite(n) ? n.toFixed(decimals) : "—";
 
@@ -81,13 +79,7 @@ function RangeStat({ stats, loading }) {
   );
 }
 
-function StatRow({
-  symbol,
-  chartData,
-  averageVolumePast30Days,
-  position,
-  isLoading,
-}) {
+function StatRow({ symbol, chartData, averageVolumePast30Days, isLoading }) {
   const [weekStats, setWeekStats] = useState(null);
 
   useEffect(() => {
@@ -135,11 +127,6 @@ function StatRow({
           <RangeStat stats={weekStats} loading={isLoading} />
         </div>
       </div>
-      <PositionStatRow
-        position={position}
-        chartData={chartData}
-        isLoading={isLoading}
-      />
     </div>
   );
 }

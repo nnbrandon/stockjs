@@ -1,3 +1,4 @@
+import { Skeleton } from "@mui/material";
 import {
   formatDollars,
   formatPercent,
@@ -39,24 +40,126 @@ function gridClass({ compact, showTodayGainLoss }) {
   return showTodayGainLoss ? styles.gridFive : styles.grid;
 }
 
-export default function PositionHolding({
+function BarStat({ label, value, sub, loading, valueClassName, showSubWhenLoading }) {
+  return (
+    <div className={styles.barStat}>
+      <div className={styles.barLabel}>{label}</div>
+      {loading ? (
+        <>
+          <Skeleton
+            variant="text"
+            width="65%"
+            height={22}
+            className={styles.barSkeletonValue}
+          />
+          {(showSubWhenLoading || sub !== undefined) && (
+            <Skeleton
+              variant="text"
+              width="40%"
+              height={14}
+              className={styles.barSkeletonSub}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          {value !== undefined && (
+            <div className={`${styles.barValue} ${valueClassName ?? ""}`}>
+              {value}
+            </div>
+          )}
+          {sub !== undefined && (
+            <div className={`${styles.barSub} ${valueClassName ?? ""}`}>{sub}</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PositionBar({ position, metrics, isLoading }) {
+  const totalUp = metrics?.totalGainLoss >= 0;
+  const todayUp = metrics?.todayGainLoss >= 0;
+  const accentClass = metrics
+    ? totalUp
+      ? styles.barWrapUp
+      : styles.barWrapDown
+    : "";
+
+  return (
+    <div className={`${styles.barWrap} ${accentClass}`}>
+      <div className={styles.barRow}>
+        <BarStat
+          label="Shares"
+          loading={isLoading}
+          value={
+            position.quantity.toLocaleString("en-US", {
+              maximumFractionDigits: 3,
+            })
+          }
+        />
+        <BarStat
+          label="Avg cost basis"
+          loading={isLoading}
+          value={formatDollars(position.averageCostBasis)}
+        />
+        <BarStat
+          label="Position value"
+          loading={isLoading}
+          value={metrics ? formatDollars(metrics.currentValue) : "—"}
+        />
+        <BarStat
+          label="Total gain/loss"
+          loading={isLoading}
+          showSubWhenLoading
+          value={
+            metrics
+              ? formatDollars(metrics.totalGainLoss, { signed: true })
+              : "—"
+          }
+          sub={
+            metrics
+              ? formatPercent(metrics.totalGainLossPct, {
+                  signed: true,
+                  decimals: 1,
+                })
+              : undefined
+          }
+          valueClassName={
+            metrics ? (totalUp ? styles.up : styles.down) : undefined
+          }
+        />
+        <BarStat
+          label="Today's gain/loss"
+          loading={isLoading}
+          value={
+            metrics
+              ? formatDollars(metrics.todayGainLoss, { signed: true })
+              : "—"
+          }
+          valueClassName={
+            metrics ? (todayUp ? styles.up : styles.down) : undefined
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function HoldingGrid({
   position,
   metrics,
-  isLoading = false,
-  title = "Your holding",
-  showTodayGainLoss = false,
-  compact = false,
-  className,
+  isLoading,
+  showTodayGainLoss,
+  compact,
+  stackedGainLoss = false,
+  gridClassName,
 }) {
-  if (!position) return null;
-
   const totalUp = metrics?.totalGainLoss >= 0;
   const todayUp = metrics?.todayGainLoss >= 0;
 
   return (
-    <div className={`${styles.card} ${compact ? styles.cardCompact : ""} ${className ?? ""}`}>
-      <div className={styles.head}>{title}</div>
-      <div className={gridClass({ compact, showTodayGainLoss })}>
+    <div className={gridClassName}>
         <div className={styles.item}>
           <span className={styles.label}>Shares</span>
           {isLoading ? (
@@ -101,7 +204,7 @@ export default function PositionHolding({
                 <GainLossValue
                   dollars={metrics.totalGainLoss}
                   percent={metrics.totalGainLossPct}
-                  stacked={compact}
+                  stacked={stackedGainLoss || compact}
                 />
               ) : (
                 "—"
@@ -122,7 +225,7 @@ export default function PositionHolding({
                   <GainLossValue
                     dollars={metrics.todayGainLoss}
                     percent={metrics.todayGainLossPct}
-                    stacked={compact}
+                    stacked={stackedGainLoss || compact}
                   />
                 ) : (
                   "—"
@@ -131,7 +234,43 @@ export default function PositionHolding({
             )}
           </div>
         )}
-      </div>
+    </div>
+  );
+}
+
+export default function PositionHolding({
+  position,
+  metrics,
+  isLoading = false,
+  title = "Your holding",
+  showTodayGainLoss = false,
+  compact = false,
+  variant = "card",
+  className,
+}) {
+  if (!position) return null;
+
+  if (variant === "bar") {
+    return (
+      <PositionBar
+        position={position}
+        metrics={metrics}
+        isLoading={isLoading}
+      />
+    );
+  }
+
+  return (
+    <div className={`${styles.card} ${compact ? styles.cardCompact : ""} ${className ?? ""}`}>
+      <div className={styles.head}>{title}</div>
+      <HoldingGrid
+        position={position}
+        metrics={metrics}
+        isLoading={isLoading}
+        showTodayGainLoss={showTodayGainLoss}
+        compact={compact}
+        gridClassName={gridClass({ compact, showTodayGainLoss })}
+      />
     </div>
   );
 }

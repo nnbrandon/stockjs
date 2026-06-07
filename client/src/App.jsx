@@ -178,7 +178,6 @@ function App() {
                     symbol={selectedSymbol}
                     chartData={symbolData.chartData}
                     averageVolumePast30Days={symbolData.averageVolumePast30Days}
-                    position={selectedPosition}
                     isLoading={isChartLoading}
                   />
 
@@ -220,7 +219,6 @@ function App() {
                   symbol={selectedSymbol}
                   chartData={symbolData.chartData}
                   averageVolumePast30Days={symbolData.averageVolumePast30Days}
-                  position={selectedPosition}
                   isLoading={isChartLoading}
                 />
 
@@ -239,6 +237,8 @@ function App() {
                 <StockHeader
                   selectedSymbol={selectedSymbol}
                   chartData={symbolData.chartData}
+                  position={selectedPosition}
+                  isLoading={isChartLoading}
                 >
                   <StockActions
                     selectedSymbol={selectedSymbol}
@@ -252,7 +252,6 @@ function App() {
                   symbol={selectedSymbol}
                   chartData={symbolData.chartData}
                   averageVolumePast30Days={symbolData.averageVolumePast30Days}
-                  position={selectedPosition}
                   isLoading={isChartLoading}
                 />
 

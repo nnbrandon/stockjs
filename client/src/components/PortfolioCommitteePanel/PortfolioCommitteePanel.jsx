@@ -129,14 +129,17 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
             {verdict.action}
           </span>
           <span className={styles.score}>{fmtScore(verdict.composite)}</span>
+          <span
+            className={styles.convictionBadge}
+            title={`${verdict.convictionLabel} confidence`}
+          >
+            {verdict.convictionLabel}
+          </span>
         </span>
       </div>
 
       <div className={styles.cardBody}>
         <p className={styles.context}>{context}</p>
-        <p className={styles.context}>
-          {verdict.tier} · {verdict.convictionLabel} confidence
-        </p>
 
         {newsMood && <p className={styles.newsMood}>{newsMood}</p>}
 

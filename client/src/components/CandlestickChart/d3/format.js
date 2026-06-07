@@ -13,12 +13,28 @@ const MONTHS = [
   "Dec",
 ];
 
+function spanDaysBetween(dates) {
+  if (!dates?.length || dates.length < 2) return 0;
+  return (dates[dates.length - 1] - dates[0]) / (1000 * 60 * 60 * 24);
+}
+
 /**
- * Format a Date object as "MMM D YYYY" (e.g. "Jan 5 2026").
+ * Format a Date for the x-axis. Shorter strings when the visible range is
+ * narrow so labels don't collide (e.g. "May 8" for 1M, "Jan 5 '26" for 1Y).
  */
-export function formatDateLabel(date) {
+export function formatDateLabel(date, { spanDays } = {}) {
   if (!date) return "";
-  return `${MONTHS[date.getMonth()]} ${date.getDate()} ${date.getFullYear()}`;
+  const month = MONTHS[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+
+  if (spanDays > 0 && spanDays <= 120) {
+    return `${month} ${day}`;
+  }
+  if (spanDays > 0 && spanDays <= 400) {
+    return `${month} ${day} '${String(year).slice(2)}`;
+  }
+  return `${month} ${day} ${year}`;
 }
 
 /**
@@ -43,10 +59,12 @@ export function formatShortNumber(num) {
  * `0` and `0.5` to `dates[0]` and we'd render duplicate labels.
  */
 export function makeDateTickFormatter(dates) {
+  const spanDays = spanDaysBetween(dates);
+
   return function tickFormatter(domainValue) {
     const value = domainValue.valueOf();
     if (!Number.isInteger(value)) return "";
     if (value < 0 || value >= dates.length) return "";
-    return formatDateLabel(dates[value]);
+    return formatDateLabel(dates[value], { spanDays });
   };
 }

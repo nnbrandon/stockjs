@@ -101,6 +101,96 @@
   background: var(--palette-bg-elevated);
 }
 
+.barWrap {
+  margin-top: 12px;
+  background: var(--palette-divider);
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  overflow: hidden;
+}
+
+.barWrapUp {
+  border-left: 3px solid var(--palette-success);
+}
+
+.barWrapDown {
+  border-left: 3px solid var(--palette-error);
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: var(--palette-divider);
+}
+
+.barStat {
+  background: var(--palette-bg-paper);
+  padding: 10px 14px;
+  min-width: 0;
+}
+
+.barLabel {
+  font-size: 10px;
+  color: var(--palette-text-disabled);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.barValue {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--palette-text-primary);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.barValue.up {
+  color: var(--palette-success);
+}
+
+.barValue.down {
+  color: var(--palette-error);
+}
+
+.barSub {
+  font-size: 10.5px;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.barSub.up {
+  color: var(--palette-success);
+}
+
+.barSub.down {
+  color: var(--palette-error);
+}
+
+.barSkeletonValue {
+  border-radius: 4px !important;
+}
+
+.barSkeletonSub {
+  margin-top: 2px !important;
+  border-radius: 3px !important;
+}
+
+@media (max-width: 900px) {
+  .barWrap {
+    overflow-x: auto;
+  }
+
+  .barRow {
+    min-width: 640px;
+  }
+}
+
 @media (max-width: 720px) {
   .grid,
   .gridFive {

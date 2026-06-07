@@ -92,6 +92,7 @@ export function createChart(
     height,
     width,
     tickFormat: makeDateTickFormatter(dates),
+    dataPointCount: dates.length,
   });
   const { g: gY, axis: yAxis } = renderYAxis(svgGroup, { yScale, width });
   styleAxis(gX, palette);

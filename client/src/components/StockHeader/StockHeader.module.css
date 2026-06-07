@@ -5,24 +5,24 @@
 
 .header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 32px;
-  margin-bottom: 28px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 16px;
 }
 
-.headerLeft {
-  flex: 1;
-  min-width: 0;
+.headerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
 }
 
 .tickerHeadline {
   display: flex;
   align-items: baseline;
   gap: 14px;
-  margin-bottom: 6px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .companyName {
@@ -56,16 +56,25 @@
   align-items: baseline;
   gap: 16px;
   margin-top: 14px;
-  flex-wrap: wrap;
+  width: 100%;
+}
+
+.priceGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex: 0 0 auto;
+  flex-shrink: 0;
 }
 
 .priceMain {
   font-family: var(--font-mono);
-  font-size: 44px;
+  font-size: clamp(28px, 4.5cqi, 44px);
   font-weight: 500;
   letter-spacing: -0.025em;
   color: var(--palette-text-primary);
   line-height: 1;
+  white-space: nowrap;
 }
 
 .priceCurrency {
@@ -79,12 +88,14 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 28px;
-  padding: 0 10px;
+  height: clamp(24px, 3.5cqi, 28px);
+  padding: 0 clamp(6px, 1cqi, 10px);
   border-radius: var(--shape-radius-chip);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: clamp(11px, 1.6cqi, 13px);
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .changePill.up {
   background: var(--palette-success-soft);

@@ -380,7 +380,6 @@ export default function AnalystPanel({
           <VerdictIcon className={styles.verdictIcon} />
           <div>
             <div className={styles.verdictAction}>{verdict.action}</div>
-            <div className={styles.verdictTier}>{verdict.tier}</div>
             <p className={styles.verdictContext}>{verdictContext}</p>
           </div>
         </div>

@@ -43,8 +43,8 @@ export function formatDollars(value, { signed = false } = {}) {
   })}`;
 }
 
-export function formatPercent(value, { signed = false } = {}) {
+export function formatPercent(value, { signed = false, decimals = 2 } = {}) {
   if (!Number.isFinite(value)) return "—";
   const sign = signed && value > 0 ? "+" : signed && value < 0 ? "−" : "";
-  return `${sign}${Math.abs(value).toFixed(2)}%`;
+  return `${sign}${Math.abs(value).toFixed(decimals)}%`;
 }

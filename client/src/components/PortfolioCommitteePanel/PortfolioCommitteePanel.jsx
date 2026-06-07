@@ -133,7 +133,7 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
             className={styles.convictionBadge}
             title={`${verdict.convictionLabel} confidence`}
           >
-            {verdict.convictionLabel}
+            {verdict.convictionLabel} Confidence
           </span>
         </span>
       </div>

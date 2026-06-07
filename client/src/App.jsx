@@ -8,7 +8,7 @@ import usePositions from "./hooks/usePositions";
 import useSymbolData from "./hooks/useSymbolData";
 import useRefreshData from "./hooks/useRefreshData";
 import useResizablePanelWidth from "./hooks/useResizablePanelWidth";
-import CandlestickChart from "./components/CandlestickChart/CandlestickChart";
+import SymbolChart from "./components/CandlestickChart/SymbolChart";
 import ChartSkeleton from "./components/CandlestickChart/ChartSkeleton";
 import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
 import ImportFidelityPortfolioModal from "./components/ImportFidelityPortfolioModal/ImportFidelityPortfolioModal";
@@ -262,7 +262,7 @@ function App() {
                 {isChartLoading ? (
                   <ChartSkeleton />
                 ) : hasChartData ? (
-                  <CandlestickChart
+                  <SymbolChart
                     chartData={symbolData.chartData}
                     earnings={symbolData.earnings}
                   />

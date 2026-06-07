@@ -128,13 +128,13 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
           >
             {verdict.action}
           </span>
-          <span className={styles.score}>{fmtScore(verdict.composite)}</span>
           <span
             className={styles.convictionBadge}
             title={`${verdict.convictionLabel} confidence`}
           >
             {verdict.convictionLabel} Confidence
           </span>
+          <span className={styles.score}>{fmtScore(verdict.composite)}</span>
         </span>
       </div>
 
@@ -287,7 +287,7 @@ export default function PortfolioCommitteePanel({
             onClick={() => setCollapsed(true)}
             aria-label="Collapse portfolio committee panel"
           >
-          <ChevronRightIcon fontSize="small" />
+            <ChevronRightIcon fontSize="small" />
           </button>
         </div>
       </div>

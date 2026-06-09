@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getLatestCandles } from "../db";
 import { computePositionMetrics } from "../utils/computePositionMetrics";
 import { isTradeableTickerSymbol } from "../utils/parseFidelityCsv";
+import { useRefreshAllSignal } from "./useRefreshSignal";
 
 export default function usePortfolioSummary(positions) {
   const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const hasLoadedRef = useRef(false);
+  const refreshAllVersion = useRefreshAllSignal();
 
   const tradeablePositions = useMemo(
     () => positions.filter((p) => isTradeableTickerSymbol(p.symbol)),
@@ -52,8 +54,7 @@ export default function usePortfolioSummary(positions) {
       totalValue,
       totalCost,
       totalGainLoss,
-      totalGainLossPct:
-        totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0,
+      totalGainLossPct: totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0,
       todayGainLoss,
       todayGainLossPct:
         todayStartValue > 0 ? (todayGainLoss / todayStartValue) * 100 : 0,
@@ -64,7 +65,7 @@ export default function usePortfolioSummary(positions) {
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [refresh, refreshAllVersion]);
 
   return {
     summary,

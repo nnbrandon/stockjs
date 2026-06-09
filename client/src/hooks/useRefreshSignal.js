@@ -33,6 +33,22 @@ export function emitRefreshSignal(symbol) {
   notify();
 }
 
+const REFRESH_ALL_KEY = "__all__";
+
+/** Bump subscribers that should refetch after a bulk watchlist refresh. */
+export function emitRefreshAllSignal() {
+  versions.set(REFRESH_ALL_KEY, (versions.get(REFRESH_ALL_KEY) || 0) + 1);
+  notify();
+}
+
+export function useRefreshAllSignal() {
+  return useSyncExternalStore(
+    subscribe,
+    () => versions.get(REFRESH_ALL_KEY) || 0,
+    () => 0,
+  );
+}
+
 /**
  * Subscribe to refresh signals for a single symbol. Returns the current
  * version number — increments on every `emitRefreshSignal(symbol)` call.

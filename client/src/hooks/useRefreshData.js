@@ -10,10 +10,12 @@ import {
 import LambdaService from "../LambdaService";
 import { mergeEarningsIntoQuarterly } from "../utils/mergeEarningsIntoQuarterly";
 import { useSnackbar } from "../components/SnackbarProvider";
-import { emitRefreshSignal } from "./useRefreshSignal";
+import { emitRefreshAllSignal, emitRefreshSignal } from "./useRefreshSignal";
 import calculateRange from "../utils/calculateRange";
 
 const FUNDAMENTALS_RANGE = calculateRange(365 * 25);
+const ALL_RANGE = calculateRange(365 * 25);
+const DEFAULT_RANGE = calculateRange(180);
 
 // Fetch from Lambda, persist to IndexedDB, and return the shape useSymbolData expects.
 async function fetchAndPersist(symbol, range) {
@@ -68,7 +70,10 @@ export default function useRefreshData({
   const refreshSymbol = async () => {
     setIsRefreshingData(true);
     try {
-      const updates = await fetchAndPersist(selectedSymbol, range);
+      const updates = await fetchAndPersist(
+        selectedSymbol,
+        range ?? DEFAULT_RANGE,
+      );
       applyRefresh(updates);
       // Wake up any other subscribers (sidebar sparklines, etc.) so they
       // re-read this symbol's data from IndexedDB.
@@ -83,18 +88,32 @@ export default function useRefreshData({
   };
 
   const refreshAll = async () => {
+    if (!storedSymbolsWithNames.length) return;
+
     setIsRefreshingAll(true);
     try {
+      // Home view has no chart range selected — always fetch full history so
+      // watchlist sparklines and symbol views stay up to date.
+      const refreshRange = range ?? ALL_RANGE;
       const promises = storedSymbolsWithNames.map(async ({ symbol }) => {
-        const updates = await fetchAndPersist(symbol, range);
+        const updates = await fetchAndPersist(symbol, refreshRange);
         if (symbol === selectedSymbol) {
           applyRefresh(updates);
         }
         emitRefreshSignal(symbol);
       });
 
-      await Promise.allSettled(promises);
-      showSnackbar("All tickers refreshed!", "success");
+      const results = await Promise.allSettled(promises);
+      emitRefreshAllSignal();
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed > 0) {
+        showSnackbar(
+          `Refreshed with ${failed} error${failed === 1 ? "" : "s"}`,
+          "warning",
+        );
+      } else {
+        showSnackbar("All tickers refreshed!", "success");
+      }
     } catch (error) {
       console.error("Error refreshing all tickers:", error.message);
       showSnackbar("Error refreshing all tickers", "error");

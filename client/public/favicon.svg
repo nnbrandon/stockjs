@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="stockjs">
+  <rect width="32" height="32" rx="8" fill="#111318"/>
+  <path
+    d="M5 21.5 10.5 16 15.5 18.5 21 10 27 13.5"
+    stroke="#22c55e"
+    stroke-width="2.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="27" cy="13.5" r="2.25" fill="#22c55e"/>
+</svg>

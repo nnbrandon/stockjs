@@ -32,6 +32,19 @@ import {
   markAutoRefreshedToday,
 } from "./utils/dailyRefresh";
 
+// Bridges the current mode from ModeProvider into MUI's ThemeProvider. Lives
+// above SnackbarProvider so toasts (the refresh-all progress toast included)
+// render inside the themed tree instead of falling back to MUI's light default.
+function ThemedRoot({ children }) {
+  const { mode } = useMode();
+  return (
+    <ThemeProvider theme={mode === "light" ? lightTheme : darkTheme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
+}
+
 function App() {
   const { mode, toggleTheme } = useMode();
   const showSnackbar = useSnackbar();
@@ -43,8 +56,11 @@ function App() {
   const [range, setRange] = useState();
   const [selectedSymbol, setSelectedSymbol] = useState(null);
   const [contextTab, setContextTab] = useState(0);
-  const { width: panelWidth, isResizing, onResizeStart } =
-    useResizablePanelWidth();
+  const {
+    width: panelWidth,
+    isResizing,
+    onResizeStart,
+  } = useResizablePanelWidth();
 
   const handleSelectSymbol = (symbol, options = {}) => {
     setSelectedSymbol(symbol);
@@ -131,101 +147,53 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={mode === "light" ? lightTheme : darkTheme}>
-      <CssBaseline />
+    <div className={styles.container}>
+      {showNavBar && (
+        <Navbar
+          mode={mode}
+          toggleTheme={toggleTheme}
+          storedSymbolsWithNames={storedSymbolsWithNames}
+          selectedSymbol={selectedSymbol}
+          onCloseNav={() => setShowNavBar(false)}
+          onClickAddTickerModal={() => setShowAddTickerModal(true)}
+          onClickImportPortfolioModal={() => setShowImportPortfolioModal(true)}
+          onClickSymbol={handleSelectSymbol}
+          onClickHome={handleGoHome}
+          onRefreshAllTickers={refreshAll}
+          isRefreshingAll={isRefreshingAll}
+        />
+      )}
+      {!showNavBar && (
+        <NavbarMini
+          mode={mode}
+          toggleTheme={toggleTheme}
+          storedSymbolsWithNames={storedSymbolsWithNames}
+          selectedSymbol={selectedSymbol}
+          onExpandNav={() => setShowNavBar(true)}
+          onClickAddTickerModal={() => setShowAddTickerModal(true)}
+          onClickImportPortfolioModal={() => setShowImportPortfolioModal(true)}
+          onClickSymbol={handleSelectSymbol}
+          onClickHome={handleGoHome}
+          onRefreshAllTickers={refreshAll}
+          isRefreshingAll={isRefreshingAll}
+        />
+      )}
 
-      <div className={styles.container}>
-        {showNavBar && (
-          <Navbar
-            mode={mode}
-            toggleTheme={toggleTheme}
-            storedSymbolsWithNames={storedSymbolsWithNames}
-            selectedSymbol={selectedSymbol}
-            onCloseNav={() => setShowNavBar(false)}
-            onClickAddTickerModal={() => setShowAddTickerModal(true)}
-            onClickImportPortfolioModal={() =>
-              setShowImportPortfolioModal(true)
-            }
-            onClickSymbol={handleSelectSymbol}
-            onClickHome={handleGoHome}
-            onRefreshAllTickers={refreshAll}
-            isRefreshingAll={isRefreshingAll}
-          />
-        )}
-        {!showNavBar && (
-          <NavbarMini
-            mode={mode}
-            toggleTheme={toggleTheme}
-            storedSymbolsWithNames={storedSymbolsWithNames}
-            selectedSymbol={selectedSymbol}
-            onExpandNav={() => setShowNavBar(true)}
-            onClickAddTickerModal={() => setShowAddTickerModal(true)}
-            onClickImportPortfolioModal={() =>
-              setShowImportPortfolioModal(true)
-            }
-            onClickSymbol={handleSelectSymbol}
-            onClickHome={handleGoHome}
-            onRefreshAllTickers={refreshAll}
-            isRefreshingAll={isRefreshingAll}
-          />
-        )}
+      {showAddTickerModal && (
+        <AddTickerModal range={range} onClose={handleAddTickerClose} />
+      )}
 
-        {showAddTickerModal && (
-          <AddTickerModal range={range} onClose={handleAddTickerClose} />
-        )}
+      {showImportPortfolioModal && (
+        <ImportFidelityPortfolioModal onClose={handleImportPortfolioClose} />
+      )}
 
-        {showImportPortfolioModal && (
-          <ImportFidelityPortfolioModal onClose={handleImportPortfolioClose} />
-        )}
-
-        <div
-          className={`${styles.view} ${selectedSymbol ? styles.viewSymbol : ""} ${!selectedSymbol && hasPortfolio ? styles.viewHomePortfolio : ""}`}
-        >
-          {!selectedSymbol ? (
-            hasPortfolio ? (
-              <div className={styles.homeWorkspace}>
-                <div className={styles.homeMain}>
-                  <StockHeader
-                    selectedSymbol={selectedSymbol}
-                    chartData={symbolData.chartData}
-                  >
-                    <StockActions
-                      selectedSymbol={selectedSymbol}
-                      isRefreshingData={isRefreshingData}
-                      onRefresh={refreshSymbol}
-                      onDelete={handleDelete}
-                    />
-                  </StockHeader>
-
-                  <StatRow
-                    symbol={selectedSymbol}
-                    chartData={symbolData.chartData}
-                    averageVolumePast30Days={symbolData.averageVolumePast30Days}
-                    isLoading={isChartLoading}
-                  />
-
-                  <HomeView
-                    positions={positions}
-                    watchlistSymbols={storedSymbolsWithNames.map(
-                      (s) => s.symbol,
-                    )}
-                    onSelectSymbol={handleSelectSymbol}
-                    onWatchlistChange={refreshStoredSymbols}
-                    onImportPortfolio={() => setShowImportPortfolioModal(true)}
-                  />
-                </div>
-
-                <PortfolioCommitteePanel
-                  positions={positions}
-                  positionsLoading={positionsLoading}
-                  onSelectSymbol={handleSelectSymbol}
-                  panelWidth={panelWidth}
-                  isResizing={isResizing}
-                  onResizeStart={onResizeStart}
-                />
-              </div>
-            ) : (
-              <>
+      <div
+        className={`${styles.view} ${selectedSymbol ? styles.viewSymbol : ""} ${!selectedSymbol && hasPortfolio ? styles.viewHomePortfolio : ""}`}
+      >
+        {!selectedSymbol ? (
+          hasPortfolio ? (
+            <div className={styles.homeWorkspace}>
+              <div className={styles.homeMain}>
                 <StockHeader
                   selectedSymbol={selectedSymbol}
                   chartData={symbolData.chartData}
@@ -252,70 +220,106 @@ function App() {
                   onWatchlistChange={refreshStoredSymbols}
                   onImportPortfolio={() => setShowImportPortfolioModal(true)}
                 />
-              </>
-            )
-          ) : (
-            <div className={styles.symbolWorkspace}>
-              <div className={styles.symbolMain}>
-                <StockHeader
-                  selectedSymbol={selectedSymbol}
-                  chartData={symbolData.chartData}
-                  position={selectedPosition}
-                  isLoading={isChartLoading}
-                >
-                  <StockActions
-                    selectedSymbol={selectedSymbol}
-                    isRefreshingData={isRefreshingData}
-                    onRefresh={refreshSymbol}
-                    onDelete={handleDelete}
-                  />
-                </StockHeader>
-
-                <StatRow
-                  symbol={selectedSymbol}
-                  chartData={symbolData.chartData}
-                  averageVolumePast30Days={symbolData.averageVolumePast30Days}
-                  isLoading={isChartLoading}
-                />
-
-                <div className={styles.chartControls}>
-                  <TimerangeSelector onChange={setRange} />
-                </div>
-
-                {isChartLoading ? (
-                  <ChartSkeleton />
-                ) : hasChartData ? (
-                  <SymbolChart
-                    chartData={symbolData.chartData}
-                    earnings={symbolData.earnings}
-                  />
-                ) : null}
               </div>
 
-              <StockContextPanel
-                isLoading={isChartLoading}
-                selectedSymbol={selectedSymbol}
-                news={symbolData.news}
-                quarterlyFundamentalsData={
-                  symbolData.quarterlyFundamentalsData
-                }
-                annualFundamentalsData={symbolData.annualFundamentalsData}
-                earnings={symbolData.earnings}
-                chartData={symbolData.chartData}
-                position={selectedPosition}
+              <PortfolioCommitteePanel
+                positions={positions}
                 positionsLoading={positionsLoading}
-                supplementalDataReady={symbolData.isSupplementalDataReady}
-                activeTab={contextTab}
-                onTabChange={setContextTab}
+                onSelectSymbol={handleSelectSymbol}
                 panelWidth={panelWidth}
                 isResizing={isResizing}
                 onResizeStart={onResizeStart}
               />
             </div>
-          )}
-        </div>
+          ) : (
+            <>
+              <StockHeader
+                selectedSymbol={selectedSymbol}
+                chartData={symbolData.chartData}
+              >
+                <StockActions
+                  selectedSymbol={selectedSymbol}
+                  isRefreshingData={isRefreshingData}
+                  onRefresh={refreshSymbol}
+                  onDelete={handleDelete}
+                />
+              </StockHeader>
+
+              <StatRow
+                symbol={selectedSymbol}
+                chartData={symbolData.chartData}
+                averageVolumePast30Days={symbolData.averageVolumePast30Days}
+                isLoading={isChartLoading}
+              />
+
+              <HomeView
+                positions={positions}
+                watchlistSymbols={storedSymbolsWithNames.map((s) => s.symbol)}
+                onSelectSymbol={handleSelectSymbol}
+                onWatchlistChange={refreshStoredSymbols}
+                onImportPortfolio={() => setShowImportPortfolioModal(true)}
+              />
+            </>
+          )
+        ) : (
+          <div className={styles.symbolWorkspace}>
+            <div className={styles.symbolMain}>
+              <StockHeader
+                selectedSymbol={selectedSymbol}
+                chartData={symbolData.chartData}
+                position={selectedPosition}
+                isLoading={isChartLoading}
+              >
+                <StockActions
+                  selectedSymbol={selectedSymbol}
+                  isRefreshingData={isRefreshingData}
+                  onRefresh={refreshSymbol}
+                  onDelete={handleDelete}
+                />
+              </StockHeader>
+
+              <StatRow
+                symbol={selectedSymbol}
+                chartData={symbolData.chartData}
+                averageVolumePast30Days={symbolData.averageVolumePast30Days}
+                isLoading={isChartLoading}
+              />
+
+              <div className={styles.chartControls}>
+                <TimerangeSelector onChange={setRange} />
+              </div>
+
+              {isChartLoading ? (
+                <ChartSkeleton />
+              ) : hasChartData ? (
+                <SymbolChart
+                  chartData={symbolData.chartData}
+                  earnings={symbolData.earnings}
+                />
+              ) : null}
+            </div>
+
+            <StockContextPanel
+              isLoading={isChartLoading}
+              selectedSymbol={selectedSymbol}
+              news={symbolData.news}
+              quarterlyFundamentalsData={symbolData.quarterlyFundamentalsData}
+              annualFundamentalsData={symbolData.annualFundamentalsData}
+              earnings={symbolData.earnings}
+              chartData={symbolData.chartData}
+              position={selectedPosition}
+              positionsLoading={positionsLoading}
+              supplementalDataReady={symbolData.isSupplementalDataReady}
+              activeTab={contextTab}
+              onTabChange={setContextTab}
+              panelWidth={panelWidth}
+              isResizing={isResizing}
+              onResizeStart={onResizeStart}
+            />
+          </div>
+        )}
       </div>
-    </ThemeProvider>
+    </div>
   );
 }
 
@@ -323,9 +327,11 @@ export default function WrappedApp(props) {
   return (
     <QueryClientProvider client={queryClient}>
       <ModeProvider>
-        <SnackbarProvider>
-          <App {...props} />
-        </SnackbarProvider>
+        <ThemedRoot>
+          <SnackbarProvider>
+            <App {...props} />
+          </SnackbarProvider>
+        </ThemedRoot>
       </ModeProvider>
     </QueryClientProvider>
   );

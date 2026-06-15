@@ -9,7 +9,10 @@ import {
 } from "../db";
 import LambdaService from "../LambdaService";
 import { mergeEarningsIntoQuarterly } from "../utils/mergeEarningsIntoQuarterly";
-import { useSnackbar } from "../components/SnackbarProvider";
+import {
+  useSnackbar,
+  useRefreshProgress,
+} from "../components/SnackbarProvider";
 import { emitRefreshAllSignal, emitRefreshSignal } from "./useRefreshSignal";
 import calculateRange from "../utils/calculateRange";
 
@@ -66,6 +69,7 @@ export default function useRefreshData({
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const showSnackbar = useSnackbar();
+  const refreshProgress = useRefreshProgress();
 
   const refreshSymbol = async () => {
     setIsRefreshingData(true);
@@ -91,29 +95,27 @@ export default function useRefreshData({
     if (!storedSymbolsWithNames.length) return;
 
     setIsRefreshingAll(true);
+    refreshProgress.start(storedSymbolsWithNames.map(({ symbol }) => symbol));
     try {
       // Home view has no chart range selected — always fetch full history so
       // watchlist sparklines and symbol views stay up to date.
       const refreshRange = range ?? ALL_RANGE;
       const promises = storedSymbolsWithNames.map(async ({ symbol }) => {
-        const updates = await fetchAndPersist(symbol, refreshRange);
-        if (symbol === selectedSymbol) {
-          applyRefresh(updates);
+        try {
+          const updates = await fetchAndPersist(symbol, refreshRange);
+          if (symbol === selectedSymbol) {
+            applyRefresh(updates);
+          }
+          emitRefreshSignal(symbol);
+          refreshProgress.markDone(symbol);
+        } catch (error) {
+          refreshProgress.markError(symbol);
+          throw error;
         }
-        emitRefreshSignal(symbol);
       });
 
-      const results = await Promise.allSettled(promises);
+      await Promise.allSettled(promises);
       emitRefreshAllSignal();
-      const failed = results.filter((r) => r.status === "rejected").length;
-      if (failed > 0) {
-        showSnackbar(
-          `Refreshed with ${failed} error${failed === 1 ? "" : "s"}`,
-          "warning",
-        );
-      } else {
-        showSnackbar("All tickers refreshed!", "success");
-      }
     } catch (error) {
       console.error("Error refreshing all tickers:", error.message);
       showSnackbar("Error refreshing all tickers", "error");

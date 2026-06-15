@@ -48,10 +48,7 @@ function LegendBadge({ kind, sample, arrow, tone }) {
 
   if (kind === "circle") {
     return (
-      <span
-        className={`${styles.legendBadgeCircle} ${toneClass}`}
-        aria-hidden
-      >
+      <span className={`${styles.legendBadgeCircle} ${toneClass}`} aria-hidden>
         <span className={styles.legendLetter}>B</span>
         <span className={styles.legendArrow}>{arrow}</span>
       </span>
@@ -144,45 +141,41 @@ export default function CandlestickChart({ chartData, earnings = [] }) {
     [chartData, earnings, mode, markerVisibility],
   );
 
-  useResizeObserver(
-    svgRef,
-    () => {
-      const svgElement = svgRef.current;
-      if (!svgElement) return;
+  useResizeObserver(svgRef, () => {
+    const svgElement = svgRef.current;
+    if (!svgElement) return;
 
-      if (chartRef.current) {
-        chartRef.current.destroy();
-        chartRef.current = null;
-      }
-      while (svgElement.firstChild) {
-        svgElement.removeChild(svgElement.firstChild);
-      }
-      const svgRect = svgElement.getBoundingClientRect();
-      chartRef.current = createChart(svgElement, {
-        chartData,
-        earnings,
-        width: Math.max(
-          0,
-          svgRect.width - CHART_MARGIN.left - CHART_MARGIN.right,
-        ),
-        height: Math.max(
-          0,
-          svgRect.height - CHART_MARGIN.top - CHART_MARGIN.bottom,
-        ),
-        colors: readThemeColors(),
-        markerVisibility,
-        onEarningsClick: (earning, anchor) =>
-          onEarningsClickRef.current?.(earning, anchor),
-      });
-    },
-    [chartData, earnings, mode, markerVisibility],
-  );
+    if (chartRef.current) {
+      chartRef.current.destroy();
+      chartRef.current = null;
+    }
+    while (svgElement.firstChild) {
+      svgElement.removeChild(svgElement.firstChild);
+    }
+    const svgRect = svgElement.getBoundingClientRect();
+    chartRef.current = createChart(svgElement, {
+      chartData,
+      earnings,
+      width: Math.max(
+        0,
+        svgRect.width - CHART_MARGIN.left - CHART_MARGIN.right,
+      ),
+      height: Math.max(
+        0,
+        svgRect.height - CHART_MARGIN.top - CHART_MARGIN.bottom,
+      ),
+      colors: readThemeColors(),
+      markerVisibility,
+      onEarningsClick: (earning, anchor) =>
+        onEarningsClickRef.current?.(earning, anchor),
+    });
+  }, [chartData, earnings, mode, markerVisibility]);
 
   return (
     <div className={styles.paper} ref={paperRef}>
       <div className={styles.legend} role="group" aria-label="Chart markers">
         {LEGEND_ITEMS.map((item) => {
-          const { key, label, tooltip } = item;
+          const { key, label, tooltip, ...badgeProps } = item;
           const active = markerVisibility[key];
           const button = (
             <button
@@ -191,7 +184,7 @@ export default function CandlestickChart({ chartData, earnings = [] }) {
               onClick={() => toggleMarker(key)}
               aria-pressed={active}
             >
-              <LegendBadge {...item} />
+              <LegendBadge {...badgeProps} />
               <span className={styles.legendLabel}>{label}</span>
             </button>
           );

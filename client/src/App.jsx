@@ -1,11 +1,12 @@
 // App.js
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
 import { deleteSymbolData } from "./db";
 import useStoredSymbols from "./hooks/useStoredSymbols";
 import usePositions from "./hooks/usePositions";
 import useSymbolData from "./hooks/useSymbolData";
+import useLiveStockData from "./hooks/useLiveStockData";
 import useRefreshData from "./hooks/useRefreshData";
 import useResizablePanelWidth from "./hooks/useResizablePanelWidth";
 import SymbolChart from "./components/CandlestickChart/SymbolChart";
@@ -26,6 +27,10 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { SnackbarProvider, useSnackbar } from "./components/SnackbarProvider";
 import { ModeProvider, useMode } from "./components/ModeProvider";
 import { queryClient } from "./queryClient";
+import {
+  shouldAutoRefreshToday,
+  markAutoRefreshedToday,
+} from "./utils/dailyRefresh";
 
 function App() {
   const { mode, toggleTheme } = useMode();
@@ -62,6 +67,10 @@ function App() {
 
   const symbolData = useSymbolData(selectedSymbol, range);
 
+  // While the market is open, poll the selected symbol's 6-month price history
+  // and push live updates into IndexedDB; useSymbolData re-reads on signal.
+  useLiveStockData(selectedSymbol);
+
   const { refreshSymbol, refreshAll, isRefreshingData, isRefreshingAll } =
     useRefreshData({
       selectedSymbol,
@@ -69,6 +78,20 @@ function App() {
       storedSymbolsWithNames,
       applyRefresh: symbolData.applyRefresh,
     });
+
+  // On the first open of each day, refresh the whole watchlist once. Waits for
+  // stored symbols to load (refreshAll no-ops on an empty list) and guards
+  // against re-running on re-renders / StrictMode double-invokes.
+  const didAutoRefreshRef = useRef(false);
+  useEffect(() => {
+    if (didAutoRefreshRef.current) return;
+    if (!storedSymbolsWithNames.length) return;
+    if (!shouldAutoRefreshToday()) return;
+
+    didAutoRefreshRef.current = true;
+    markAutoRefreshedToday();
+    refreshAll();
+  }, [storedSymbolsWithNames, refreshAll]);
 
   const isChartLoading = symbolData.isLoading || isRefreshingAll;
   const hasChartData = symbolData.chartData && symbolData.chartData.length > 0;

@@ -8,6 +8,8 @@ import {
   rangePosition,
   ttmEps,
   scaleClamp,
+  clamp,
+  volumeTrend,
 } from "../indicators";
 import { analyzeEarningsHistory } from "./earningsHistory";
 import {
@@ -177,6 +179,39 @@ export function runDataScout({
         findings.push(bear("Near its lowest price of the past year", 1));
     }
 
+    // Volume confirmation: does volume back the price move? A rally on rising
+    // volume is "confirmed"; one on fading volume lacks conviction, and a
+    // decline on heavy volume signals active selling. Nudges the score (±,
+    // capped) rather than dominating it.
+    const vt = volumeTrend(candles, 10, 60);
+    metrics.volumeTrend = vt;
+    let volumeAdj = 0;
+    if (Number.isFinite(vt) && Number.isFinite(mom20)) {
+      const rising = mom20 > 2;
+      const falling = mom20 < -2;
+      const heavy = vt >= 1.15;
+      const light = vt <= 0.85;
+      if (rising && heavy) {
+        volumeAdj = 6;
+        findings.push(
+          bull(
+            "Rising on increasing volume — buyers are committed (a confirmed move)",
+            1,
+          ),
+        );
+      } else if (rising && light) {
+        volumeAdj = -6;
+        findings.push(
+          bear("Rising but on fading volume — the rally lacks conviction", 1),
+        );
+      } else if (falling && heavy) {
+        volumeAdj = -5;
+        findings.push(
+          bear("Falling on heavy volume — active selling pressure", 1),
+        );
+      }
+    }
+
     // Risk context (informational, mostly bearish-leaning)
     if (Number.isFinite(vol) && vol > 55)
       findings.push(
@@ -198,6 +233,11 @@ export function runDataScout({
     technicalScore = wsum
       ? weighted.reduce((s, [v, w]) => s + v * w, 0) / wsum
       : null;
+
+    // Apply the volume-confirmation nudge to the blended technical score.
+    if (Number.isFinite(technicalScore) && volumeAdj !== 0) {
+      technicalScore = clamp(technicalScore + volumeAdj, 0, 100);
+    }
   } else {
     findings.push(
       neutral("Not enough price history yet to judge the trend", 1),
@@ -288,21 +328,51 @@ export function runDataScout({
       if (eps > 0) {
         const pe = metrics.price / eps;
         metrics.trailingPE = pe;
-        components.push(scaleClamp(pe, 60, 10, 30, 80)); // lower price-to-earnings → higher score
-        if (pe < 15)
-          findings.push(
-            bull(
-              `Looks inexpensive — about $${pe.toFixed(0)} paid per $1 of yearly profit`,
-              1,
-            ),
-          );
-        else if (pe > 45)
-          findings.push(
-            bear(
-              `Looks expensive — about $${pe.toFixed(0)} paid per $1 of yearly profit`,
-              1,
-            ),
-          );
+
+        // Growth-adjusted valuation (PEG): a high P/E backed by fast earnings
+        // growth isn't truly "expensive". Prefer earnings growth, fall back to
+        // revenue growth, and only when growth is solidly positive (>5%);
+        // otherwise judge on raw P/E.
+        const growth = [
+          metrics.netIncomeGrowthYoY,
+          metrics.revenueGrowthYoY,
+        ].find((g) => Number.isFinite(g) && g > 5);
+
+        if (Number.isFinite(growth)) {
+          const peg = pe / growth;
+          metrics.peg = peg;
+          components.push(scaleClamp(peg, 2.5, 0.5, 25, 90)); // lower PEG → higher score
+          if (peg < 1)
+            findings.push(
+              bull(
+                `Reasonably priced for its growth (PEG ${peg.toFixed(1)})`,
+                1,
+              ),
+            );
+          else if (peg > 2.5)
+            findings.push(
+              bear(
+                `Expensive even accounting for its growth (PEG ${peg.toFixed(1)})`,
+                1,
+              ),
+            );
+        } else {
+          components.push(scaleClamp(pe, 60, 10, 30, 80)); // lower P/E → higher score
+          if (pe < 15)
+            findings.push(
+              bull(
+                `Looks inexpensive — about $${pe.toFixed(0)} paid per $1 of yearly profit`,
+                1,
+              ),
+            );
+          else if (pe > 45)
+            findings.push(
+              bear(
+                `Looks expensive — about $${pe.toFixed(0)} paid per $1 of yearly profit`,
+                1,
+              ),
+            );
+        }
       } else {
         metrics.trailingPE = null;
         components.push(35);

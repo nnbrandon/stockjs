@@ -112,6 +112,16 @@ export default function useSymbolData(symbol, range) {
         markSupplementalReady();
       });
 
+    // Avg 30-day volume for the StatRow (independent of the supplemental-ready
+    // gate; best-effort).
+    getAverageVolumePast30Days(symbol)
+      .then((v) => {
+        if (!cancelled) setAverageVolumePast30Days(v);
+      })
+      .catch(() => {
+        if (!cancelled) setAverageVolumePast30Days(null);
+      });
+
     return () => {
       cancelled = true;
     };

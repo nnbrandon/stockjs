@@ -142,6 +142,29 @@ export function ttmEps(quarterly = []) {
   return withEps.reduce((s, q) => s + q.eps, 0);
 }
 
+// Average volume over the last `lookback` candles, ignoring missing values.
+export function avgVolume(candles, lookback) {
+  if (!candles || !candles.length) return null;
+  const vols = candles
+    .slice(-lookback)
+    .map((c) => Number(c.volume))
+    .filter((v) => Number.isFinite(v) && v >= 0);
+  if (!vols.length) return null;
+  return vols.reduce((s, v) => s + v, 0) / vols.length;
+}
+
+// Recent average volume relative to a longer baseline. >1 means volume is
+// picking up (a move with conviction), <1 means it's fading. Returns null when
+// there isn't enough history or there's no real volume (e.g. NAV funds).
+export function volumeTrend(candles, recent = 10, baseline = 60) {
+  if (!candles || candles.length < baseline) return null;
+  const recentAvg = avgVolume(candles, recent);
+  const baseAvg = avgVolume(candles, baseline);
+  if (!Number.isFinite(recentAvg) || !Number.isFinite(baseAvg) || baseAvg <= 0)
+    return null;
+  return recentAvg / baseAvg;
+}
+
 // Clamp a value into [min, max].
 export function clamp(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));

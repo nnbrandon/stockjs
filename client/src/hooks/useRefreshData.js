@@ -15,15 +15,32 @@ import {
 } from "../components/SnackbarProvider";
 import { emitRefreshAllSignal, emitRefreshSignal } from "./useRefreshSignal";
 import calculateRange from "../utils/calculateRange";
+import priceRangeSinceLastCandle from "../utils/priceRangeSinceLastCandle";
 
 const FUNDAMENTALS_RANGE = calculateRange(365 * 25);
 const ALL_RANGE = calculateRange(365 * 25);
 const DEFAULT_RANGE = calculateRange(180);
 
-// Fetch from Lambda, persist to IndexedDB, and return the shape useSymbolData expects.
-async function fetchAndPersist(symbol, range) {
+// Fetch from Lambda, persist to IndexedDB, and return the supplemental updates
+// useSymbolData applies optimistically. Prices are fetched only from the last
+// stored candle forward (see priceRangeSinceLastCandle) so the response stays
+// small instead of re-downloading months/years of unchanged history; full
+// history is seeded once when a ticker is first added. `seedRange` is the
+// fallback for a symbol with no stored candles yet.
+//
+// chartData is intentionally omitted: the emitRefreshSignal that follows each
+// refresh makes useSymbolData re-read the currently displayed range from
+// IndexedDB (now including the freshly upserted candles), so handing back the
+// narrow fetched array here would briefly shrink the chart.
+async function fetchAndPersist(symbol, seedRange) {
+  const priceRange = await priceRangeSinceLastCandle(symbol, seedRange);
+
   const [historicalData, fundamentalsData, newsData] = await Promise.all([
-    LambdaService.fetchHistoricalData(symbol, range.startDate, range.endDate),
+    LambdaService.fetchHistoricalData(
+      symbol,
+      priceRange.startDate,
+      priceRange.endDate,
+    ),
     LambdaService.fetchFundamentals(
       symbol,
       FUNDAMENTALS_RANGE.startDate,
@@ -49,7 +66,6 @@ async function fetchAndPersist(symbol, range) {
   ]);
 
   return {
-    chartData: historicalData,
     quarterlyFundamentalsData: mergeEarningsIntoQuarterly(
       quarterlyRaw ?? [],
       earningsRows ?? [],
@@ -74,6 +90,8 @@ export default function useRefreshData({
   const refreshSymbol = async () => {
     setIsRefreshingData(true);
     try {
+      // Tops up prices since the last stored candle; the second arg is only
+      // the seed range used if this symbol somehow has no stored history.
       const updates = await fetchAndPersist(
         selectedSymbol,
         range ?? DEFAULT_RANGE,
@@ -97,12 +115,14 @@ export default function useRefreshData({
     setIsRefreshingAll(true);
     refreshProgress.start(storedSymbolsWithNames.map(({ symbol }) => symbol));
     try {
-      // Home view has no chart range selected — always fetch full history so
-      // watchlist sparklines and symbol views stay up to date.
-      const refreshRange = range ?? ALL_RANGE;
+      // Each symbol only tops up prices since its last stored candle, so this
+      // stays cheap even across the whole watchlist. ALL_RANGE is just the seed
+      // fallback for any symbol with no stored history (full history was
+      // fetched when the ticker was first added).
+      const seedRange = range ?? ALL_RANGE;
       const promises = storedSymbolsWithNames.map(async ({ symbol }) => {
         try {
-          const updates = await fetchAndPersist(symbol, refreshRange);
+          const updates = await fetchAndPersist(symbol, seedRange);
           if (symbol === selectedSymbol) {
             applyRefresh(updates);
           }

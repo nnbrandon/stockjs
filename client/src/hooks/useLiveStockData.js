@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
 import LambdaService from "../LambdaService";
-import { addStockData, getLatestCandles } from "../db";
+import { addStockData } from "../db";
 import { emitRefreshSignal } from "./useRefreshSignal";
-import calculateRange, { rangeFromDate } from "../utils/calculateRange";
+import calculateRange from "../utils/calculateRange";
+import priceRangeSinceLastCandle from "../utils/priceRangeSinceLastCandle";
 import useIsMarketOpen from "./useIsMarketOpen";
 
 const SIX_MONTHS_DAYS = 180;
@@ -52,10 +53,10 @@ export default function useLiveStockData(symbols = []) {
           // live candle (plus any sessions missed while closed), instead of
           // re-downloading 6 months of unchanged history every minute. Falls
           // back to a full seed if the symbol has no stored history yet.
-          const [lastCandle] = await getLatestCandles(symbol, 1);
-          const { startDate, endDate } = lastCandle
-            ? rangeFromDate(lastCandle.shortenedDate)
-            : calculateRange(SIX_MONTHS_DAYS);
+          const { startDate, endDate } = await priceRangeSinceLastCandle(
+            symbol,
+            calculateRange(SIX_MONTHS_DAYS),
+          );
 
           const historicalData = await LambdaService.fetchHistoricalData(
             symbol,

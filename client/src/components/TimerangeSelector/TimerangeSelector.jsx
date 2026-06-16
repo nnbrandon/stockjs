@@ -12,7 +12,7 @@ const RANGES = [
   { id: "ALL", label: "ALL", days: 365 * 25 },
 ];
 
-const DEFAULT_RANGE = "6M";
+const DEFAULT_RANGE = "3M";
 
 const groupSx = {
   background: "var(--palette-bg-paper)",

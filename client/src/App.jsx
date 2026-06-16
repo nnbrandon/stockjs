@@ -1,5 +1,5 @@
 // App.js
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import { lightTheme, darkTheme } from "./theme";
 import { deleteSymbolData } from "./db";
@@ -48,7 +48,7 @@ function ThemedRoot({ children }) {
 function App() {
   const { mode, toggleTheme } = useMode();
   const showSnackbar = useSnackbar();
-  const [showNavBar, setShowNavBar] = useState(false);
+  const [showNavBar, setShowNavBar] = useState(true);
   const [showAddTickerModal, setShowAddTickerModal] = useState(false);
   const [showImportPortfolioModal, setShowImportPortfolioModal] =
     useState(false);
@@ -83,9 +83,14 @@ function App() {
 
   const symbolData = useSymbolData(selectedSymbol, range);
 
-  // While the market is open, poll the selected symbol's 6-month price history
-  // and push live updates into IndexedDB; useSymbolData re-reads on signal.
-  useLiveStockData(selectedSymbol);
+  // While the market is open, poll every watchlist symbol's 6-month price
+  // history once a minute and push live updates into IndexedDB; useSymbolData
+  // and the sidebar sparklines re-read on signal.
+  const watchlistSymbols = useMemo(
+    () => storedSymbolsWithNames.map((s) => s.symbol),
+    [storedSymbolsWithNames],
+  );
+  useLiveStockData(watchlistSymbols);
 
   const { refreshSymbol, refreshAll, isRefreshingData, isRefreshingAll } =
     useRefreshData({
@@ -215,7 +220,7 @@ function App() {
 
                 <HomeView
                   positions={positions}
-                  watchlistSymbols={storedSymbolsWithNames.map((s) => s.symbol)}
+                  watchlistSymbols={watchlistSymbols}
                   onSelectSymbol={handleSelectSymbol}
                   onWatchlistChange={refreshStoredSymbols}
                   onImportPortfolio={() => setShowImportPortfolioModal(true)}
@@ -254,7 +259,7 @@ function App() {
 
               <HomeView
                 positions={positions}
-                watchlistSymbols={storedSymbolsWithNames.map((s) => s.symbol)}
+                watchlistSymbols={watchlistSymbols}
                 onSelectSymbol={handleSelectSymbol}
                 onWatchlistChange={refreshStoredSymbols}
                 onImportPortfolio={() => setShowImportPortfolioModal(true)}

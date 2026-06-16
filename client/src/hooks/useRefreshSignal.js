@@ -61,3 +61,18 @@ export function useRefreshSignal(symbol) {
     () => 0,
   );
 }
+
+/**
+ * Combined version across several symbols: the sum of their individual
+ * versions, so it increments whenever ANY of `symbols` gets an
+ * `emitRefreshSignal`. Returns one number safe to use as a `useEffect` dep —
+ * lets aggregate views (e.g. the portfolio summary) recompute when any of
+ * their holdings' prices are refreshed by the live poll.
+ */
+export function useRefreshSignalForSymbols(symbols = []) {
+  return useSyncExternalStore(
+    subscribe,
+    () => symbols.reduce((sum, s) => sum + (versions.get(s) || 0), 0),
+    () => 0,
+  );
+}

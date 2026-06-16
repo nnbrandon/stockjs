@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./NavItemMini.module.css";
-import useSymbolData from "../../hooks/useSymbolData";
+import useSymbolChartData from "../../hooks/useSymbolChartData";
 import calculateRange from "../../utils/calculateRange";
 import prepareSparklineData from "../../utils/prepareSparklineData";
 
@@ -12,7 +12,7 @@ export default function NavItemMini({
   onClickSymbol,
 }) {
   const range = useMemo(() => calculateRange(7), []);
-  const { chartData } = useSymbolData(symbol, range);
+  const { chartData } = useSymbolChartData(symbol, range);
 
   const { price, changePct, isUp } = prepareSparklineData(chartData);
 

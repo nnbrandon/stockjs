@@ -17,12 +17,14 @@ const FILTERS = {
   BUY: "BUY",
   HOLD: "HOLD",
   SELL: "SELL",
+  FUND: "FUND",
   NA: "NA",
 };
 
 const fmtScore = (n) => (Number.isFinite(n) ? n.toFixed(0) : "—");
 
 function getItemFilterKey(item) {
+  if (item.isFund) return FILTERS.FUND;
   const action = item.report?.verdict?.action;
   if (action === "BUY" || action === "HOLD" || action === "SELL") return action;
   return FILTERS.NA;
@@ -92,7 +94,31 @@ function RunButtons({ count, disabled, onQuick, onDeep }) {
 
 function PositionVerdictCard({ item, onSelectSymbol }) {
   const [expanded, setExpanded] = useState(false);
-  const { symbol, report, news, newsMood, error } = item;
+  const { symbol, report, news, newsMood, error, isFund } = item;
+
+  if (isFund) {
+    return (
+      <div className={styles.card}>
+        <div className={styles.cardHeadStatic}>
+          <span className={styles.cardSymbol}>{symbol}</span>
+          <span className={styles.na}>Fund / ETF</span>
+        </div>
+        <div className={styles.cardBody}>
+          <p className={styles.na}>
+            Funds and ETFs track a basket of holdings, so the company committee
+            doesn&apos;t score them.
+          </p>
+          <button
+            type="button"
+            className={styles.openBtn}
+            onClick={() => onSelectSymbol(symbol)}
+          >
+            Open chart
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (error || !report) {
     return (
@@ -220,11 +246,9 @@ export default function PortfolioCommitteePanel({
   const runDisabled = positionsLoading || count === 0 || status === "running";
 
   const summary = useMemo(() => {
-    const counts = { BUY: 0, HOLD: 0, SELL: 0, NA: 0 };
+    const counts = { BUY: 0, HOLD: 0, SELL: 0, FUND: 0, NA: 0 };
     for (const item of results) {
-      const action = item.report?.verdict?.action;
-      if (action && counts[action] != null) counts[action] += 1;
-      else counts.NA += 1;
+      counts[getItemFilterKey(item)] += 1;
     }
     return counts;
   }, [results]);
@@ -395,6 +419,16 @@ export default function PortfolioCommitteePanel({
                   aria-pressed={actionFilter === FILTERS.SELL}
                 >
                   {summary.SELL} Sell
+                </button>
+              )}
+              {summary.FUND > 0 && (
+                <button
+                  type="button"
+                  className={filterChipClass(FILTERS.FUND)}
+                  onClick={() => setActionFilter(FILTERS.FUND)}
+                  aria-pressed={actionFilter === FILTERS.FUND}
+                >
+                  {summary.FUND} Fund{summary.FUND === 1 ? "" : "s"}
                 </button>
               )}
               {summary.NA > 0 && (

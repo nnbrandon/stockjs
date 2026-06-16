@@ -2,17 +2,29 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getLatestCandles } from "../db";
 import { computePositionMetrics } from "../utils/computePositionMetrics";
 import { isTradeableTickerSymbol } from "../utils/parseFidelityCsv";
-import { useRefreshAllSignal } from "./useRefreshSignal";
+import {
+  useRefreshAllSignal,
+  useRefreshSignalForSymbols,
+} from "./useRefreshSignal";
 
 export default function usePortfolioSummary(positions) {
   const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const hasLoadedRef = useRef(false);
+  // Bumps each refresh; lets a newer run discard a slower one's stale result.
+  const runIdRef = useRef(0);
   const refreshAllVersion = useRefreshAllSignal();
 
   const tradeablePositions = useMemo(
     () => positions.filter((p) => isTradeableTickerSymbol(p.symbol)),
     [positions],
+  );
+
+  // Recompute when the live poll refreshes ANY holding's price, so the totals
+  // (current value, today's gain/loss) stay live during market hours instead of
+  // only updating on a full "Refresh all".
+  const liveVersion = useRefreshSignalForSymbols(
+    useMemo(() => tradeablePositions.map((p) => p.symbol), [tradeablePositions]),
   );
 
   const refresh = useCallback(async () => {
@@ -23,9 +35,17 @@ export default function usePortfolioSummary(positions) {
       return;
     }
 
+    const runId = ++runIdRef.current;
     if (!hasLoadedRef.current) {
       setIsLoading(true);
     }
+
+    // Read all holdings' latest candles in parallel.
+    const candlesBySymbol = await Promise.all(
+      tradeablePositions.map((position) => getLatestCandles(position.symbol, 2)),
+    );
+    // A newer refresh started while we were reading — let it win.
+    if (runId !== runIdRef.current) return;
 
     const holdings = [];
     let totalValue = 0;
@@ -33,19 +53,17 @@ export default function usePortfolioSummary(positions) {
     let totalGainLoss = 0;
     let todayGainLoss = 0;
 
-    for (const position of tradeablePositions) {
-      const candles = await getLatestCandles(position.symbol, 2);
-      const metrics = computePositionMetrics(position, candles);
-
+    tradeablePositions.forEach((position, i) => {
+      const metrics = computePositionMetrics(position, candlesBySymbol[i]);
       holdings.push({ ...position, metrics });
 
-      if (!metrics) continue;
+      if (!metrics) return;
 
       totalValue += metrics.currentValue;
       totalCost += metrics.costBasisTotal;
       totalGainLoss += metrics.totalGainLoss;
       todayGainLoss += metrics.todayGainLoss;
-    }
+    });
 
     const todayStartValue = totalValue - todayGainLoss;
 
@@ -65,7 +83,7 @@ export default function usePortfolioSummary(positions) {
 
   useEffect(() => {
     refresh();
-  }, [refresh, refreshAllVersion]);
+  }, [refresh, refreshAllVersion, liveVersion]);
 
   return {
     summary,

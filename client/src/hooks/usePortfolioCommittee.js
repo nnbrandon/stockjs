@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { runAnalystCommittee } from "../utils/analyst";
 import { loadCommitteeData } from "../utils/loadCommitteeData";
+import { isFundSymbol } from "../utils/isFundSymbol";
 import { isTradeableTickerSymbol } from "../utils/parseFidelityCsv";
 import { scorePortfolioNews } from "../utils/scorePortfolioNews";
 
@@ -117,10 +118,20 @@ export default function usePortfolioCommittee(positions) {
           ),
         );
 
+        // Funds/ETFs/indexes have no company financials — exclude them from
+        // both committee scoring and (deep) news crawling.
+        const fundSymbols = new Set(
+          tradeablePositions
+            .filter((p) => isFundSymbol(dataBySymbol[p.symbol]?.chartData))
+            .map((p) => p.symbol),
+        );
+
         let newsBySymbol = null;
         if (deep) {
           newsBySymbol = await scorePortfolioNews({
-            entries: tradeablePositions.map((position) => ({
+            entries: tradeablePositions
+              .filter((position) => !fundSymbols.has(position.symbol))
+              .map((position) => ({
               symbol: position.symbol,
               news: dataBySymbol[position.symbol]?.news,
             })),
@@ -142,6 +153,19 @@ export default function usePortfolioCommittee(positions) {
         for (let i = 0; i < tradeablePositions.length; i += 1) {
           const position = tradeablePositions[i];
           const { symbol } = position;
+
+          if (fundSymbols.has(symbol)) {
+            out.push({
+              symbol,
+              position,
+              report: null,
+              isFund: true,
+              news: [],
+              newsMood: null,
+              error: null,
+            });
+            continue;
+          }
 
           const data = {
             ...dataBySymbol[symbol],

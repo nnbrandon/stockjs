@@ -121,14 +121,25 @@ export function rangePosition(candles, lookback = 252) {
   return ((current - low) / (high - low)) * 100;
 }
 
-// Sum the last four quarters of diluted EPS → trailing-twelve-month EPS.
+// Sum the last four quarters of EPS → trailing-twelve-month EPS. Prefers the
+// fundamentals feed's dilutedEPS but falls back to the earnings feed's epsActual
+// so the most recent (earnings-only) quarters still count — otherwise TTM EPS,
+// and the trailing P/E derived from it, goes stale right after a fresh report.
 export function ttmEps(quarterly = []) {
   const withEps = quarterly
-    .filter((q) => Number.isFinite(Number(q.dilutedEPS)))
+    .map((q) => {
+      const eps = Number.isFinite(Number(q.dilutedEPS))
+        ? Number(q.dilutedEPS)
+        : Number.isFinite(Number(q.epsActual))
+          ? Number(q.epsActual)
+          : null;
+      return { date: q.date, eps };
+    })
+    .filter((q) => q.eps != null)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 4);
   if (withEps.length < 4) return null;
-  return withEps.reduce((s, q) => s + Number(q.dilutedEPS), 0);
+  return withEps.reduce((s, q) => s + q.eps, 0);
 }
 
 // Clamp a value into [min, max].

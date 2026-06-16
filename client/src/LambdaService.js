@@ -24,11 +24,16 @@ class LambdaService {
     }
 
     const quotes = data.quotes;
+    // Yahoo's chart meta tags the instrument (EQUITY, ETF, MUTUALFUND, INDEX,
+    // …). Persisting it lets the AI Committee skip funds, which have no company
+    // financials to analyze. Stamped on every candle so it survives in IDB.
+    const instrumentType = data.meta?.instrumentType ?? null;
     return quotes
       .filter((item) => item.close != null)
       .map((item) => ({
         name: data.meta.shortName,
         symbol: symbol,
+        instrumentType,
         ...item,
       }));
   }

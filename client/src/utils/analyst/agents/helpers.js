@@ -11,6 +11,32 @@ export const pct = (n, d = 1) => (Number.isFinite(n) ? `${n.toFixed(d)}%` : "n/a
 export const sortByDateDesc = (rows = []) =>
   [...rows].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+// Find the row ~1 year before `latest` by date, not by position. The quarterly
+// series can have gaps (a missing quarter, or earnings-only rows merged in), so
+// indexing `rows[4]` isn't reliably "same quarter last year". Returns the row
+// whose date is closest to 365 days earlier, within a ±45-day tolerance, or
+// null if nothing lands in that window.
+export function findYearAgoRow(rows = [], latest) {
+  const latestTime = latest?.date ? new Date(latest.date).getTime() : NaN;
+  if (!Number.isFinite(latestTime)) return null;
+
+  const targetTime = latestTime - 365 * 24 * 60 * 60 * 1000;
+  const TOLERANCE_MS = 45 * 24 * 60 * 60 * 1000;
+
+  let best = null;
+  let bestDiff = Infinity;
+  for (const row of rows) {
+    const t = new Date(row.date).getTime();
+    if (!Number.isFinite(t)) continue;
+    const diff = Math.abs(t - targetTime);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = row;
+    }
+  }
+  return bestDiff <= TOLERANCE_MS ? best : null;
+}
+
 export function avg(nums) {
   const valid = nums.filter(Number.isFinite);
   if (!valid.length) return null;

@@ -14,6 +14,7 @@ import {
   avg,
   bear,
   bull,
+  findYearAgoRow,
   labelScore,
   neutral,
   pct,
@@ -85,17 +86,10 @@ export function runDataScout({
         trendScore = 85;
         findings.push(
           bull(
-            "Price is above its average over the last 50 and 200 days — a steady uptrend",
+            "Price is above both its 50-day and 200-day average, with the 50-day on top — a steady uptrend",
             2,
           ),
         );
-        if (sma50 > sma200)
-          findings.push(
-            bull(
-              "The recent price average has crossed above the long-term average — a healthy sign",
-              1,
-            ),
-          );
       } else if (price > sma50 && sma50 <= sma200) {
         trendScore = 58;
         findings.push(
@@ -193,13 +187,7 @@ export function runDataScout({
         bear(`Has fallen ${pct(Math.abs(dd))} from its recent high`, 1),
       );
 
-    technicalScore = avg([
-      trendScore != null ? trendScore * 1.0 : null, // weight handled below
-      momScore,
-      rsiScore,
-      rangeScore,
-    ]);
-    // Re-weight: trend 0.35, momentum 0.30, rsi 0.15, range 0.20
+    // Weighted blend: trend 0.35, momentum 0.30, rsi 0.15, range 0.20.
     const weighted = [
       [trendScore, 0.35],
       [momScore, 0.3],
@@ -209,7 +197,7 @@ export function runDataScout({
     const wsum = weighted.reduce((s, [, w]) => s + w, 0);
     technicalScore = wsum
       ? weighted.reduce((s, [v, w]) => s + v * w, 0) / wsum
-      : technicalScore;
+      : null;
   } else {
     findings.push(
       neutral("Not enough price history yet to judge the trend", 1),
@@ -224,7 +212,7 @@ export function runDataScout({
 
   if (q.length >= 1) {
     const latest = q[0];
-    const yearAgo = q[4]; // same quarter, prior year
+    const yearAgo = findYearAgoRow(q, latest); // same quarter, prior year
 
     // Revenue growth YoY
     if (

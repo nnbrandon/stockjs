@@ -17,6 +17,7 @@ import { computePositionMetrics } from "../../utils/computePositionMetrics";
 import PositionHolding from "../PositionHolding/PositionHolding";
 import { getStockDataByDateRange } from "../../db";
 import calculateRange from "../../utils/calculateRange";
+import { isFundSymbol } from "../../utils/isFundSymbol";
 import { useRefreshSignal } from "../../hooks/useRefreshSignal";
 import useNewsIntelligence from "../../hooks/useNewsIntelligence";
 import useFinbert from "../../hooks/useFinbert";
@@ -316,6 +317,10 @@ export default function AnalystPanel({
   const committeeInputsReady =
     yearCandlesReady && supplementalDataReady && !positionsLoading;
 
+  // Funds/ETFs/indexes have no company financials, so the committee can't
+  // produce a meaningful verdict — skip it (see isFundSymbol).
+  const isFund = useMemo(() => isFundSymbol(yearCandles), [yearCandles]);
+
   // Merge any FinBERT per-article scores into the news so the committee
   // re-scores on neural sentiment instead of the lexicon fallback.
   const mergedNews = useMemo(() => {
@@ -347,6 +352,16 @@ export default function AnalystPanel({
     return (
       <div className={styles.loading}>
         <CircularProgress size={24} />
+      </div>
+    );
+  }
+
+  if (isFund) {
+    return (
+      <div className={styles.empty}>
+        The AI Committee analyzes individual companies. {symbol} is a fund or
+        ETF — its price tracks a basket of holdings, so company financials,
+        earnings, and a single buy/hold/sell verdict don&apos;t apply.
       </div>
     );
   }

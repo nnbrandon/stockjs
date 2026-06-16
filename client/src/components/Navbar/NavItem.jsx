@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import styles from "./NavItem.module.css";
-import useSymbolData from "../../hooks/useSymbolData";
+import useSymbolChartData from "../../hooks/useSymbolChartData";
 import TickerSparkline from "../SparklineChart/SparklineChart";
 import calculateRange from "../../utils/calculateRange";
 import prepareSparklineData from "../../utils/prepareSparklineData";
@@ -12,7 +12,7 @@ export default function NavItem({
   onClickSymbol,
 }) {
   const range = useMemo(() => calculateRange(7), []);
-  const { chartData, isLoading } = useSymbolData(symbol, range);
+  const { chartData, isLoading } = useSymbolChartData(symbol, range);
 
   const sparklineData = prepareSparklineData(chartData);
   const showSparklineLoading = isLoading && sparklineData.data.length === 0;

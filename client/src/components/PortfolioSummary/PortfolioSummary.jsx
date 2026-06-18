@@ -4,7 +4,26 @@ import {
   formatDollars,
   formatPercent,
 } from "../../utils/computePositionMetrics";
+import useExtendedHoursQuote from "../../hooks/useExtendedHoursQuote";
 import styles from "./PortfolioSummary.module.css";
+
+function AfterHoursTag({ symbol, symbols }) {
+  const extended = useExtendedHoursQuote(symbol, symbols);
+  if (!extended || !Number.isFinite(extended.price)) return null;
+
+  const isUp = (extended.change ?? 0) >= 0;
+  return (
+    <span className={styles.afterHours} title={`${extended.label} price`}>
+      AH {formatDollars(extended.price)}
+      {Number.isFinite(extended.changePercent) && (
+        <span className={isUp ? styles.up : styles.down}>
+          {" "}
+          ({formatPercent(extended.changePercent, { signed: true })})
+        </span>
+      )}
+    </span>
+  );
+}
 
 const SORT_KEYS = {
   symbol: "symbol",
@@ -146,6 +165,13 @@ function PortfolioSummary({ positions, onSelectSymbol }) {
 
   const holdings = summary?.holdings ?? tradeablePositions;
 
+  // One shared symbol list so every row's after-hours tag hits a single batched
+  // quote query (React Query dedupes by this key).
+  const holdingSymbols = useMemo(
+    () => holdings.map((h) => h.symbol),
+    [holdings],
+  );
+
   const sortedHoldings = useMemo(
     () =>
       [...holdings].sort((a, b) => compareHoldings(a, b, sortKey, sortDirection)),
@@ -274,10 +300,16 @@ function PortfolioSummary({ positions, onSelectSymbol }) {
                   </td>
                   <td className={`${styles.numCol} ${styles.lastPriceCol}`}>
                     {metrics ? (
-                      <LastPriceCell
-                        price={metrics.lastPrice}
-                        change={metrics.lastPriceChange}
-                      />
+                      <>
+                        <LastPriceCell
+                          price={metrics.lastPrice}
+                          change={metrics.lastPriceChange}
+                        />
+                        <AfterHoursTag
+                          symbol={row.symbol}
+                          symbols={holdingSymbols}
+                        />
+                      </>
                     ) : (
                       "—"
                     )}

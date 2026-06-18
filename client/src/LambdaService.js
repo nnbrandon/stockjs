@@ -38,6 +38,27 @@ class LambdaService {
       }));
   }
 
+  // Batch extended-hours (pre/post-market) quotes for the whole watchlist in
+  // one request. Returns [] for an empty input without hitting the network.
+  async fetchQuotes(symbols) {
+    if (!symbols?.length) return [];
+
+    const param = encodeURIComponent(symbols.join(","));
+    try {
+      const response = await fetch(
+        `${this.API_URL}?action=quote&symbols=${param}`,
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Error fetching quotes");
+      }
+      return data;
+    } catch (error) {
+      console.error("Error fetching quotes:", error);
+      throw error;
+    }
+  }
+
   async fetchFundamentals(symbol, start, end) {
     let data = {};
 

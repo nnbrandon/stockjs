@@ -9,7 +9,9 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Tooltip from "@mui/material/Tooltip";
 
 import styles from "./NavbarMini.module.css";
-import isMarketOpen from "../../utils/isMarketOpen";
+import getMarketSession, {
+  marketSessionLabel,
+} from "../../utils/marketSession";
 import NavItemMini from "./NavItemMini";
 
 function formatNyTime() {
@@ -37,7 +39,7 @@ function NavbarMini({
   toggleTheme,
   isRefreshingAll,
 }) {
-  const marketOpen = isMarketOpen();
+  const session = getMarketSession();
   const [nyTime, setNyTime] = useState(formatNyTime);
 
   useEffect(() => {
@@ -177,9 +179,9 @@ function NavbarMini({
         <div className={styles.footerMeta}>
           <span>
             <span
-              className={`${styles.statusDot} ${marketOpen ? styles.live : styles.closed}`}
+              className={`${styles.statusDot} ${session === "regular" ? styles.live : session === "closed" ? styles.closed : styles.extended}`}
             />
-            {marketOpen ? "LIVE" : "CLOSED"}
+            {marketSessionLabel(session)}
           </span>
           <span>{nyTime} ET</span>
         </div>

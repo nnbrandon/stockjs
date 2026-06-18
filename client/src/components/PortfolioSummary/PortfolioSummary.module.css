@@ -109,6 +109,14 @@ td.lastPriceCol {
   text-align: right;
 }
 
+.afterHours {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--palette-text-disabled);
+  white-space: nowrap;
+}
+
 .table th {
   font-size: 10.5px;
   text-transform: uppercase;

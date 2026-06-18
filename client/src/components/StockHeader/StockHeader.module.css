@@ -110,6 +110,39 @@
   height: 16px;
 }
 
+.afterHoursRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.5cqi, 12.5px);
+}
+.afterHoursLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: var(--shape-radius-chip);
+  background: var(--palette-bg-elevated);
+  border: 1px solid var(--palette-divider);
+  color: var(--palette-text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.9em;
+}
+.afterHoursPrice {
+  color: var(--palette-text-primary);
+  font-weight: 500;
+}
+.afterHoursChange.up {
+  color: var(--palette-success);
+}
+.afterHoursChange.down {
+  color: var(--palette-error);
+}
+
 .headerActions {
   display: flex;
   gap: 8px;

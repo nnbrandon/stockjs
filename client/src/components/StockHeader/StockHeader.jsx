@@ -2,7 +2,39 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { last } from "lodash";
 import PositionStatRow from "../StatRow/PositionStatRow";
+import useExtendedHoursQuote from "../../hooks/useExtendedHoursQuote";
 import styles from "./StockHeader.module.css";
+
+function AfterHoursLine({ symbol }) {
+  const extended = useExtendedHoursQuote(symbol, symbol ? [symbol] : []);
+  if (!extended || !Number.isFinite(extended.price)) return null;
+
+  const { label, price, change, changePercent } = extended;
+  const isUp = (change ?? 0) >= 0;
+  const sign = isUp ? "+" : "−";
+
+  return (
+    <div className={styles.afterHoursRow}>
+      <span className={styles.afterHoursLabel}>{label}</span>
+      <span className={styles.afterHoursPrice}>${price.toFixed(2)}</span>
+      {Number.isFinite(change) && (
+        <span
+          className={`${styles.afterHoursChange} ${isUp ? styles.up : styles.down}`}
+        >
+          {sign}
+          {Math.abs(change).toFixed(2)}
+          {Number.isFinite(changePercent) && (
+            <>
+              {" "}
+              ({sign}
+              {Math.abs(changePercent).toFixed(2)}%)
+            </>
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function PriceChange({ chartData }) {
   if (!chartData || chartData.length < 2) return null;
@@ -58,6 +90,8 @@ function StockHeader({ selectedSymbol, chartData, position, isLoading, children 
             </div>
           </div>
         )}
+
+        <AfterHoursLine symbol={symbol} />
 
         {hasHolding && (
           <PositionStatRow

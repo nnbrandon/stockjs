@@ -232,6 +232,11 @@
   box-shadow: 0 0 8px var(--palette-success);
   animation: pulse 2s infinite;
 }
+.statusDot.extended {
+  background: #f5a623;
+  box-shadow: 0 0 8px rgba(245, 166, 35, 0.6);
+  animation: pulse 2s infinite;
+}
 .statusDot.closed {
   background: var(--palette-text-disabled);
 }

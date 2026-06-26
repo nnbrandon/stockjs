@@ -6,7 +6,7 @@ export const allowedOrigins = [
 const corsHeaders = (corsOrigin) => ({
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": corsOrigin,
-  "Access-Control-Allow-Methods": "GET,OPTIONS",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
   "Access-Control-Allow-Headers": "*",
   Vary: "Origin",
 });

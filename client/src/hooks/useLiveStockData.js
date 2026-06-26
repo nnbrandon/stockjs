@@ -44,6 +44,10 @@ export default function useLiveStockData(symbols = []) {
     refetchInterval: POLL_INTERVAL_MS,
     // Don't poll while the tab is hidden — saves calls when nobody's looking.
     refetchIntervalInBackground: false,
+    // Refetch immediately when the user returns to the tab so they don't wait
+    // out the poll interval for a fresh price. Only fires while `enabled` (i.e.
+    // the market is open), so it's a no-op when closed.
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       // Fetch every watched symbol in parallel; a single failure shouldn't
       // block the rest of the watchlist from updating.

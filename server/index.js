@@ -1,4 +1,5 @@
 import { fetchArticle } from "./handlers/article.js";
+import { fetchArticles } from "./handlers/articles.js";
 import { fetchFundamentals } from "./handlers/fundamentals.js";
 import { fetchNews } from "./handlers/news.js";
 import { fetchPrices } from "./handlers/prices.js";
@@ -17,9 +18,24 @@ const VALID_ACTIONS = [
   "fundamentals",
   "news",
   "article",
+  "articles",
   "trending",
   "search",
 ];
+
+// Lambda Function URLs deliver POST bodies as a (sometimes base64-encoded)
+// string. Parse defensively so a malformed body becomes {} rather than a 500.
+function parseBody(event) {
+  if (!event.body) return {};
+  const raw = event.isBase64Encoded
+    ? Buffer.from(event.body, "base64").toString("utf8")
+    : event.body;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
 
 export const handler = async (event) => {
   const corsOrigin = resolveCorsOrigin(event.headers || {});
@@ -46,6 +62,8 @@ export const handler = async (event) => {
         return await fetchNews(params, corsOrigin);
       case "article":
         return await fetchArticle(params, corsOrigin);
+      case "articles":
+        return await fetchArticles(parseBody(event), corsOrigin);
       case "trending":
         return await fetchTrending(corsOrigin);
       case "search":

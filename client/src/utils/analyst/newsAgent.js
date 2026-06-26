@@ -8,16 +8,28 @@ import { titleKey } from "./sentiment";
 
 const DEFAULT_CONCURRENCY = 4;
 const DEFAULT_CAP = 8;
+// URLs per batch request. The server fans these out concurrently; keep it
+// modest so a single batch stays well within the Lambda's execution time even
+// when several articles hit the per-article timeout.
+const URLS_PER_BATCH = 20;
+
+const chunk = (arr, size) => {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+};
 
 /**
  * @param {object} opts
  * @param {Array}  opts.news               cached articles ({ id, title, link, body? })
- * @param {(url:string)=>Promise<object>} opts.fetchArticleText  tool fn
+ * @param {(urls:string[])=>Promise<object[]>} [opts.fetchArticles]  batch tool fn (preferred)
+ * @param {(url:string)=>Promise<object>} [opts.fetchArticleText]  single-URL tool fn (fallback)
  * @param {(steps:Array)=>void} [opts.onStep]   streaming callback
  * @returns {Promise<{ steps, stats }>}
  */
 export async function runNewsAgentPipeline({
   news = [],
+  fetchArticles,
   fetchArticleText,
   onStep,
   concurrency = DEFAULT_CONCURRENCY,
@@ -94,22 +106,49 @@ export async function runNewsAgentPipeline({
 
   const results = [];
   let done = 0;
-  let cursor = 0;
-  const worker = async () => {
-    while (cursor < targets.length) {
-      const item = targets[cursor++];
-      const res = await fetchArticleText(item.link);
-      done += 1;
-      emit("fetch", {
-        detail: `Fetched ${done}/${targets.length}`,
-        progress: { done, total: targets.length },
-      });
-      results.push({ item, res });
-    }
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, targets.length) }, worker),
-  );
+  const reportProgress = () =>
+    emit("fetch", {
+      detail: `Fetched ${done}/${targets.length}`,
+      progress: { done, total: targets.length },
+    });
+
+  if (typeof fetchArticles === "function") {
+    // Preferred path: fetch many URLs per request and let the server fan out.
+    // We still run a small pool of batch requests in parallel; the browser's
+    // per-host connection cap naturally bounds how many are in flight.
+    const groups = chunk(targets, URLS_PER_BATCH);
+    let groupCursor = 0;
+    const worker = async () => {
+      while (groupCursor < groups.length) {
+        const group = groups[groupCursor++];
+        const res = (await fetchArticles(group.map((it) => it.link))) || [];
+        const byUrl = new Map(res.map((r) => [r?.url, r]));
+        for (const item of group) {
+          results.push({ item, res: byUrl.get(item.link) || { ok: false } });
+        }
+        done += group.length;
+        reportProgress();
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, groups.length) }, worker),
+    );
+  } else {
+    // Fallback: one request per article (legacy path).
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < targets.length) {
+        const item = targets[cursor++];
+        const res = await fetchArticleText(item.link);
+        done += 1;
+        reportProgress();
+        results.push({ item, res });
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, targets.length) }, worker),
+    );
+  }
 
   const ok = results.filter((r) => r.res?.ok && r.res.text);
   const failed = targets.length - ok.length;

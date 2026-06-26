@@ -1,7 +1,10 @@
 import LambdaService from "../LambdaService";
 import { saveNewsSentiment } from "../db";
 import { runNewsAgentPipeline } from "./analyst/newsAgent";
-import { hasFinbertScore, selectNewsForAnalysis } from "./selectNewsForAnalysis";
+import {
+  hasFinbertScore,
+  selectNewsForAnalysis,
+} from "./selectNewsForAnalysis";
 
 /**
  * Crawl un-scored articles and score them with FinBERT. Persists scores to
@@ -30,7 +33,7 @@ export async function scoreSymbolNews({
   const { bodies } = await runNewsAgentPipeline({
     news: targets,
     cap: targets.length,
-    fetchArticleText: (url) => LambdaService.fetchArticleText(url),
+    fetchArticles: (urls) => LambdaService.fetchArticlesBatch(urls),
   });
 
   const items = targets

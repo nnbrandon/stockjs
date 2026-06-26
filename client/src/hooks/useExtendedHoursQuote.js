@@ -38,6 +38,9 @@ export default function useExtendedHoursQuote(symbol, symbols = []) {
     refetchInterval: POLL_INTERVAL_MS,
     // Don't poll while the tab is hidden — saves calls when nobody's looking.
     refetchIntervalInBackground: false,
+    // Refetch on tab focus for an immediate fresh quote; gated by `enabled`, so
+    // it only fires during extended (pre/post) hours.
+    refetchOnWindowFocus: true,
     queryFn: () => LambdaService.fetchQuotes(symbols),
   });
 

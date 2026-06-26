@@ -2,7 +2,7 @@ import http from "node:http";
 import https from "node:https";
 import zlib from "node:zlib";
 
-import { errorResponse, jsonResponse, requireParams } from "../lib/response.js";
+import { jsonResponse, requireParams } from "../lib/response.js";
 
 // Server-side fetch of a news article URL + lightweight readable-text
 // extraction. Done here (not in the browser) because publishers don't send
@@ -161,18 +161,18 @@ const httpGetHtml = (
     visit(urlStr);
   });
 
-export async function fetchArticle(params, corsOrigin) {
-  const missing = requireParams(params, ["url"], corsOrigin);
-  if (missing) return missing;
-
+// Fetch + extract a single article. Returns a plain result object (never
+// throws) so it can be reused both by the single-URL handler and the batch
+// handler that fans out server-side.
+export async function extractArticle(rawUrl) {
   let target;
   try {
-    target = new URL(params.url);
+    target = new URL(rawUrl);
   } catch {
-    return errorResponse(400, "Invalid url", corsOrigin);
+    return { url: rawUrl, ok: false, reason: "invalid-url" };
   }
   if (!ALLOWED_PROTOCOLS.has(target.protocol)) {
-    return errorResponse(400, "Unsupported protocol", corsOrigin);
+    return { url: rawUrl, ok: false, reason: "bad-protocol" };
   }
 
   try {
@@ -183,15 +183,11 @@ export async function fetchArticle(params, corsOrigin) {
     } = await httpGetHtml(target.toString());
 
     if (status !== 200 || !contentType.includes("html")) {
-      return jsonResponse(
-        200,
-        {
-          url: params.url,
-          ok: false,
-          reason: status !== 200 ? `status-${status}` : "not-html",
-        },
-        corsOrigin,
-      );
+      return {
+        url: rawUrl,
+        ok: false,
+        reason: status !== 200 ? `status-${status}` : "not-html",
+      };
     }
 
     // Cap the bytes we parse so a giant page can't blow the Lambda's memory.
@@ -213,33 +209,27 @@ export async function fetchArticle(params, corsOrigin) {
       2000,
     );
 
-    return jsonResponse(
-      200,
-      {
-        url: params.url,
-        ok: text.length > 0,
-        title,
-        excerpt: description.slice(0, 300),
-        text,
-        wordCount: text ? text.split(" ").length : 0,
-        fetchedAt: new Date().toISOString(),
-      },
-      corsOrigin,
-    );
+    return {
+      url: rawUrl,
+      ok: text.length > 0,
+      title,
+      excerpt: description.slice(0, 300),
+      text,
+      wordCount: text ? text.split(" ").length : 0,
+      fetchedAt: new Date().toISOString(),
+    };
   } catch (err) {
     const cause = err.cause;
     const detail = cause?.code || cause?.message || err.message;
-    console.error(
-      "article fetch error:",
-      params.url,
-      "→",
-      detail,
-      cause || err,
-    );
-    return jsonResponse(
-      200,
-      { url: params.url, ok: false, reason: detail },
-      corsOrigin,
-    );
+    console.error("article fetch error:", rawUrl, "→", detail, cause || err);
+    return { url: rawUrl, ok: false, reason: detail };
   }
+}
+
+export async function fetchArticle(params, corsOrigin) {
+  const missing = requireParams(params, ["url"], corsOrigin);
+  if (missing) return missing;
+
+  const data = await extractArticle(params.url);
+  return jsonResponse(200, data, corsOrigin);
 }

@@ -147,6 +147,28 @@ class LambdaService {
       return { url, ok: false };
     }
   }
+
+  // Fetch many article bodies in a single request. The server fans out to the
+  // publishers concurrently, sidestepping the browser's ~6-connection-per-host
+  // cap that throttles one-request-per-article crawling. Always resolves to a
+  // result-per-URL array (in input order) so callers never have to special-case
+  // a failed batch.
+  async fetchArticlesBatch(urls) {
+    try {
+      const response = await fetch(`${this.API_URL}?action=articles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls }),
+      });
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data?.results)) {
+        return urls.map((url) => ({ url, ok: false }));
+      }
+      return data.results;
+    } catch {
+      return urls.map((url) => ({ url, ok: false }));
+    }
+  }
 }
 
 export default new LambdaService();

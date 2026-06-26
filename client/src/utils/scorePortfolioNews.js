@@ -1,7 +1,10 @@
 import LambdaService from "../LambdaService";
 import { saveNewsSentiment } from "../db";
 import { runNewsAgentPipeline } from "./analyst/newsAgent";
-import { hasFinbertScore, selectNewsForAnalysis } from "./selectNewsForAnalysis";
+import {
+  hasFinbertScore,
+  selectNewsForAnalysis,
+} from "./selectNewsForAnalysis";
 
 const PORTFOLIO_CRAWL_CONCURRENCY = 6;
 
@@ -44,7 +47,7 @@ export async function scorePortfolioNews({
     news: pending.map((p) => p.article),
     cap: pending.length,
     concurrency: PORTFOLIO_CRAWL_CONCURRENCY,
-    fetchArticleText: (url) => LambdaService.fetchArticleText(url),
+    fetchArticles: (urls) => LambdaService.fetchArticlesBatch(urls),
   });
 
   const items = pending

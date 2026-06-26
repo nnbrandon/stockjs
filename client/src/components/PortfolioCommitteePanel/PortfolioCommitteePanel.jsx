@@ -7,8 +7,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 
 import AiCommitteeHelpButton from "../AiCommitteeHelp/AiCommitteeHelpButton";
 import ResizableSidebar from "../ResizableSidebar/ResizableSidebar";
-import useFinbert from "../../hooks/useFinbert";
-import usePortfolioCommittee from "../../hooks/usePortfolioCommittee";
+import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
 import { getVerdictContext } from "../../utils/analyst/verdictContext";
 import styles from "./PortfolioCommitteePanel.module.css";
 
@@ -230,7 +229,6 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
 }
 
 export default function PortfolioCommitteePanel({
-  positions,
   positionsLoading,
   onSelectSymbol,
   panelWidth,
@@ -239,9 +237,8 @@ export default function PortfolioCommitteePanel({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [actionFilter, setActionFilter] = useState(FILTERS.ALL);
-  const finbert = useFinbert();
-  const { status, results, progress, reviewMode, run, reset, count } =
-    usePortfolioCommittee(positions);
+  const { finbert, status, results, progress, reviewMode, run, reset, count } =
+    usePortfolioCommitteeContext();
 
   const runDisabled = positionsLoading || count === 0 || status === "running";
 

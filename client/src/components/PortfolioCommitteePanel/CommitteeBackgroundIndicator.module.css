@@ -1,0 +1,49 @@
+.indicator {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--palette-bg-paper);
+  color: var(--palette-text-primary);
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background-color 120ms ease;
+}
+
+:global(:root[data-theme="dark"]) .indicator {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.indicator:hover {
+  background: var(--palette-bg-hover);
+}
+
+.spinner {
+  color: var(--palette-text-primary);
+  flex: none;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.title {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.detail {
+  font-size: 11px;
+  color: var(--palette-text-secondary);
+}

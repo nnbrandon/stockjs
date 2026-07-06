@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { runAnalystCommittee } from "../utils/analyst";
+import {
+  COMMITTEE_ENGINE_VERSION,
+  runAnalystCommittee,
+} from "../utils/analyst";
+import { saveCommitteeSnapshot } from "../db";
+import { getPreviousSnapshot } from "../utils/analyst/verdictHistory";
+import { analyzePortfolioHealth } from "../utils/portfolioHealth";
+import { computePositionMetrics } from "../utils/computePositionMetrics";
 import { loadCommitteeData } from "../utils/loadCommitteeData";
 import { isFundSymbol } from "../utils/isFundSymbol";
 import { isTradeableTickerSymbol } from "../utils/parseFidelityCsv";
@@ -20,8 +27,8 @@ function readSession(positionKey) {
   return sessionCache;
 }
 
-function writeSession(positionKey, results, reviewMode) {
-  sessionCache = { positionKey, status: "done", results, reviewMode };
+function writeSession(positionKey, results, reviewMode, health) {
+  sessionCache = { positionKey, status: "done", results, reviewMode, health };
 }
 
 function clearSession() {
@@ -35,9 +42,10 @@ function initialState(positionKey) {
       status: "done",
       results: session.results,
       reviewMode: session.reviewMode ?? "quick",
+      health: session.health ?? null,
     };
   }
-  return { status: "idle", results: [], reviewMode: null };
+  return { status: "idle", results: [], reviewMode: null, health: null };
 }
 
 export default function usePortfolioCommittee(positions) {
@@ -60,6 +68,7 @@ export default function usePortfolioCommittee(positions) {
   const [reviewMode, setReviewMode] = useState(
     () => initialState(positionKey).reviewMode,
   );
+  const [health, setHealth] = useState(() => initialState(positionKey).health);
   const [progress, setProgress] = useState({
     done: 0,
     total: 0,
@@ -74,10 +83,12 @@ export default function usePortfolioCommittee(positions) {
       setStatus("done");
       setResults(session.results);
       setReviewMode(session.reviewMode ?? "quick");
+      setHealth(session.health ?? null);
     } else {
       setStatus("idle");
       setResults([]);
       setReviewMode(null);
+      setHealth(null);
     }
   }, [positionKey]);
 
@@ -185,10 +196,18 @@ export default function usePortfolioCommittee(positions) {
             (a) => a.key === "sentiment",
           );
 
+          // Previous snapshot (for "changed since last review") must be read
+          // from history before today's snapshot overwrites the day slot.
+          const previousSnapshot = getPreviousSnapshot(data.history);
+          if (report) {
+            saveCommitteeSnapshot(symbol, report, COMMITTEE_ENGINE_VERSION);
+          }
+
           out.push({
             symbol,
             position,
             report,
+            previousSnapshot,
             news: (data.news || []).slice(0, 3),
             newsMood: sentimentAgent?.summary ?? null,
             error: report ? null : "Not enough cached data",
@@ -202,8 +221,31 @@ export default function usePortfolioCommittee(positions) {
           phase: "committee",
           detail: null,
         });
-        writeSession(key, out, mode);
+
+        // Portfolio-level health: allocation, overlap, and how much value
+        // sits in Sell-rated names. Funds count toward allocation even
+        // though the committee doesn't rate them.
+        const healthReport = analyzePortfolioHealth(
+          out.map((item) => {
+            const chartData = dataBySymbol[item.symbol]?.chartData ?? [];
+            const metrics = computePositionMetrics(item.position, chartData);
+            return {
+              symbol: item.symbol,
+              isFund: Boolean(item.isFund),
+              currentValue: metrics?.currentValue ?? null,
+              closes: chartData
+                .map((c) => Number(c.close))
+                .filter(Number.isFinite),
+              tier: item.report?.verdict?.tier ?? null,
+              action: item.report?.verdict?.action ?? null,
+              composite: item.report?.verdict?.composite ?? null,
+            };
+          }),
+        );
+
+        writeSession(key, out, mode, healthReport);
         setResults(out);
+        setHealth(healthReport);
         setStatus("done");
       } catch {
         setStatus("error");
@@ -217,6 +259,7 @@ export default function usePortfolioCommittee(positions) {
     setStatus("idle");
     setResults([]);
     setReviewMode(null);
+    setHealth(null);
     setProgress({
       done: 0,
       total: 0,
@@ -231,6 +274,7 @@ export default function usePortfolioCommittee(positions) {
     results,
     progress,
     reviewMode,
+    health,
     run,
     reset,
     count: tradeablePositions.length,

@@ -8,3 +8,12 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// Dev-only: committee backtest, runnable from the browser console.
+//   const report = await window.__stockjsBacktest()
+if (import.meta.env.DEV) {
+  import('./utils/backtest').then((m) => {
+    window.__stockjsBacktest = m.runBacktest
+    window.__stockjsBacktestDownload = m.downloadBacktestReport
+  })
+}

@@ -1,5 +1,52 @@
 import { atr, clamp } from "../indicators";
+import { COMMITTEE_ENGINE_VERSION } from "../version";
 import { bear, bull, neutral } from "./helpers";
+
+const MOMENTUM_LOOKBACK_DAYS = 21;
+const MOMENTUM_THRESHOLD = 12; // score points
+const MOMENTUM_NUDGE = 4;
+
+// Compare today's raw composite with the committee's own stored score from
+// ~3+ weeks ago. A sliding score is itself a signal — deterioration in the
+// evidence, not just in the price. Only trusts snapshots from the same
+// engine version; returns null (no-op) whenever history is thin.
+function scoreMomentum(history, rawComposite) {
+  if (!Array.isArray(history) || history.length < 2) return null;
+  const valid = history.filter(
+    (r) =>
+      r.engineVersion === COMMITTEE_ENGINE_VERSION &&
+      Number.isFinite(r.composite),
+  );
+  if (valid.length < 2) return null;
+
+  const cutoff = Date.now() - MOMENTUM_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+  // History is oldest → newest; take the newest row old enough to compare.
+  const past = [...valid]
+    .reverse()
+    .find((r) => new Date(r.day).getTime() <= cutoff);
+  if (!past) return null;
+
+  const delta = rawComposite - past.composite;
+  if (delta <= -MOMENTUM_THRESHOLD) {
+    return {
+      nudge: -MOMENTUM_NUDGE,
+      finding: bear(
+        `The committee's own score has been sliding (${past.composite.toFixed(0)} → ${rawComposite.toFixed(0)} since ${past.day}) — the picture is deteriorating, not stabilizing`,
+        1,
+      ),
+    };
+  }
+  if (delta >= MOMENTUM_THRESHOLD) {
+    return {
+      nudge: MOMENTUM_NUDGE,
+      finding: bull(
+        `The committee's own score has been climbing (${past.composite.toFixed(0)} → ${rawComposite.toFixed(0)} since ${past.day}) — the picture is improving`,
+        1,
+      ),
+    };
+  }
+  return null;
+}
 
 const fmtPrice = (n) =>
   Number.isFinite(n)
@@ -203,6 +250,7 @@ export function runPortfolioManager({
   devil,
   bear: bearAgent,
   candles = [],
+  history = [],
 }) {
   const pillarScores = {
     technical: dataScout.technicalScore,
@@ -226,7 +274,11 @@ export function runPortfolioManager({
   const contradictionPenalty =
     devil.contradictionPenalty ?? devil.confidencePenalty;
   const dampen = clamp(contradictionPenalty / 100, 0, 0.3);
-  const composite = 50 + (rawComposite - 50) * (1 - dampen);
+  let composite = 50 + (rawComposite - 50) * (1 - dampen);
+
+  // Thesis tracking: nudge for the trajectory of our own past scores.
+  const momentum = scoreMomentum(history, composite);
+  if (momentum) composite = clamp(composite + momentum.nudge, 0, 100);
 
   let action;
   let tier;
@@ -280,6 +332,9 @@ export function runPortfolioManager({
     risk,
     plan,
     summary: buildThesis(tier, composite, convictionLabel, pillarScores),
-    findings: buildPlanFindings(action, tier, plan),
+    findings: [
+      ...(momentum ? [momentum.finding] : []),
+      ...buildPlanFindings(action, tier, plan),
+    ],
   };
 }

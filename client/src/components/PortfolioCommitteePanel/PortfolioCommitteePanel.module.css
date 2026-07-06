@@ -472,3 +472,21 @@
     border-top: 1px solid var(--palette-divider);
   }
 }
+
+.changeBadge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 3px 6px;
+  border-radius: var(--shape-radius-sm);
+  border: 1px solid var(--palette-divider);
+  background: var(--palette-bg-paper);
+  white-space: nowrap;
+}
+.changeBadgeUp {
+  color: var(--palette-success);
+}
+.changeBadgeDown {
+  color: var(--palette-error);
+}

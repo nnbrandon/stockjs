@@ -11,6 +11,8 @@ import {
   runPortfolioManager,
 } from "./agents";
 
+export { COMMITTEE_ENGINE_VERSION } from "./version";
+
 /**
  * @param {object} input
  * @param {Array} input.chartData   OHLCV candles (oldest → newest)
@@ -25,10 +27,21 @@ export function runAnalystCommittee(input = {}) {
   const annual = Array.isArray(input.annual) ? input.annual : [];
   const earnings = Array.isArray(input.earnings) ? input.earnings : [];
   const news = Array.isArray(input.news) ? input.news : [];
+  const history = Array.isArray(input.history) ? input.history : [];
+  const analysis =
+    input.analysis && typeof input.analysis === "object"
+      ? input.analysis
+      : null;
 
   if (!chartData.length && !news.length && !quarterly.length) return null;
 
-  const dataScout = runDataScout({ candles: chartData, quarterly, annual, earnings });
+  const dataScout = runDataScout({
+    candles: chartData,
+    quarterly,
+    annual,
+    earnings,
+    analysis,
+  });
   const sentiment = runSentimentAnalyst({ news });
 
   const bear = runBear({
@@ -41,7 +54,13 @@ export function runAnalystCommittee(input = {}) {
     },
   });
 
-  const devil = runDevilsAdvocate({ dataScout, sentiment, candles: chartData });
+  const devil = runDevilsAdvocate({
+    dataScout,
+    sentiment,
+    candles: chartData,
+    quarterly,
+    analysis,
+  });
 
   const portfolioManager = runPortfolioManager({
     dataScout,
@@ -49,6 +68,7 @@ export function runAnalystCommittee(input = {}) {
     devil,
     bear,
     candles: chartData,
+    history,
   });
 
   const verdict = {

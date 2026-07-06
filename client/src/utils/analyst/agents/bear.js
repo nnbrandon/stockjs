@@ -37,9 +37,25 @@ function buildExitChecklist(metrics = {}, sentimentScore) {
     "Profitability is eroding compared to a year ago",
   );
   add(
+    Number.isFinite(m.fcfMargin),
+    m.fcfMargin < 0,
+    "The company is burning cash rather than generating it",
+  );
+  add(
+    Number.isFinite(m.debtToEquity),
+    m.debtToEquity > 2,
+    "Carrying a heavy debt load relative to what shareholders own",
+  );
+  add(
     Number.isFinite(m.earningsBeatRate) || Number.isFinite(m.lastEpsSurprise),
     m.earningsBeatRate < 50 || m.lastEpsSurprise < -5,
     "Falling short of Wall Street's profit expectations",
+  );
+  add(
+    Number.isFinite(m.revisionsUp30d) && Number.isFinite(m.revisionsDown30d),
+    m.revisionsUp30d + m.revisionsDown30d >= 3 &&
+      m.revisionsDown30d > 2 * m.revisionsUp30d,
+    "Wall Street is cutting its forecasts for this company",
   );
   add(
     Number.isFinite(sentimentScore),

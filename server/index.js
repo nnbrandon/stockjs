@@ -1,3 +1,4 @@
+import { fetchAnalysis } from "./handlers/analysis.js";
 import { fetchArticle } from "./handlers/article.js";
 import { fetchArticles } from "./handlers/articles.js";
 import { fetchFundamentals } from "./handlers/fundamentals.js";
@@ -16,6 +17,7 @@ const VALID_ACTIONS = [
   "prices",
   "quote",
   "fundamentals",
+  "analysis",
   "news",
   "article",
   "articles",
@@ -58,6 +60,8 @@ export const handler = async (event) => {
         return await fetchQuote(params, corsOrigin);
       case "fundamentals":
         return await fetchFundamentals(params, corsOrigin);
+      case "analysis":
+        return await fetchAnalysis(params, corsOrigin);
       case "news":
         return await fetchNews(params, corsOrigin);
       case "article":

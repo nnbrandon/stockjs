@@ -79,6 +79,25 @@ class LambdaService {
     return data;
   }
 
+  // Forward-looking analyst data (estimate revisions, forward P/E, targets).
+  // Best-effort: thin coverage is normal, so failures resolve to null rather
+  // than breaking the refresh that requested it.
+  async fetchAnalysis(symbol) {
+    try {
+      const response = await fetch(
+        `${this.API_URL}?action=analysis&symbol=${encodeURIComponent(symbol)}`,
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Error fetching analysis");
+      }
+      return data;
+    } catch (error) {
+      console.error("Error fetching analysis:", error);
+      return null;
+    }
+  }
+
   async searchSymbols(query) {
     const q = query?.trim();
     if (!q) return [];

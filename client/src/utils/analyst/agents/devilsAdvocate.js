@@ -6,10 +6,17 @@ import { neutral } from "./helpers";
 // the composite toward neutral; data-quality gaps (thin history, few articles)
 // only lower confidence — a stock isn't less of a sell just because we have
 // less data on it.
-export function runDevilsAdvocate({ dataScout, sentiment, candles = [] }) {
+export function runDevilsAdvocate({
+  dataScout,
+  sentiment,
+  candles = [],
+  quarterly = [],
+  analysis = null,
+}) {
   const caveats = [];
   const m = dataScout.metrics;
   const closes = toCloses(candles);
+  const DAY_MS = 24 * 60 * 60 * 1000;
 
   const uptrend = Number.isFinite(m.sma50) && m.price > m.sma50;
   const overbought = Number.isFinite(m.rsi14) && m.rsi14 >= 70;
@@ -76,11 +83,41 @@ export function runDevilsAdvocate({ dataScout, sentiment, candles = [] }) {
     );
   if (sentiment.raw && sentiment.raw.counts.total < 3)
     dataGap("The news read is based on very few articles — easily skewed.", 5);
+  if (!analysis || !Number.isFinite(analysis.forwardEps))
+    dataGap(
+      "No analyst forecasts available — we can't see which way expectations are moving.",
+      3,
+    );
   if (Number.isFinite(m.volatility) && m.volatility > 55)
     dataGap(
       "The price swings a lot, so any single reading here is less reliable.",
       5,
     );
+
+  // Stale data: a verdict is only as fresh as what it was computed from.
+  const newestCandle = candles.length
+    ? new Date(candles.at(-1).date).getTime()
+    : NaN;
+  if (Number.isFinite(newestCandle)) {
+    const daysOld = (Date.now() - newestCandle) / DAY_MS;
+    if (daysOld > 7)
+      dataGap(
+        `The saved price data is ${Math.round(daysOld)} days old — refresh this symbol before acting on the verdict.`,
+        6,
+      );
+  }
+  const newestQuarter = quarterly.reduce((latest, r) => {
+    const t = new Date(r.date).getTime();
+    return Number.isFinite(t) && t > latest ? t : latest;
+  }, -Infinity);
+  if (Number.isFinite(newestQuarter) && newestQuarter > 0) {
+    const daysOld = (Date.now() - newestQuarter) / DAY_MS;
+    if (daysOld > 200)
+      dataGap(
+        "The latest saved financials are more than six months old — the fundamentals read may be outdated.",
+        4,
+      );
+  }
 
   contradictionPenalty = clamp(contradictionPenalty, 0, 30);
   dataQualityPenalty = clamp(dataQualityPenalty, 0, 20);

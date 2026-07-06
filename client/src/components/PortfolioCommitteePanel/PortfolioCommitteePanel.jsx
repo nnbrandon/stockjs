@@ -6,9 +6,11 @@ import PsychologyIcon from "@mui/icons-material/Psychology";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import AiCommitteeHelpButton from "../AiCommitteeHelp/AiCommitteeHelpButton";
+import PortfolioHealthCard from "./PortfolioHealthCard";
 import ResizableSidebar from "../ResizableSidebar/ResizableSidebar";
 import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
 import { getVerdictContext } from "../../utils/analyst/verdictContext";
+import { getTierChange } from "../../utils/analyst/verdictHistory";
 import styles from "./PortfolioCommitteePanel.module.css";
 
 const FILTERS = {
@@ -16,6 +18,7 @@ const FILTERS = {
   BUY: "BUY",
   HOLD: "HOLD",
   SELL: "SELL",
+  CHANGED: "CHANGED",
   FUND: "FUND",
   NA: "NA",
 };
@@ -27,6 +30,10 @@ function getItemFilterKey(item) {
   const action = item.report?.verdict?.action;
   if (action === "BUY" || action === "HOLD" || action === "SELL") return action;
   return FILTERS.NA;
+}
+
+function getItemTierChange(item) {
+  return getTierChange(item.report, item.previousSnapshot);
 }
 
 function actionClass(action) {
@@ -141,6 +148,7 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
   }
 
   const { verdict, pillars } = report;
+  const tierChange = getItemTierChange(item);
   const context = getVerdictContext(verdict.action, {
     hasPosition: true,
     tier: verdict.tier,
@@ -156,6 +164,19 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
           >
             {(verdict.tier ?? verdict.action).toUpperCase()}
           </span>
+          {tierChange && (
+            <span
+              className={`${styles.changeBadge} ${
+                tierChange.direction === "upgrade"
+                  ? styles.changeBadgeUp
+                  : styles.changeBadgeDown
+              }`}
+              title={`Was ${tierChange.fromTier} (${fmtScore(tierChange.fromComposite)}) on ${tierChange.fromDay}`}
+            >
+              {tierChange.direction === "upgrade" ? "↑" : "↓"} was{" "}
+              {tierChange.fromTier}
+            </span>
+          )}
           <span
             className={styles.convictionBadge}
             title={`${verdict.convictionLabel} confidence`}
@@ -240,21 +261,33 @@ export default function PortfolioCommitteePanel({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [actionFilter, setActionFilter] = useState(FILTERS.ALL);
-  const { finbert, status, results, progress, reviewMode, run, reset, count } =
-    usePortfolioCommitteeContext();
+  const {
+    finbert,
+    status,
+    results,
+    progress,
+    reviewMode,
+    health,
+    run,
+    reset,
+    count,
+  } = usePortfolioCommitteeContext();
 
   const runDisabled = positionsLoading || count === 0 || status === "running";
 
   const summary = useMemo(() => {
-    const counts = { BUY: 0, HOLD: 0, SELL: 0, FUND: 0, NA: 0 };
+    const counts = { BUY: 0, HOLD: 0, SELL: 0, FUND: 0, NA: 0, CHANGED: 0 };
     for (const item of results) {
       counts[getItemFilterKey(item)] += 1;
+      if (getItemTierChange(item)) counts.CHANGED += 1;
     }
     return counts;
   }, [results]);
 
   const filteredResults = useMemo(() => {
     if (actionFilter === FILTERS.ALL) return results;
+    if (actionFilter === FILTERS.CHANGED)
+      return results.filter((item) => getItemTierChange(item));
     return results.filter((item) => getItemFilterKey(item) === actionFilter);
   }, [results, actionFilter]);
 
@@ -382,6 +415,8 @@ export default function PortfolioCommitteePanel({
               </p>
             )}
 
+            <PortfolioHealthCard health={health} />
+
             <div className={styles.summary}>
               <button
                 type="button"
@@ -419,6 +454,16 @@ export default function PortfolioCommitteePanel({
                   aria-pressed={actionFilter === FILTERS.SELL}
                 >
                   {summary.SELL} Sell
+                </button>
+              )}
+              {summary.CHANGED > 0 && (
+                <button
+                  type="button"
+                  className={filterChipClass(FILTERS.CHANGED)}
+                  onClick={() => setActionFilter(FILTERS.CHANGED)}
+                  aria-pressed={actionFilter === FILTERS.CHANGED}
+                >
+                  {summary.CHANGED} Changed
                 </button>
               )}
               {summary.FUND > 0 && (

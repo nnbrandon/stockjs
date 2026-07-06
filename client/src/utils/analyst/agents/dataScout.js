@@ -49,6 +49,7 @@ export function runDataScout({
   quarterly = [],
   annual = [],
   earnings = [],
+  analysis = null,
 }) {
   const closes = toCloses(candles);
   const findings = [];
@@ -395,6 +396,132 @@ export function runDataScout({
       }
     }
 
+    // ---- Financial strength: cash flow & balance sheet ----
+    // TTM = the latest four quarters that report the field. Merged
+    // earnings-only rows lack these fields, so filter before slicing.
+    const ttmSum = (field) => {
+      const rows = q.filter((r) => Number.isFinite(r[field])).slice(0, 4);
+      if (rows.length < 4) return null;
+      return rows.reduce((s, r) => s + r[field], 0);
+    };
+    const fcfTTM = ttmSum("freeCashFlow");
+    const revenueTTM = ttmSum("totalRevenue");
+    const netIncomeTTM = ttmSum("netIncome");
+    metrics.fcfTTM = fcfTTM;
+
+    // Free-cash-flow margin: how much of each sales dollar becomes cash the
+    // company can actually spend.
+    if (Number.isFinite(fcfTTM) && Number.isFinite(revenueTTM) && revenueTTM > 0) {
+      const fcfMargin = (fcfTTM / revenueTTM) * 100;
+      metrics.fcfMargin = fcfMargin;
+      components.push(scaleClamp(fcfMargin, -5, 20, 5, 90));
+      if (fcfMargin > 15)
+        findings.push(
+          bull(
+            `Turns ${fcfMargin.toFixed(0)} cents of every sales dollar into spendable cash (excellent)`,
+            1,
+          ),
+        );
+      else if (fcfMargin < 0)
+        findings.push(
+          bear("Burning cash — spends more than the business brings in", 2),
+        );
+    }
+
+    // Earnings quality: profits that don't turn into cash are a warning sign.
+    if (Number.isFinite(fcfTTM) && Number.isFinite(netIncomeTTM)) {
+      if (netIncomeTTM > 0 && fcfTTM < 0) {
+        components.push(10);
+        findings.push(
+          bear(
+            "Claims a profit but actually loses cash — the worst kind of earnings",
+            2,
+          ),
+        );
+      } else if (netIncomeTTM > 0 && fcfTTM < 0.5 * netIncomeTTM) {
+        components.push(25);
+        findings.push(
+          bear(
+            "Reported profits aren't turning into real cash — a classic warning sign",
+            2,
+          ),
+        );
+      } else if (netIncomeTTM > 0 && fcfTTM > netIncomeTTM * 1.1) {
+        findings.push(
+          bull(
+            "Generates more cash than its reported profit — high-quality earnings",
+            1,
+          ),
+        );
+      }
+    }
+
+    // Balance sheet: debt load and return on equity from the latest quarter
+    // that reports them.
+    const bsRow = q.find(
+      (r) =>
+        Number.isFinite(r.totalDebt) && Number.isFinite(r.stockholdersEquity),
+    );
+    if (bsRow) {
+      const equity = bsRow.stockholdersEquity;
+      const cash =
+        bsRow.cashCashEquivalentsAndShortTermInvestments ??
+        bsRow.cashAndCashEquivalents;
+      if (equity <= 0) {
+        components.push(15);
+        findings.push(
+          bear(
+            "Owes more than the whole company is worth on paper (negative equity)",
+            2,
+          ),
+        );
+      } else {
+        const debtToEquity = bsRow.totalDebt / equity;
+        metrics.debtToEquity = debtToEquity;
+        components.push(scaleClamp(debtToEquity, 2.5, 0, 10, 85));
+        if (Number.isFinite(cash) && cash > bsRow.totalDebt) {
+          metrics.netCash = true;
+          findings.push(
+            bull("Has more cash than debt — a fortress balance sheet", 1),
+          );
+        } else if (debtToEquity > 2) {
+          findings.push(
+            bear(
+              `Carries $${debtToEquity.toFixed(1)} of debt for every $1 shareholders own — a heavy load`,
+              1,
+            ),
+          );
+        }
+
+        // ROE is only meaningful when it isn't manufactured by leverage —
+        // dividing by a sliver of equity makes any return look heroic, so
+        // skip the component for heavily indebted companies.
+        if (Number.isFinite(netIncomeTTM) && debtToEquity <= 2) {
+          const roe = (netIncomeTTM / equity) * 100;
+          metrics.roe = roe;
+          components.push(scaleClamp(roe, 0, 25, 15, 90));
+          if (roe > 20)
+            findings.push(
+              bull(
+                `Earns ${roe.toFixed(0)} cents a year on every dollar shareholders have in the business — a sign of a high-quality company`,
+                1,
+              ),
+            );
+          else if (roe > 0 && roe < 5)
+            findings.push(
+              bear("Earns very little on the money invested in it", 1),
+            );
+        }
+      }
+    } else if (Number.isFinite(latest.totalRevenue)) {
+      findings.push(
+        neutral(
+          "No cash-flow or debt data saved yet — refresh this symbol to pull it",
+          1,
+        ),
+      );
+    }
+
     // Trailing P/E
     const eps = ttmEps(q);
     metrics.ttmEps = eps;
@@ -449,13 +576,31 @@ export function runDataScout({
         }
       } else {
         metrics.trailingPE = null;
-        components.push(25);
-        findings.push(
-          bear(
-            "Hasn't been profitable over the past year, so it's hard to value",
-            1,
-          ),
-        );
+        // No profits to value it on — fall back to price-to-free-cash-flow
+        // when the company generates cash and we know the share count.
+        const shares =
+          [latest.dilutedAverageShares, latest.basicAverageShares].find(
+            (s) => Number.isFinite(s) && s > 0,
+          ) ?? null;
+        if (Number.isFinite(fcfTTM) && fcfTTM > 0 && shares) {
+          const pfcf = metrics.price / (fcfTTM / shares);
+          metrics.priceToFcf = pfcf;
+          components.push(scaleClamp(pfcf, 60, 8, 25, 80));
+          findings.push(
+            neutral(
+              `Not profitable on paper, but generates real cash — priced at $${pfcf.toFixed(0)} per $1 of yearly cash flow`,
+              1,
+            ),
+          );
+        } else {
+          components.push(25);
+          findings.push(
+            bear(
+              "Hasn't been profitable over the past year, so it's hard to value",
+              1,
+            ),
+          );
+        }
       }
     }
   }
@@ -469,6 +614,96 @@ export function runDataScout({
         100;
       metrics.annualRevenueGrowth = revG;
       components.push(scaleClamp(revG, -10, 25, 10, 90));
+    }
+  }
+
+  // ---- Expectations (forward estimates & revisions) ----
+  // Everything above is trailing; markets price the future. Analyst estimate
+  // *revisions* — the direction forecasts are moving — are among the
+  // better-documented public signals. Targets and buy/sell ratings are shown
+  // for context only (they skew optimistic) and never scored.
+  if (analysis) {
+    const up = analysis.revisionsUp30d;
+    const down = analysis.revisionsDown30d;
+    if (Number.isFinite(up) && Number.isFinite(down) && up + down >= 1) {
+      metrics.revisionsUp30d = up;
+      metrics.revisionsDown30d = down;
+      const netShare = (up - down) / Math.max(up + down, 1);
+      components.push(scaleClamp(netShare, -1, 1, 15, 90));
+      if (netShare >= 0.5)
+        findings.push(
+          bull(
+            `Analysts have been raising their profit forecasts (${up} up vs. ${down} down this month) — expectations are improving`,
+            1,
+          ),
+        );
+      else if (netShare <= -0.5)
+        findings.push(
+          bear(
+            `Analysts have been cutting their profit forecasts (${down} down vs. ${up} up this month)`,
+            1,
+          ),
+        );
+    }
+
+    // Forecast drift: where has the consensus number itself moved?
+    if (
+      Number.isFinite(analysis.forwardEps) &&
+      Number.isFinite(analysis.eps30dAgo) &&
+      Math.abs(analysis.eps30dAgo) > 0.01
+    ) {
+      const drift =
+        ((analysis.forwardEps - analysis.eps30dAgo) /
+          Math.abs(analysis.eps30dAgo)) *
+        100;
+      metrics.forwardEpsDrift = drift;
+      if (drift < -5)
+        findings.push(
+          bear(
+            `Analysts keep cutting next year's profit forecast (down ${Math.abs(drift).toFixed(1)}% in a month) — a bad sign that tends to continue`,
+            2,
+          ),
+        );
+    }
+
+    // Forward vs. trailing valuation. Only scored when trailing P/E couldn't
+    // be, to avoid double-counting valuation.
+    if (Number.isFinite(analysis.forwardPE) && analysis.forwardPE > 0) {
+      metrics.forwardPE = analysis.forwardPE;
+      if (metrics.trailingPE == null) {
+        components.push(scaleClamp(analysis.forwardPE, 50, 8, 20, 85));
+      }
+      if (
+        Number.isFinite(metrics.trailingPE) &&
+        analysis.forwardPE < metrics.trailingPE * 0.8
+      ) {
+        findings.push(
+          bull(
+            `Priced more reasonably against next year's expected profits (forward P/E ${analysis.forwardPE.toFixed(0)} vs. ${metrics.trailingPE.toFixed(0)} trailing)`,
+            1,
+          ),
+        );
+      } else if (
+        Number.isFinite(metrics.trailingPE) &&
+        analysis.forwardPE > metrics.trailingPE * 1.1
+      ) {
+        findings.push(
+          bear(
+            "Analysts expect profits to shrink next year (forward P/E is higher than trailing)",
+            1,
+          ),
+        );
+      }
+    }
+
+    // Context only — never scored.
+    if (Number.isFinite(analysis.targetMeanPrice) && Number.isFinite(metrics.price)) {
+      findings.push(
+        neutral(
+          `Analyst average target: $${analysis.targetMeanPrice.toFixed(0)} (take with salt — targets skew optimistic)`,
+          1,
+        ),
+      );
     }
   }
 

@@ -165,6 +165,41 @@ export function volumeTrend(candles, recent = 10, baseline = 60) {
   return recentAvg / baseAvg;
 }
 
+// Pearson correlation of daily returns between two close-price series
+// (aligned from the end, up to `lookback` shared days). Returns -1..1, or
+// null with fewer than `minDays` shared observations.
+export function correlation(closesA, closesB, lookback = 90, minDays = 60) {
+  if (!closesA || !closesB) return null;
+  const n = Math.min(closesA.length, closesB.length, lookback + 1);
+  if (n < minDays + 1) return null;
+
+  const returns = (closes) => {
+    const slice = closes.slice(-n);
+    const out = [];
+    for (let i = 1; i < slice.length; i++) {
+      out.push(slice[i] / slice[i - 1] - 1);
+    }
+    return out;
+  };
+  const ra = returns(closesA);
+  const rb = returns(closesB);
+
+  const meanA = ra.reduce((s, v) => s + v, 0) / ra.length;
+  const meanB = rb.reduce((s, v) => s + v, 0) / rb.length;
+  let cov = 0;
+  let varA = 0;
+  let varB = 0;
+  for (let i = 0; i < ra.length; i++) {
+    const da = ra[i] - meanA;
+    const db = rb[i] - meanB;
+    cov += da * db;
+    varA += da * da;
+    varB += db * db;
+  }
+  if (varA === 0 || varB === 0) return null;
+  return cov / Math.sqrt(varA * varB);
+}
+
 // Clamp a value into [min, max].
 export function clamp(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));

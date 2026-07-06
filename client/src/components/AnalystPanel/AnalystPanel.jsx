@@ -7,15 +7,31 @@ import SouthEastIcon from "@mui/icons-material/SouthEast";
 import BalanceIcon from "@mui/icons-material/Balance";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import PsychologyIcon from "@mui/icons-material/Psychology";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CircularProgress from "@mui/material/CircularProgress";
 
-import { runAnalystCommittee } from "../../utils/analyst";
+import {
+  COMMITTEE_ENGINE_VERSION,
+  runAnalystCommittee,
+} from "../../utils/analyst";
 import { getVerdictContext } from "../../utils/analyst/verdictContext";
+import {
+  getPreviousSnapshot,
+  getScoreSeries,
+  getTierChange,
+} from "../../utils/analyst/verdictHistory";
 import { computePositionMetrics } from "../../utils/computePositionMetrics";
+import { getGuardrail } from "../../utils/guardrails";
 import PositionHolding from "../PositionHolding/PositionHolding";
-import { getStockDataByDateRange } from "../../db";
+import TickerSparkline from "../SparklineChart/SparklineChart";
+import {
+  getAnalysis,
+  getCommitteeHistory,
+  getStockDataByDateRange,
+  saveCommitteeSnapshot,
+} from "../../db";
 import calculateRange from "../../utils/calculateRange";
 import { isFundSymbol } from "../../utils/isFundSymbol";
 import { useRefreshSignal } from "../../hooks/useRefreshSignal";
@@ -390,24 +406,36 @@ export default function AnalystPanel({
   // the user is viewing. Loaded straight from IndexedDB (whatever is cached).
   const [yearCandles, setYearCandles] = useState([]);
   const [yearCandlesReady, setYearCandlesReady] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [analysis, setAnalysis] = useState(null);
   const refreshVersion = useRefreshSignal(symbol);
   useEffect(() => {
     if (!symbol) {
       setYearCandles([]);
+      setHistory([]);
+      setAnalysis(null);
       setYearCandlesReady(false);
       return undefined;
     }
     let active = true;
     setYearCandlesReady(false);
     const { startDate, endDate } = calculateRange(365);
-    getStockDataByDateRange(symbol, startDate, endDate)
-      .then((rows) => {
+    Promise.all([
+      getStockDataByDateRange(symbol, startDate, endDate),
+      getCommitteeHistory(symbol),
+      getAnalysis(symbol),
+    ])
+      .then(([rows, historyRows, analysisRow]) => {
         if (!active) return;
         setYearCandles(rows || []);
+        setHistory(historyRows || []);
+        setAnalysis(analysisRow ?? null);
       })
       .catch(() => {
         if (!active) return;
         setYearCandles([]);
+        setHistory([]);
+        setAnalysis(null);
       })
       .finally(() => {
         if (active) setYearCandlesReady(true);
@@ -441,14 +469,45 @@ export default function AnalystPanel({
         annual,
         earnings,
         news: mergedNews,
+        history,
+        analysis,
       }),
-    [symbol, yearCandles, quarterly, annual, earnings, mergedNews],
+    [
+      symbol,
+      yearCandles,
+      quarterly,
+      annual,
+      earnings,
+      mergedNews,
+      history,
+      analysis,
+    ],
   );
+
+  // Thesis tracking: one snapshot per symbol per day (same-day re-runs
+  // overwrite), written after render so it never blocks the report.
+  useEffect(() => {
+    if (symbol && report) {
+      saveCommitteeSnapshot(symbol, report, COMMITTEE_ENGINE_VERSION);
+    }
+  }, [symbol, report]);
+
+  const previousSnapshot = useMemo(() => getPreviousSnapshot(history), [history]);
+  const tierChange = useMemo(
+    () => getTierChange(report, previousSnapshot),
+    [report, previousSnapshot],
+  );
+  const scoreSeries = useMemo(() => getScoreSeries(history), [history]);
 
   const positionMetrics = useMemo(
     () =>
       position ? computePositionMetrics(position, yearCandles) : null,
     [position, yearCandles],
+  );
+
+  const guardrail = useMemo(
+    () => (positionMetrics ? getGuardrail(report, positionMetrics) : null),
+    [report, positionMetrics],
   );
 
   if (!committeeInputsReady) {
@@ -501,6 +560,19 @@ export default function AnalystPanel({
           <div>
             <div className={styles.verdictAction}>
               {verdict.tier ?? verdict.action}
+              {tierChange && (
+                <span
+                  className={`${styles.tierChange} ${
+                    tierChange.direction === "upgrade"
+                      ? styles.tierChangeUp
+                      : styles.tierChangeDown
+                  }`}
+                >
+                  {tierChange.direction === "upgrade" ? "↑" : "↓"} was{" "}
+                  {tierChange.fromTier} ({tierChange.fromComposite.toFixed(0)})
+                  on {tierChange.fromDay}
+                </span>
+              )}
             </div>
             <p className={styles.verdictContext}>{verdictContext}</p>
           </div>
@@ -526,6 +598,13 @@ export default function AnalystPanel({
         />
       )}
 
+      {guardrail && (
+        <div className={styles.guardrail} role="note">
+          <WarningAmberIcon className={styles.guardrailIcon} />
+          <span>{guardrail.text}</span>
+        </div>
+      )}
+
       <GamePlan plan={portfolioManager?.plan} hasPosition={Boolean(position)} />
 
       {/* Pillars */}
@@ -536,6 +615,27 @@ export default function AnalystPanel({
         <PillarBar label="Company finances" score={pillars.fundamental} />
         <PillarBar label="News mood" score={pillars.sentiment} />
       </div>
+
+      {/* Committee score over time (thesis tracking) */}
+      {scoreSeries.length >= 3 && (
+        <div className={styles.scoreHistory}>
+          <div className={styles.scoreHistoryHead}>
+            <span className={styles.scoreHistoryLabel}>
+              Committee score over time
+            </span>
+            <span className={styles.scoreHistoryRange}>
+              {scoreSeries[0].day} → today
+            </span>
+          </div>
+          <TickerSparkline
+            data={scoreSeries.map((p) => p.composite)}
+            isUp={
+              scoreSeries.at(-1).composite >= scoreSeries[0].composite
+            }
+            height={36}
+          />
+        </div>
+      )}
 
       {/* News enrichment agent */}
       <NewsIntelligence symbol={symbol} news={news} finbert={finbert} />

@@ -66,8 +66,12 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
             </div>
             <p style={{ marginTop: 10 }}>
               Price trend covers momentum, moving averages, RSI, and volatility.
-              Company finances covers revenue, earnings, margins, and valuation.
-              News mood comes from article sentiment (see below).
+              Company finances covers revenue, earnings, margins, and valuation,
+              plus financial strength (free cash flow, debt load, return on
+              equity) and expectations — whether analysts are raising or
+              cutting their forecasts, and forward valuation. Analyst price
+              targets are shown for context but never scored. News mood comes
+              from article sentiment (see below).
             </p>
           </section>
 
@@ -102,6 +106,20 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               &ldquo;oversold&rdquo; stock in a downtrend is treated as a
               warning rather than a bargain, and fundamentals like margin
               erosion matter as much as price.
+            </p>
+          </section>
+
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Thesis tracking</h3>
+            <p>
+              The committee remembers its own past scores (one snapshot per
+              symbol per day, stored on your device). The single-symbol view
+              shows the score&apos;s trajectory over time, verdicts display a
+              &ldquo;was Buy on&hellip;&rdquo; chip when the tier changes, and
+              the portfolio review has a <em>Changed</em> filter. A score
+              that&apos;s been sliding for weeks also nudges today&apos;s
+              verdict slightly downward (and vice versa) — deterioration in the
+              evidence is itself a signal.
             </p>
           </section>
 

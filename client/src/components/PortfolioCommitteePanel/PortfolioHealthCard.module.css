@@ -1,0 +1,136 @@
+.card {
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  background: var(--palette-bg-elevated);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--palette-text-disabled);
+}
+
+.headline {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--palette-text-primary);
+  margin: 0;
+}
+.headlineWarn {
+  color: var(--palette-error);
+  font-weight: 600;
+}
+
+.scoreLine {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--palette-text-secondary);
+  margin: 0;
+}
+.scoreValue {
+  font-family: var(--font-mono);
+  color: var(--palette-text-primary);
+  font-weight: 600;
+}
+
+.weights {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.weightRow {
+  display: grid;
+  grid-template-columns: 72px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+}
+
+.weightSymbol {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--palette-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.fundTag {
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--palette-text-disabled);
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius-chip);
+  padding: 0 4px;
+}
+
+.weightTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--palette-bg-paper);
+  overflow: hidden;
+}
+.weightFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--palette-text-disabled);
+}
+.weightBuy {
+  background: var(--palette-success);
+}
+.weightSell {
+  background: var(--palette-error);
+}
+
+.weightPct {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--palette-text-secondary);
+  text-align: right;
+}
+
+.moreNote {
+  font-size: 10.5px;
+  color: var(--palette-text-disabled);
+  margin: 2px 0 0;
+}
+
+.flagList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flag {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--palette-text-secondary);
+  padding-left: 14px;
+  position: relative;
+}
+.flag::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--palette-text-disabled);
+}
+.flagWarn {
+  color: var(--palette-text-primary);
+}
+.flagWarn::before {
+  background: var(--palette-error);
+}

@@ -61,6 +61,109 @@ function PillarBar({ label, score }) {
   );
 }
 
+const fmtPrice = (n) =>
+  Number.isFinite(n)
+    ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    : "—";
+
+// The Portfolio Manager's plan, as a beginner-readable box: what to actually
+// do, at what prices. Entry plan for BUY, exit rationale for SELL, watch
+// levels for HOLD.
+function GamePlan({ plan, hasPosition }) {
+  if (!plan) return null;
+
+  if (plan.kind === "entry") {
+    return (
+      <div className={styles.plan}>
+        <div className={styles.planTitle}>
+          Game plan {hasPosition ? "(if adding)" : "(if buying)"}
+        </div>
+        <div className={styles.planGrid}>
+          <div className={styles.planItem}>
+            <span className={styles.planLabel}>Buy near</span>
+            <span className={styles.planValue}>{fmtPrice(plan.entry)}</span>
+          </div>
+          <div className={styles.planItem}>
+            <span className={styles.planLabel}>Sell if it falls to</span>
+            <span className={`${styles.planValue} ${styles.planNeg}`}>
+              {fmtPrice(plan.stopPrice)}
+            </span>
+          </div>
+          <div className={styles.planItem}>
+            <span className={styles.planLabel}>Take profit near</span>
+            <span className={`${styles.planValue} ${styles.planPos}`}>
+              {fmtPrice(plan.targetPrice)}
+            </span>
+          </div>
+          <div className={styles.planItem}>
+            <span className={styles.planLabel}>Max position size</span>
+            <span className={styles.planValue}>
+              {plan.positionSizePct.toFixed(1)}% of portfolio
+            </span>
+          </div>
+        </div>
+        <p className={styles.planNote}>
+          Sized so a stopped-out trade costs at most ~
+          {plan.portfolioRiskPct.toFixed(1)}% of your portfolio, aiming to make{" "}
+          {plan.rewardRisk}× what's risked.
+        </p>
+      </div>
+    );
+  }
+
+  if (plan.kind === "exit") {
+    return (
+      <div className={styles.plan}>
+        <div className={styles.planTitle}>
+          {hasPosition ? "Why sell, and what next" : "Why stay away"}
+        </div>
+        <ul className={styles.planList}>
+          {plan.reasons.slice(0, 4).map((r, i) => (
+            <li key={i} className={styles.planReason}>
+              {r}
+            </li>
+          ))}
+        </ul>
+        {Number.isFinite(plan.reclaimPrice) && (
+          <p className={styles.planNote}>
+            The committee would revisit this call above{" "}
+            {fmtPrice(plan.reclaimPrice)} (its 50-day average). See the
+            Portfolio Manager below for what to do with the proceeds.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (plan.kind === "watch" && (plan.upgradePrice || plan.downgradePrice)) {
+    return (
+      <div className={styles.plan}>
+        <div className={styles.planTitle}>Levels to watch</div>
+        <div className={styles.planGrid}>
+          {Number.isFinite(plan.upgradePrice) && (
+            <div className={styles.planItem}>
+              <span className={styles.planLabel}>Improves above</span>
+              <span className={`${styles.planValue} ${styles.planPos}`}>
+                {fmtPrice(plan.upgradePrice)}
+              </span>
+            </div>
+          )}
+          {Number.isFinite(plan.downgradePrice) && (
+            <div className={styles.planItem}>
+              <span className={styles.planLabel}>Weakens below</span>
+              <span className={`${styles.planValue} ${styles.planNeg}`}>
+                {fmtPrice(plan.downgradePrice)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function findingClass(polarity) {
   if (polarity === "bull") return styles.bull;
   if (polarity === "bear") return styles.bear;
@@ -375,8 +478,10 @@ export default function AnalystPanel({
   }
 
   const { verdict, pillars, agents } = report;
+  const portfolioManager = agents.find((a) => a.key === "portfolioManager");
   const verdictContext = getVerdictContext(verdict.action, {
     hasPosition: Boolean(position),
+    tier: verdict.tier,
   });
   const VerdictIcon =
     verdict.action === "BUY"
@@ -394,7 +499,9 @@ export default function AnalystPanel({
         <div className={styles.verdictMain}>
           <VerdictIcon className={styles.verdictIcon} />
           <div>
-            <div className={styles.verdictAction}>{verdict.action}</div>
+            <div className={styles.verdictAction}>
+              {verdict.tier ?? verdict.action}
+            </div>
             <p className={styles.verdictContext}>{verdictContext}</p>
           </div>
         </div>
@@ -418,6 +525,8 @@ export default function AnalystPanel({
           compact={compact}
         />
       )}
+
+      <GamePlan plan={portfolioManager?.plan} hasPosition={Boolean(position)} />
 
       {/* Pillars */}
       <div

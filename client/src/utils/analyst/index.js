@@ -47,6 +47,7 @@ export function runAnalystCommittee(input = {}) {
     dataScout,
     sentiment,
     devil,
+    bear,
     candles: chartData,
   });
 

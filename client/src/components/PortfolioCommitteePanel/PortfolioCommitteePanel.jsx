@@ -141,7 +141,10 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
   }
 
   const { verdict, pillars } = report;
-  const context = getVerdictContext(verdict.action, { hasPosition: true });
+  const context = getVerdictContext(verdict.action, {
+    hasPosition: true,
+    tier: verdict.tier,
+  });
 
   return (
     <div className={styles.card}>
@@ -151,7 +154,7 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
           <span
             className={`${styles.actionBadge} ${actionClass(verdict.action)}`}
           >
-            {verdict.action}
+            {(verdict.tier ?? verdict.action).toUpperCase()}
           </span>
           <span
             className={styles.convictionBadge}

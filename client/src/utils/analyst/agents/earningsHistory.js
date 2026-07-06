@@ -41,9 +41,9 @@ export function analyzeEarningsHistory(earnings = []) {
   const findings = [];
   const components = [];
 
-  const beatRateScore = scaleClamp(beatRate, 25, 100, 20, 90);
+  const beatRateScore = scaleClamp(beatRate, 25, 100, 10, 90);
   const surpriseScore = Number.isFinite(latest.surprisePercent)
-    ? scaleClamp(latest.surprisePercent, -15, 15, 15, 90)
+    ? scaleClamp(latest.surprisePercent, -15, 15, 10, 90)
     : null;
   components.push(
     surpriseScore != null ? avg([beatRateScore, surpriseScore]) : beatRateScore,

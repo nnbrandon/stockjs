@@ -548,3 +548,83 @@
   margin: 4px 0 0;
   font-style: italic;
 }
+
+/* Game plan box (Portfolio Manager's actionable plan) */
+.plan {
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  background: var(--palette-bg-paper);
+  padding: 14px 16px;
+}
+
+.planTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--palette-text-disabled);
+  margin-bottom: 10px;
+}
+
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px 16px;
+}
+
+.planItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.planLabel {
+  font-size: 11px;
+  color: var(--palette-text-secondary);
+}
+
+.planValue {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--palette-text-primary);
+}
+.planValue.planPos {
+  color: var(--palette-success);
+}
+.planValue.planNeg {
+  color: var(--palette-error);
+}
+
+.planList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planReason {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--palette-text-primary);
+  padding-left: 14px;
+  position: relative;
+}
+.planReason::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--palette-error);
+}
+
+.planNote {
+  font-size: 11.5px;
+  color: var(--palette-text-secondary);
+  line-height: 1.5;
+  margin: 10px 0 0;
+}

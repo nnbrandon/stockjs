@@ -81,18 +81,27 @@ export function runDataScout({
       rangePos,
     });
 
-    // Trend
+    // Trend. The 200-day average's own direction distinguishes a pullback in
+    // a healthy uptrend from a confirmed, still-falling downtrend — the
+    // distinction a position trader actually acts on.
+    const sma200Prev =
+      closes.length >= 220 ? sma(closes.slice(0, -20), 200) : null;
+    const sma200Rising =
+      sma200 != null && sma200Prev != null && sma200 > sma200Prev;
+    const sma200Falling =
+      sma200 != null && sma200Prev != null && sma200 < sma200Prev;
+
     let trendScore;
     if (sma50 != null && sma200 != null) {
       if (price > sma50 && sma50 > sma200) {
-        trendScore = 85;
+        trendScore = sma200Rising ? 88 : 82;
         findings.push(
           bull(
             "Price is above both its 50-day and 200-day average, with the 50-day on top — a steady uptrend",
             2,
           ),
         );
-      } else if (price > sma50 && sma50 <= sma200) {
+      } else if (price > sma50) {
         trendScore = 58;
         findings.push(
           neutral(
@@ -100,19 +109,29 @@ export function runDataScout({
             1,
           ),
         );
-      } else if (price <= sma50 && sma50 > sma200) {
-        trendScore = 42;
+      } else if (price > sma200) {
+        trendScore = 40;
         findings.push(
           bear(
             "Has dipped below its 50-day average price, though the longer trend is still up",
             1,
           ),
         );
-      } else {
-        trendScore = 16;
+      } else if (sma50 > sma200) {
+        trendScore = 28;
         findings.push(
           bear(
-            "Price is below both its 50-day and 200-day average — a downtrend",
+            "Price has fallen below both its 50-day and 200-day averages — the uptrend is breaking down",
+            2,
+          ),
+        );
+      } else {
+        trendScore = sma200Falling ? 10 : 15;
+        findings.push(
+          bear(
+            sma200Falling
+              ? "Price is below both averages and the long-term trend itself is falling — a confirmed downtrend"
+              : "Price is below both its 50-day and 200-day average — a downtrend",
             2,
           ),
         );
@@ -125,6 +144,7 @@ export function runDataScout({
           : bear("Trading below its average price over the last 50 days", 1),
       );
     }
+    metrics.sma200Rising = sma200Prev != null ? sma200Rising : null;
 
     // Momentum
     const momScore = avg([
@@ -140,11 +160,39 @@ export function runDataScout({
         );
     }
 
-    // RSI
-    let rsiScore = 60;
+    // RSI, read in the context of the trend. In an uptrend, a dip is a
+    // buying opportunity; in a downtrend, "oversold" is not a buy signal —
+    // stocks in downtrends can stay oversold for months, and bounces there
+    // tend to fade. Treating oversold as bullish everywhere was a bias that
+    // kept falling stocks scored near neutral.
+    const inUptrend =
+      sma200 != null ? price > sma200 : sma50 != null ? price > sma50 : null;
+    let rsiScore = null;
     if (Number.isFinite(rsi14)) {
-      if (rsi14 >= 70) {
-        rsiScore = 30;
+      if (inUptrend === false) {
+        if (rsi14 >= 60) {
+          rsiScore = 40;
+          findings.push(
+            bear(
+              "Bounced hard within a downtrend — rallies like this often fade before the trend turns",
+              1,
+            ),
+          );
+        } else if (rsi14 >= 45) {
+          rsiScore = 42;
+        } else if (rsi14 >= 30) {
+          rsiScore = 35;
+        } else {
+          rsiScore = 30;
+          findings.push(
+            bear(
+              "Falling hard and oversold — in a downtrend that's a warning, not a bargain",
+              1,
+            ),
+          );
+        }
+      } else if (rsi14 >= 70) {
+        rsiScore = 40;
         findings.push(
           bear(
             "Has risen quickly and looks overbought — a pullback wouldn't be surprising",
@@ -152,25 +200,26 @@ export function runDataScout({
           ),
         );
       } else if (rsi14 >= 55) {
-        rsiScore = 70;
+        rsiScore = 68;
       } else if (rsi14 >= 45) {
-        rsiScore = 60;
+        rsiScore = 58;
       } else if (rsi14 >= 30) {
-        rsiScore = 45;
+        rsiScore = 55;
       } else {
-        rsiScore = 52;
+        rsiScore = 50;
         findings.push(
           neutral(
-            "Has fallen sharply and looks oversold — it may be due for a bounce",
+            "Oversold within a longer-term uptrend — often where patient buyers step in",
             1,
           ),
         );
       }
     }
 
-    // Range position
+    // Range position. Full width matters: near the 52-week low must be able
+    // to score low, or beaten-down stocks never register as weak.
     const rangeScore = Number.isFinite(rangePos)
-      ? scaleClamp(rangePos, 10, 90, 35, 78)
+      ? scaleClamp(rangePos, 5, 95, 15, 85)
       : null;
     if (Number.isFinite(rangePos)) {
       if (rangePos >= 85)
@@ -265,7 +314,7 @@ export function runDataScout({
           Math.abs(yearAgo.totalRevenue)) *
         100;
       metrics.revenueGrowthYoY = revG;
-      components.push(scaleClamp(revG, -10, 30, 10, 95));
+      components.push(scaleClamp(revG, -10, 30, 5, 95));
       if (revG > 10)
         findings.push(
           bull(`Sales grew ${revG.toFixed(0)}% compared to a year ago`, 2),
@@ -285,7 +334,7 @@ export function runDataScout({
         ((latest.netIncome - yearAgo.netIncome) / Math.abs(yearAgo.netIncome)) *
         100;
       metrics.netIncomeGrowthYoY = niG;
-      components.push(scaleClamp(niG, -25, 40, 10, 95));
+      components.push(scaleClamp(niG, -25, 40, 5, 95));
       if (niG > 10)
         findings.push(
           bull(`Profit grew ${niG.toFixed(0)}% compared to a year ago`, 1),
@@ -300,7 +349,7 @@ export function runDataScout({
     }
     if (Number.isFinite(latest.netIncome)) {
       if (latest.netIncome <= 0) {
-        components.push(30);
+        components.push(20);
         findings.push(bear("Lost money in the latest quarter", 2));
       }
     }
@@ -309,7 +358,7 @@ export function runDataScout({
     if (Number.isFinite(latest.netIncome) && latest.totalRevenue) {
       const margin = (latest.netIncome / latest.totalRevenue) * 100;
       metrics.netMargin = margin;
-      components.push(scaleClamp(margin, 0, 25, 35, 90));
+      components.push(scaleClamp(margin, -5, 25, 10, 90));
       if (margin > 15)
         findings.push(
           bull(
@@ -319,6 +368,31 @@ export function runDataScout({
         );
       else if (margin < 0)
         findings.push(bear("Spends more than it earns on each sale", 1));
+
+      // Margin trend: profitability quietly eroding is one of the earliest
+      // signs a business is deteriorating, before revenue growth rolls over.
+      if (Number.isFinite(yearAgo?.netIncome) && yearAgo?.totalRevenue) {
+        const marginThen = (yearAgo.netIncome / yearAgo.totalRevenue) * 100;
+        const marginChange = margin - marginThen;
+        metrics.netMarginChange = marginChange;
+        if (marginChange <= -3) {
+          components.push(25);
+          findings.push(
+            bear(
+              `Profitability is slipping — keeps ${Math.abs(marginChange).toFixed(0)} cents less of each sales dollar than a year ago`,
+              2,
+            ),
+          );
+        } else if (marginChange >= 3) {
+          components.push(80);
+          findings.push(
+            bull(
+              `Profitability is improving — keeps ${marginChange.toFixed(0)} cents more of each sales dollar than a year ago`,
+              1,
+            ),
+          );
+        }
+      }
     }
 
     // Trailing P/E
@@ -341,7 +415,7 @@ export function runDataScout({
         if (Number.isFinite(growth)) {
           const peg = pe / growth;
           metrics.peg = peg;
-          components.push(scaleClamp(peg, 2.5, 0.5, 25, 90)); // lower PEG → higher score
+          components.push(scaleClamp(peg, 2.5, 0.5, 20, 90)); // lower PEG → higher score
           if (peg < 1)
             findings.push(
               bull(
@@ -357,7 +431,7 @@ export function runDataScout({
               ),
             );
         } else {
-          components.push(scaleClamp(pe, 60, 10, 30, 80)); // lower P/E → higher score
+          components.push(scaleClamp(pe, 60, 10, 20, 80)); // lower P/E → higher score
           if (pe < 15)
             findings.push(
               bull(
@@ -375,7 +449,7 @@ export function runDataScout({
         }
       } else {
         metrics.trailingPE = null;
-        components.push(35);
+        components.push(25);
         findings.push(
           bear(
             "Hasn't been profitable over the past year, so it's hard to value",
@@ -394,7 +468,7 @@ export function runDataScout({
           Math.abs(prior.totalRevenue)) *
         100;
       metrics.annualRevenueGrowth = revG;
-      components.push(scaleClamp(revG, -10, 25, 15, 90));
+      components.push(scaleClamp(revG, -10, 25, 10, 90));
     }
   }
 

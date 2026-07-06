@@ -80,13 +80,29 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
             <ul className={styles.list}>
               <li>Data Scout — quantitative price and fundamental metrics</li>
               <li>Sentiment Analyst — aggregates news mood</li>
-              <li>Bear — stress-tests the bullish case</li>
               <li>
-                Devil&apos;s Advocate — pulls confidence toward neutral when
-                signals conflict
+                Bear — argues the downside and runs a checklist of classic sell
+                signals (broken trend, negative momentum, shrinking sales,
+                eroding margins, earnings misses, negative news)
               </li>
-              <li>Portfolio Manager — final buy / hold / sell call</li>
+              <li>
+                Devil&apos;s Advocate — flags contradictions between the
+                signals (which pull the score toward neutral) and data gaps
+                (which only lower confidence)
+              </li>
+              <li>
+                Portfolio Manager — final call plus a game plan: entry, exit,
+                and position size for a Buy; reasons, an exit level, and
+                reinvestment options for a Sell
+              </li>
             </ul>
+            <p style={{ marginTop: 10 }}>
+              The committee thinks like a long-term position investor, not a
+              day trader: trends are judged on 50- and 200-day averages, an
+              &ldquo;oversold&rdquo; stock in a downtrend is treated as a
+              warning rather than a bargain, and fundamentals like margin
+              erosion matter as much as price.
+            </p>
           </section>
 
           <section className={styles.section}>
@@ -110,11 +126,19 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>Buy / hold / sell</h3>
             <p>
-              The composite score maps to a verdict: strong buy and buy above ~64,
-              hold between ~40–64, sell below ~40. Whether you already hold the
+              The composite score maps to five tiers: Strong Buy (78+), Buy
+              (64–77), Hold (45–63), Reduce (33–44, consider trimming), and
+              Sell (below 33, consider exiting). Whether you already hold the
               stock changes the explanation (e.g. &ldquo;consider adding&rdquo;
-              vs. &ldquo;consider starting a position&rdquo;) but does not change
-              the score itself.
+              vs. &ldquo;consider starting a position&rdquo;) but does not
+              change the score itself.
+            </p>
+            <p>
+              On a Sell or Reduce, the Portfolio Manager explains why (which
+              sell signals triggered), names the price at which the committee
+              would reconsider, and offers options for the proceeds — holding
+              cash, moving toward your Buy-rated holdings, or a broad index
+              fund.
             </p>
           </section>
 

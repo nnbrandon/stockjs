@@ -2,7 +2,10 @@ import { clamp, toCloses } from "../indicators";
 import { neutral } from "./helpers";
 
 // Critiques the bull & bear cases, hunting for contradictions and blind spots.
-// It doesn't pick a side; it lowers conviction where the evidence conflicts.
+// It doesn't pick a side. Genuine contradictions (the signals disagree) pull
+// the composite toward neutral; data-quality gaps (thin history, few articles)
+// only lower confidence — a stock isn't less of a sell just because we have
+// less data on it.
 export function runDevilsAdvocate({ dataScout, sentiment, candles = [] }) {
   const caveats = [];
   const m = dataScout.metrics;
@@ -12,6 +15,11 @@ export function runDevilsAdvocate({ dataScout, sentiment, candles = [] }) {
   const overbought = Number.isFinite(m.rsi14) && m.rsi14 >= 70;
   const techStrong =
     Number.isFinite(dataScout.technicalScore) && dataScout.technicalScore >= 60;
+  const techWeak =
+    Number.isFinite(dataScout.technicalScore) && dataScout.technicalScore <= 40;
+  const fundStrong =
+    Number.isFinite(dataScout.fundamentalScore) &&
+    dataScout.fundamentalScore >= 60;
   const fundWeak =
     Number.isFinite(dataScout.fundamentalScore) &&
     dataScout.fundamentalScore < 45;
@@ -19,57 +27,76 @@ export function runDevilsAdvocate({ dataScout, sentiment, candles = [] }) {
   const sentPositive = Number.isFinite(sentScore) && sentScore >= 58;
   const sentNegative = Number.isFinite(sentScore) && sentScore <= 42;
 
-  let penalty = 0;
-  const flag = (text, p) => {
+  let contradictionPenalty = 0;
+  let dataQualityPenalty = 0;
+  const contradiction = (text, p) => {
     caveats.push(text);
-    penalty += p;
+    contradictionPenalty += p;
+  };
+  const dataGap = (text, p) => {
+    caveats.push(text);
+    dataQualityPenalty += p;
   };
 
   if (uptrend && overbought)
-    flag(
+    contradiction(
       "The trend is up, but the stock has run up fast — buyers may be chasing it.",
       8,
     );
   if (techStrong && fundWeak)
-    flag(
+    contradiction(
       "The rising price isn't backed by the company's finances — the move could be fragile.",
       10,
     );
+  if (techWeak && fundStrong)
+    contradiction(
+      "The business looks healthy but the price keeps falling — the market may know something the numbers don't show yet.",
+      8,
+    );
   if (sentPositive && Number.isFinite(m.sma50) && m.price < m.sma50)
-    flag(
+    contradiction(
       "The news is upbeat, but the price is still falling — the good story isn't showing up in the stock yet.",
       8,
     );
   if (sentNegative && uptrend)
-    flag(
+    contradiction(
       "The price is rising even though the news is negative — that can reverse if reality catches up.",
       6,
     );
+
   if (dataScout.fundamentalScore == null)
-    flag(
+    dataGap(
       "No company financials are saved — we can't judge whether it's fairly priced.",
       6,
     );
   if (closes.length < 200)
-    flag(
+    dataGap(
       "Less than a year of price history — the long-term trend is unknown.",
       6,
     );
   if (sentiment.raw && sentiment.raw.counts.total < 3)
-    flag("The news read is based on very few articles — easily skewed.", 5);
+    dataGap("The news read is based on very few articles — easily skewed.", 5);
   if (Number.isFinite(m.volatility) && m.volatility > 55)
-    flag(
-      "The price swings a lot, which makes it harder and riskier to trade.",
+    dataGap(
+      "The price swings a lot, so any single reading here is less reliable.",
       5,
     );
 
-  const confidencePenalty = clamp(penalty, 0, 45);
+  contradictionPenalty = clamp(contradictionPenalty, 0, 30);
+  dataQualityPenalty = clamp(dataQualityPenalty, 0, 20);
+  const confidencePenalty = clamp(
+    contradictionPenalty + dataQualityPenalty,
+    0,
+    45,
+  );
 
   return {
     key: "devil",
     name: "Devil's Advocate",
     role: "The skeptic: mixed signals & blind spots",
     confidencePenalty,
+    contradictionPenalty,
+    dataQualityPenalty,
     stance:
       caveats.length >= 3
         ? "Many concerns"

@@ -25,6 +25,18 @@ const FILTERS = {
 
 const fmtScore = (n) => (Number.isFinite(n) ? n.toFixed(0) : "—");
 
+const fmtShares = (n) =>
+  Number.isFinite(n)
+    ? n.toLocaleString(undefined, {
+        maximumFractionDigits: Number.isInteger(n) ? 0 : 2,
+      })
+    : "—";
+
+const fmtDollars = (n) =>
+  Number.isFinite(n)
+    ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    : "—";
+
 function getItemFilterKey(item) {
   if (item.isFund) return FILTERS.FUND;
   const action = item.report?.verdict?.action;
@@ -154,6 +166,25 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
     tier: verdict.tier,
   });
 
+  // For SELL verdicts, surface the Portfolio Manager's suggested trim size in
+  // this holder's actual shares/dollars.
+  const exitPlan =
+    verdict.action === "SELL"
+      ? report.agents?.find((a) => a.key === "portfolioManager")?.plan
+      : null;
+  const quantity = item.position?.quantity;
+  const sellSizing =
+    exitPlan?.kind === "exit" &&
+    Number.isFinite(exitPlan.trimPct) &&
+    Number.isFinite(quantity)
+      ? {
+          sharesToSell: (quantity * exitPlan.trimPct) / 100,
+          proceeds: Number.isFinite(report.metrics?.price)
+            ? ((quantity * exitPlan.trimPct) / 100) * report.metrics.price
+            : null,
+        }
+      : null;
+
   return (
     <div className={styles.card}>
       <div className={styles.cardHeadStatic}>
@@ -189,6 +220,22 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
 
       <div className={styles.cardBody}>
         <p className={styles.context}>{context}</p>
+
+        {sellSizing && (
+          <p className={styles.sellSizing}>
+            {exitPlan.fullExit
+              ? `Suggested: sell the full position (${fmtShares(quantity)} sh${
+                  Number.isFinite(sellSizing.proceeds)
+                    ? `, ≈${fmtDollars(sellSizing.proceeds)}`
+                    : ""
+                }).`
+              : `Suggested: sell ~${exitPlan.trimPct}% — about ${fmtShares(sellSizing.sharesToSell)} of ${fmtShares(quantity)} sh${
+                  Number.isFinite(sellSizing.proceeds)
+                    ? ` (≈${fmtDollars(sellSizing.proceeds)})`
+                    : ""
+                }.`}
+          </p>
+        )}
 
         {newsMood && <p className={styles.newsMood}>{newsMood}</p>}
 

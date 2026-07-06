@@ -95,9 +95,25 @@ function buildEntryPlan(candles, metrics) {
   };
 }
 
+// How much of the position to let go. The tier sets the base (Reduce = trim,
+// Sell = exit) and conviction scales it — a low-confidence sell shouldn't
+// liquidate a whole position, and a high-confidence Reduce warrants a deeper
+// trim than a shaky one.
+function recommendedTrimPct(tier, conviction) {
+  if (tier === "Sell") {
+    if (conviction >= 60) return 100;
+    if (conviction >= 30) return 75;
+    return 50;
+  }
+  // Reduce
+  if (conviction >= 60) return 50;
+  if (conviction >= 30) return 33;
+  return 25;
+}
+
 // Why-sell reasons, exit level, and what to do with the proceeds. A committee
 // that says "sell" owes the holder both the reasons and a next step.
-function buildExitPlan(metrics, bearAgent, pillars) {
+function buildExitPlan(metrics, bearAgent, pillars, tier, conviction) {
   const reasons = [...(bearAgent?.exitReasons ?? [])];
   if (!reasons.length) {
     // Fall back to naming the weakest pillar so the "why" is never empty.
@@ -115,11 +131,16 @@ function buildExitPlan(metrics, bearAgent, pillars) {
   }
 
   const reclaimPrice = Number.isFinite(metrics.sma50) ? metrics.sma50 : null;
+  const trimPct = recommendedTrimPct(tier, conviction);
 
   return {
     kind: "exit",
     reasons,
     reclaimPrice,
+    tier,
+    // Suggested fraction of the position to sell (percent). 100 = full exit.
+    trimPct,
+    fullExit: trimPct >= 100,
     reinvest: [
       "You don't have to reinvest right away — cash is a position too. Wait for an idea that actually scores Buy here.",
       "If you want to stay invested, compare against your other holdings: money freed up here is best moved toward the ones this committee rates Buy.",
@@ -183,6 +204,16 @@ function buildPlanFindings(action, tier, plan) {
         2,
       ),
     );
+    if (Number.isFinite(plan.trimPct)) {
+      out.push(
+        neutral(
+          plan.fullExit
+            ? "How much: the committee's confidence is high enough to close the whole position rather than average down."
+            : `How much: sell about ${plan.trimPct}% of the position now and reassess the rest — sized to the committee's ${plan.trimPct >= 50 ? "firmer" : "lower"} confidence in this call.`,
+          1,
+        ),
+      );
+    }
     for (const r of plan.reasons.slice(0, 4)) out.push(bear(`Why: ${r}`, 1));
     if (Number.isFinite(plan.reclaimPrice)) {
       out.push(
@@ -314,7 +345,7 @@ export function runPortfolioManager({
     action === "BUY"
       ? buildEntryPlan(candles, metrics)
       : action === "SELL"
-        ? buildExitPlan(metrics, bearAgent, pillarScores)
+        ? buildExitPlan(metrics, bearAgent, pillarScores, tier, conviction)
         : buildWatchPlan(metrics);
 
   // Kept for backward compatibility: `risk` is the BUY entry plan.

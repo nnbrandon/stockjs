@@ -373,6 +373,14 @@
   color: var(--palette-text-disabled);
 }
 
+.sellSizing {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--palette-error);
+}
+
 .pillars {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

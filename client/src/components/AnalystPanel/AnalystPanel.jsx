@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
@@ -82,10 +82,17 @@ const fmtPrice = (n) =>
     ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
     : "—";
 
+const fmtShares = (n) =>
+  Number.isFinite(n)
+    ? n.toLocaleString(undefined, {
+        maximumFractionDigits: Number.isInteger(n) ? 0 : 2,
+      })
+    : "—";
+
 // The Portfolio Manager's plan, as a beginner-readable box: what to actually
 // do, at what prices. Entry plan for BUY, exit rationale for SELL, watch
 // levels for HOLD.
-function GamePlan({ plan, hasPosition }) {
+function GamePlan({ plan, hasPosition, position, positionMetrics }) {
   if (!plan) return null;
 
   if (plan.kind === "entry") {
@@ -128,11 +135,49 @@ function GamePlan({ plan, hasPosition }) {
   }
 
   if (plan.kind === "exit") {
+    // Translate the suggested trim percentage into this holder's actual
+    // shares/dollars so "sell some" becomes a number they can act on.
+    const quantity = position?.quantity;
+    const hasSizing =
+      hasPosition && Number.isFinite(plan.trimPct) && Number.isFinite(quantity);
+    const sharesToSell = hasSizing ? (quantity * plan.trimPct) / 100 : null;
+    const proceedsEstimate =
+      hasSizing && Number.isFinite(positionMetrics?.lastPrice)
+        ? sharesToSell * positionMetrics.lastPrice
+        : null;
+
     return (
       <div className={styles.plan}>
         <div className={styles.planTitle}>
           {hasPosition ? "Why sell, and what next" : "Why stay away"}
         </div>
+        {hasSizing && (
+          <div className={styles.planGrid}>
+            <div className={styles.planItem}>
+              <span className={styles.planLabel}>Suggested amount</span>
+              <span className={`${styles.planValue} ${styles.planNeg}`}>
+                {plan.fullExit
+                  ? "Sell all"
+                  : `Sell ~${plan.trimPct}% of position`}
+              </span>
+            </div>
+            <div className={styles.planItem}>
+              <span className={styles.planLabel}>That's about</span>
+              <span className={styles.planValue}>
+                {fmtShares(sharesToSell)} of {fmtShares(quantity)} shares
+                {Number.isFinite(proceedsEstimate)
+                  ? ` (≈${fmtPrice(proceedsEstimate)})`
+                  : ""}
+              </span>
+            </div>
+          </div>
+        )}
+        {hasSizing && !plan.fullExit && (
+          <p className={styles.planNote}>
+            Sized to the committee's confidence: trim now, keep the rest, and
+            reassess if the score keeps sliding or the price recovers.
+          </p>
+        )}
         <ul className={styles.planList}>
           {plan.reasons.slice(0, 4).map((r, i) => (
             <li key={i} className={styles.planReason}>
@@ -408,9 +453,11 @@ export default function AnalystPanel({
   const [yearCandlesReady, setYearCandlesReady] = useState(false);
   const [history, setHistory] = useState([]);
   const [analysis, setAnalysis] = useState(null);
+  const loadedSymbolRef = useRef(null);
   const refreshVersion = useRefreshSignal(symbol);
   useEffect(() => {
     if (!symbol) {
+      loadedSymbolRef.current = null;
       setYearCandles([]);
       setHistory([]);
       setAnalysis(null);
@@ -418,7 +465,14 @@ export default function AnalystPanel({
       return undefined;
     }
     let active = true;
-    setYearCandlesReady(false);
+    // Only drop to the loading spinner when the symbol actually changes. The
+    // live market poll bumps refreshVersion every minute to trigger a silent
+    // re-read of fresh candles — flipping ready off for those made the whole
+    // panel flash a spinner each interval.
+    if (loadedSymbolRef.current !== symbol) {
+      loadedSymbolRef.current = symbol;
+      setYearCandlesReady(false);
+    }
     const { startDate, endDate } = calculateRange(365);
     Promise.all([
       getStockDataByDateRange(symbol, startDate, endDate),
@@ -605,7 +659,12 @@ export default function AnalystPanel({
         </div>
       )}
 
-      <GamePlan plan={portfolioManager?.plan} hasPosition={Boolean(position)} />
+      <GamePlan
+        plan={portfolioManager?.plan}
+        hasPosition={Boolean(position)}
+        position={position}
+        positionMetrics={positionMetrics}
+      />
 
       {/* Pillars */}
       <div

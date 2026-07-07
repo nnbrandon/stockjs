@@ -330,6 +330,16 @@ export function runPortfolioManager({
     tier = "Sell";
   }
 
+  // Don't chase: a parabolic move can saturate the momentum score faster
+  // than the overbought penalties offset it, so an excellent company going
+  // vertical could out-score the same company in a steady uptrend. The
+  // thesis may be intact, but the entry isn't — extreme overbought caps the
+  // top tier at Buy.
+  const rsi14 = dataScout.metrics?.rsi14;
+  const chaseCapped =
+    tier === "Strong Buy" && Number.isFinite(rsi14) && rsi14 >= 80;
+  if (chaseCapped) tier = "Buy";
+
   // Confidence: distance from neutral, less the devil's full penalty
   // (contradictions and data gaps both make us less sure).
   const conviction = clamp(
@@ -365,6 +375,14 @@ export function runPortfolioManager({
     summary: buildThesis(tier, composite, convictionLabel, pillarScores),
     findings: [
       ...(momentum ? [momentum.finding] : []),
+      ...(chaseCapped
+        ? [
+            neutral(
+              `Would be a Strong Buy on the numbers, but the stock has gone nearly vertical (RSI ${rsi14.toFixed(0)}) — wait for a pullback rather than chasing it here.`,
+              1,
+            ),
+          ]
+        : []),
       ...buildPlanFindings(action, tier, plan),
     ],
   };

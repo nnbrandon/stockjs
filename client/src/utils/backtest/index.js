@@ -86,21 +86,34 @@ export async function runBacktest({ log = true, benchmark = "SPY" } = {}) {
     ]);
     console.log("Calibration (composite decile → avg forward 6m return):");
     console.table(report.calibration);
+    console.log(
+      `Calibration, fundamentals-informed verdicts only (${report.fundamentalsCoveragePct}% of records — Yahoo serves ~6 quarters of fundamentals, so deep history is technicals-only):`,
+    );
+    console.table(report.calibrationWithFundamentals);
     if (skipped.length) console.table(skipped);
     console.log("Full report object returned; download with __stockjsBacktestDownload(report).");
   }
   return report;
 }
 
-/** Save a backtest report as a JSON file. */
-export function downloadBacktestReport(report) {
-  const blob = new Blob([JSON.stringify(report, null, 2)], {
+/** Save a backtest report as a JSON file. Accepts the report object or the
+ * pending promise from runBacktest() — forgetting `await` in the console
+ * would otherwise serialize a Promise into an empty {}. */
+export async function downloadBacktestReport(report) {
+  const resolved = await report;
+  if (!resolved || typeof resolved !== "object" || !("recordCount" in resolved)) {
+    console.warn(
+      "downloadBacktestReport: that doesn't look like a backtest report — run `const report = await window.__stockjsBacktest()` first.",
+    );
+    return;
+  }
+  const blob = new Blob([JSON.stringify(resolved, null, 2)], {
     type: "application/json",
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `committee-backtest-${report.generatedAt?.slice(0, 10) ?? "report"}.json`;
+  a.download = `committee-backtest-${resolved.generatedAt?.slice(0, 10) ?? "report"}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

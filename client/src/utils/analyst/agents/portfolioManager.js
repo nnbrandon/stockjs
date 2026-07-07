@@ -341,6 +341,15 @@ export function runPortfolioManager({
     tier === "Strong Buy" && Number.isFinite(rsi14) && rsi14 >= 80;
   if (chaseCapped) tier = "Buy";
 
+  // Evidence gate: the top rating means "size up" and demands the full
+  // picture. With no company financials at all, a chart-only Strong Buy is
+  // half a thesis — cap it at Buy. (Deliberately asymmetric: Sell verdicts
+  // are NOT weakened by missing data, because reducing risk needs less
+  // evidence than taking it.)
+  const noFundamentals = !Number.isFinite(pillarScores.fundamental);
+  const evidenceCapped = tier === "Strong Buy" && noFundamentals;
+  if (evidenceCapped) tier = "Buy";
+
   // Confidence: distance from neutral, less the devil's full penalty
   // (contradictions and data gaps both make us less sure).
   const conviction = clamp(
@@ -380,6 +389,14 @@ export function runPortfolioManager({
         ? [
             neutral(
               `Would be a Strong Buy on the numbers, but the stock has gone nearly vertical (RSI ${rsi14.toFixed(0)}) — wait for a pullback rather than chasing it here.`,
+              1,
+            ),
+          ]
+        : []),
+      ...(evidenceCapped
+        ? [
+            neutral(
+              "Would be a Strong Buy on the chart, but no company financials are saved — the top rating needs the full picture. Refresh this symbol's fundamentals.",
               1,
             ),
           ]

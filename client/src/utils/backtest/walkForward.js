@@ -64,6 +64,9 @@ export function walkForward({
       composite: report.verdict.composite,
       technical: report.pillars.technical,
       fundamental: report.pillars.fundamental,
+      // Yahoo only serves ~6 quarters of fundamentals, so deep-history
+      // verdicts are technicals-only. Metrics segment on this.
+      hasFundamentals: Number.isFinite(report.pillars.fundamental),
     });
   }
   return records;
@@ -178,26 +181,42 @@ export function computeMetrics(records, candlesBySymbol, spyCandles = null) {
   };
 
   // 4. Calibration: composite decile → forward 6m return. Monotonic ⇒ the
-  // score means something; flat ⇒ it doesn't.
-  const calibration = [];
-  for (let d = 0; d < 10; d++) {
-    const lo = d * 10;
-    const hi = lo + 10;
-    const recs = records.filter(
-      (r) => r.composite >= lo && (d === 9 ? r.composite <= hi : r.composite < hi),
-    );
-    const rets = recs.map((r) => fwdReturn(r, HORIZONS.fwd6m)).filter(Number.isFinite);
-    if (recs.length) {
-      calibration.push({
-        decile: `${lo}–${hi}`,
-        n: recs.length,
-        avgFwd6m: round(mean(rets)),
-        smallSample: recs.length < 20,
-      });
+  // score means something; flat ⇒ it doesn't. Reported twice: all records,
+  // and only those where the fundamental pillar was actually scored — deep
+  // history is technicals-only (Yahoo serves ~6 quarters of fundamentals),
+  // and the full engine should be judged on the records it fully saw.
+  const buildCalibration = (recs) => {
+    const rows = [];
+    for (let d = 0; d < 10; d++) {
+      const lo = d * 10;
+      const hi = lo + 10;
+      const bucket = recs.filter(
+        (r) =>
+          r.composite >= lo && (d === 9 ? r.composite <= hi : r.composite < hi),
+      );
+      const rets = bucket
+        .map((r) => fwdReturn(r, HORIZONS.fwd6m))
+        .filter(Number.isFinite);
+      if (bucket.length) {
+        rows.push({
+          decile: `${lo}–${hi}`,
+          n: bucket.length,
+          avgFwd6m: round(mean(rets)),
+          smallSample: bucket.length < 20,
+        });
+      }
     }
-  }
+    return rows;
+  };
+  const withFundamentals = records.filter((r) => r.hasFundamentals);
+  const calibration = buildCalibration(records);
+  const calibrationWithFundamentals = buildCalibration(withFundamentals);
 
   return {
+    fundamentalsCoveragePct: records.length
+      ? round((withFundamentals.length / records.length) * 100, 1)
+      : null,
+    calibrationWithFundamentals,
     engineVersion: COMMITTEE_ENGINE_VERSION,
     generatedAt: new Date().toISOString(),
     symbols: [...bySymbol.keys()],

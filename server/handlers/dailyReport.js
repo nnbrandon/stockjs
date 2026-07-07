@@ -459,6 +459,18 @@ export async function runDailyReport() {
   if (dryRun) {
     console.log(`dailyReport DRY RUN — subject: ${subject}`);
     console.log(html);
+    // Also write the rendered email where a human can open it (local test
+    // runs; on Lambda /tmp is writable and this is best-effort anyway).
+    try {
+      const { writeFileSync } = await import("node:fs");
+      const { tmpdir } = await import("node:os");
+      const path = `${tmpdir()}/stockjs-report.html`;
+      writeFileSync(path, html);
+      writeFileSync(`${tmpdir()}/stockjs-report.txt`, text);
+      console.log(`dailyReport DRY RUN — rendered email written to ${path}`);
+    } catch {
+      // logging above is enough
+    }
     if (bucket) await saveState(bucket, nextState);
     return { statusCode: 200, body: `dry-run: would send "${subject}"` };
   }

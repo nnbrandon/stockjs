@@ -82,12 +82,8 @@ fi
 echo "==> Installing production dependencies"
 ( cd "$SERVER_DIR" && npm ci --omit=dev >/dev/null )
 
-echo "==> Bundling handler (inlines the shared committee engine)"
-( cd "$SERVER_DIR" && npm run bundle >/dev/null )
-
-echo "==> Zipping function"
 ZIP_PATH="$(mktemp -d)/function.zip"
-( cd "$SERVER_DIR" && zip -qr "$ZIP_PATH" dist package.json node_modules )
+"$SCRIPT_DIR/package-lambda.sh" "$ZIP_PATH"
 
 # ── 3. Create or update the function ─────────────────────────────────────
 if aws lambda get-function --function-name "$FUNCTION_NAME" --region "$REGION" >/dev/null 2>&1; then

@@ -27,20 +27,17 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # Production dependencies only — keeps the deployment package small.
+      # Full install so esbuild can resolve every import while bundling. The
+      # deployment zip does NOT ship this node_modules — package-lambda.sh
+      # stages a minimal runtime-only install (just @huggingface/transformers,
+      # pruned to linux/x64) to stay under Lambda's ~70MB upload limit.
       - run: npm ci --omit=dev
 
-      # Bundle the handler with the shared committee engine inlined — the zip
-      # has no workspace resolution, so the engine package is aliased straight
-      # to its source. Only @huggingface/transformers stays external (native
-      # onnxruntime binaries can't be bundled); it ships via node_modules.
-      - name: Bundle handler
-        run: npm run bundle
-
-      # Lambda handler must be set to "dist/index.handler" (one-time config —
-      # server/scripts/setup-daily-report.sh does it).
-      - name: Package function
-        run: zip -r ../function.zip dist package.json node_modules
+      # Bundles the handler (shared committee engine inlined) and zips it with
+      # the pruned runtime dependencies. Lambda handler must be set to
+      # "dist/index.handler" (one-time config — setup-daily-report.sh does it).
+      - name: Bundle + package function
+        run: ./scripts/package-lambda.sh "$GITHUB_WORKSPACE/function.zip"
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -52,5 +49,5 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name "${{ vars.LAMBDA_FUNCTION_NAME }}" \
-            --zip-file fileb://../function.zip \
+            --zip-file "fileb://$GITHUB_WORKSPACE/function.zip" \
             --publish

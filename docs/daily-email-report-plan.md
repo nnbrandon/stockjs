@@ -368,6 +368,15 @@ cold-start download is inbound and unbilled.
   authenticated endpoint) — **done**: sidebar → Sync email report; auto-syncs
   on each Fidelity import when a token is saved. `REPORT_SYMBOLS` remains a
   fallback when nothing has been synced yet.
+- Multi-user by email — **done**: the email address entered in the sync modal
+  is the identity. Each sync writes `portfolios/<email>.json`; the daily run
+  fetches/scores each unique symbol once, then emails every synced address its
+  own digest (sent from the verified `REPORT_EMAIL` identity). First-time
+  addresses get an SES verification email on sync; in the SES sandbox nothing
+  is delivered to an address until its owner clicks that link. Per-user send
+  bookkeeping lives under `users` in `committee-state.json`; the legacy
+  single-user `portfolio.json` is still read for `REPORT_EMAIL` until that
+  address re-syncs.
 - Full-article crawling for sentiment (browser deep-review parity) — the
   extraction path is heavier; headlines+summaries are v1.
 - Baking the FinBERT model into the deploy artifact or a Lambda layer to

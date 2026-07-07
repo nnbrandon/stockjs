@@ -88,6 +88,9 @@ aws s3api put-public-access-block --bucket "$BUCKET" \
   "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
 
 # ── 3. IAM: SES + S3 permissions for the Lambda role ─────────────────────
+# SendEmail is locked to the REPORT_EMAIL identity (every report is sent FROM
+# it; recipients are the per-portfolio addresses). VerifyEmailIdentity lets
+# portfolioSync kick off SES verification for new users' addresses.
 echo "==> IAM: attaching daily-report policy to $ROLE_NAME"
 aws iam put-role-policy \
   --role-name "$ROLE_NAME" \
@@ -102,11 +105,28 @@ aws iam put-role-policy \
       },
       {
         \"Effect\": \"Allow\",
+        \"Action\": [
+          \"ses:VerifyEmailIdentity\",
+          \"ses:GetIdentityVerificationAttributes\"
+        ],
+        \"Resource\": \"*\"
+      },
+      {
+        \"Effect\": \"Allow\",
         \"Action\": [\"s3:GetObject\", \"s3:PutObject\"],
         \"Resource\": [
           \"arn:aws:s3:::${BUCKET}/committee-state.json\",
-          \"arn:aws:s3:::${BUCKET}/portfolio.json\"
+          \"arn:aws:s3:::${BUCKET}/portfolio.json\",
+          \"arn:aws:s3:::${BUCKET}/portfolios/*\"
         ]
+      },
+      {
+        \"Effect\": \"Allow\",
+        \"Action\": \"s3:ListBucket\",
+        \"Resource\": \"arn:aws:s3:::${BUCKET}\",
+        \"Condition\": {
+          \"StringLike\": { \"s3:prefix\": \"portfolios/*\" }
+        }
       }
     ]
   }"
@@ -218,8 +238,10 @@ echo "============================================================"
 echo " Done!"
 echo ""
 echo " Portfolio sync token (paste into the app: sidebar → Sync report"
-echo " portfolio). Anyone with this token can change which symbols the"
-echo " daily email covers — treat it like a password:"
+echo " portfolio, along with the email address the report should go to —"
+echo " each address gets its own portfolio and its own daily email)."
+echo " Anyone with this token can change which symbols the daily emails"
+echo " cover — treat it like a password:"
 echo ""
 echo "   $SYNC_TOKEN"
 echo ""

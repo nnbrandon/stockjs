@@ -190,13 +190,15 @@ class LambdaService {
   }
 
   // Push imported holdings to S3 so the scheduled daily email tracks the UI.
-  // Authenticated with the SYNC_TOKEN from setup-daily-report.sh.
-  async syncPortfolio(token, positions) {
+  // Authenticated with the SYNC_TOKEN from setup-daily-report.sh; the email
+  // address is the identity the portfolio is stored under (and where the
+  // daily report is sent).
+  async syncPortfolio(token, email, positions) {
     try {
       const response = await fetch(`${this.API_URL}?action=portfolioSync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, positions }),
+        body: JSON.stringify({ token, email, positions }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -206,6 +208,9 @@ class LambdaService {
         ok: true,
         count: data.count,
         updatedAt: data.updatedAt,
+        // true | false | null(unknown) — false means the user still has to
+        // click the AWS verification link before reports can be delivered.
+        emailVerified: data.emailVerified ?? null,
       };
     } catch (err) {
       return { ok: false, error: err?.message || "Sync failed" };

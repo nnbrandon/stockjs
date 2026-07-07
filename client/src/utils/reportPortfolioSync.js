@@ -2,6 +2,7 @@ import { getAllPositions } from "../db";
 import LambdaService from "../LambdaService";
 
 const TOKEN_KEY = "stockjsReportSyncToken";
+const EMAIL_KEY = "stockjsReportSyncEmail";
 const LAST_SYNC_KEY = "stockjsReportSyncAt";
 
 export function getReportSyncToken() {
@@ -14,8 +15,20 @@ export function setReportSyncToken(token) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+// The email is the identity on the server: the portfolio is stored under it
+// and the daily report is sent to it.
+export function getReportSyncEmail() {
+  return localStorage.getItem(EMAIL_KEY) || "";
+}
+
+export function setReportSyncEmail(email) {
+  const trimmed = (email || "").trim().toLowerCase();
+  if (trimmed) localStorage.setItem(EMAIL_KEY, trimmed);
+  else localStorage.removeItem(EMAIL_KEY);
+}
+
 export function isReportSyncConfigured() {
-  return Boolean(getReportSyncToken());
+  return Boolean(getReportSyncToken() && getReportSyncEmail());
 }
 
 export function getLastReportSyncAt() {
@@ -29,7 +42,8 @@ export function getLastReportSyncAt() {
  */
 export async function syncReportPortfolio(positions) {
   const token = getReportSyncToken();
-  if (!token) return { ok: false, reason: "no-token" };
+  const email = getReportSyncEmail();
+  if (!token || !email) return { ok: false, reason: "not-configured" };
 
   const rows = positions ?? (await getAllPositions());
   if (!rows.length) return { ok: false, reason: "no-positions" };
@@ -40,7 +54,7 @@ export async function syncReportPortfolio(positions) {
     averageCostBasis,
   }));
 
-  const result = await LambdaService.syncPortfolio(token, payload);
+  const result = await LambdaService.syncPortfolio(token, email, payload);
   if (result.ok) {
     localStorage.setItem(
       LAST_SYNC_KEY,

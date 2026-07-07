@@ -7,10 +7,14 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import addTickerStyles from "../AddTickerModal/AddTickerModal.module.css";
 import {
   getLastReportSyncAt,
+  getReportSyncEmail,
   getReportSyncToken,
+  setReportSyncEmail,
   setReportSyncToken,
   syncReportPortfolio,
 } from "../../utils/reportPortfolioSync";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
@@ -41,6 +45,7 @@ function formatSyncTime(iso) {
 
 function ReportPortfolioSyncModal({ positionCount, onClose }) {
   const [token, setToken] = useState(getReportSyncToken);
+  const [email, setEmail] = useState(getReportSyncEmail);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [lastSync, setLastSync] = useState(getLastReportSyncAt);
@@ -49,9 +54,14 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
   async function handleSaveAndSync() {
     setError("");
     setStatus("");
-    const trimmed = token.trim();
-    if (!trimmed) {
+    const trimmedToken = token.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedToken) {
       setError("Paste the sync token from setup-daily-report.sh.");
+      return;
+    }
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      setError("Enter the email address the daily report should go to.");
       return;
     }
     if (positionCount === 0) {
@@ -60,7 +70,8 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
     }
 
     setIsBusy(true);
-    setReportSyncToken(trimmed);
+    setReportSyncToken(trimmedToken);
+    setReportSyncEmail(trimmedEmail);
     try {
       const result = await syncReportPortfolio();
       if (!result.ok) {
@@ -68,7 +79,16 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
         return;
       }
       setLastSync(getLastReportSyncAt());
-      setStatus(`Synced ${result.count} holding${result.count === 1 ? "" : "s"} to the daily email.`);
+      const synced = `Synced ${result.count} holding${result.count === 1 ? "" : "s"} for ${trimmedEmail}.`;
+      if (result.emailVerified === false) {
+        // First sync for this address: keep the modal open so the user sees
+        // that AWS just sent them a verification link to click.
+        setStatus(
+          `${synced} Check your inbox for an "Amazon SES verification" email and click the link — reports can't be delivered until you do.`,
+        );
+        return;
+      }
+      setStatus(synced);
       onClose({ synced: result.count });
     } finally {
       setIsBusy(false);
@@ -77,7 +97,9 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
 
   function handleClearToken() {
     setReportSyncToken("");
+    setReportSyncEmail("");
     setToken("");
+    setEmail("");
     setStatus("");
     setError("");
   }
@@ -115,10 +137,29 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
         </div>
 
         <p className={addTickerStyles.subtitle} style={{ marginBottom: 12 }}>
-          Paste the <strong>SYNC_TOKEN</strong> printed when you ran{" "}
+          The report is emailed to the address below (first-time addresses get
+          an AWS verification link to click). Paste the{" "}
+          <strong>SYNC_TOKEN</strong> printed when you ran{" "}
           <code>setup-daily-report.sh</code> in CloudShell. Treat it like a
           password — it only controls which symbols the email covers.
         </p>
+
+        <div className={addTickerStyles.field}>
+          <TextField
+            fullWidth
+            type="email"
+            autoComplete="email"
+            placeholder="Email the report goes to"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError("");
+              setStatus("");
+            }}
+            disabled={isBusy}
+            sx={inputSx}
+          />
+        </div>
 
         <div className={addTickerStyles.field}>
           <TextField
@@ -156,9 +197,9 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
             type="button"
             className={addTickerStyles.btnSecondary}
             onClick={handleClearToken}
-            disabled={isBusy || !token}
+            disabled={isBusy || (!token && !email)}
           >
-            Clear token
+            Clear settings
           </button>
           <button
             type="button"

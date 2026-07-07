@@ -3,6 +3,11 @@
 // Function URL (index.js branches on top-level event.action, which Function
 // URL events don't carry).
 //
+// Multi-user: every portfolio synced to portfolios/<email>.json gets its own
+// digest, emailed to that address. Market data, FinBERT scoring, and the
+// committee run once per unique symbol across all users; health analysis and
+// the send decision are per user.
+//
 // Flow: fetch fresh market data + news per holding → score never-seen
 // articles with FinBERT (rolling 30-day archive in S3 state) → run the shared
 // committee engine → compare against yesterday's verdicts → email a digest
@@ -10,6 +15,7 @@
 
 import {
   GetObjectCommand,
+  ListObjectsV2Command,
   NoSuchKey,
   PutObjectCommand,
   S3Client,
@@ -40,7 +46,7 @@ import {
 } from "../lib/marketData.js";
 import { getClassifier, scoreNewArticles } from "../lib/sentiment.js";
 import { renderReportEmail } from "../lib/reportEmail.js";
-import { PORTFOLIO_KEY } from "./portfolioSync.js";
+import { LEGACY_PORTFOLIO_KEY, PORTFOLIO_PREFIX } from "./portfolioSync.js";
 
 const STATE_KEY = "committee-state.json";
 const CANDLE_DAYS = 420;
@@ -86,47 +92,100 @@ export function pacificDay(date = new Date()) {
   }).format(date);
 }
 
-async function loadState(bucket) {
-  if (!bucket) return {};
+/** GET + parse a JSON object, or null when the key doesn't exist. */
+async function getJson(bucket, key) {
   try {
     const res = await s3.send(
-      new GetObjectCommand({ Bucket: bucket, Key: STATE_KEY }),
+      new GetObjectCommand({ Bucket: bucket, Key: key }),
     );
     return JSON.parse(await res.Body.transformToString());
   } catch (err) {
-    if (err instanceof NoSuchKey || err.name === "NoSuchKey") return {};
+    if (err instanceof NoSuchKey || err.name === "NoSuchKey") return null;
     throw err;
   }
 }
 
+async function loadState(bucket) {
+  if (!bucket) return {};
+  return (await getJson(bucket, STATE_KEY)) ?? {};
+}
+
+/** Synced positions → report holdings, or null when there's nothing usable. */
+function toHoldings(data) {
+  const holdings = (data?.positions ?? [])
+    .filter((p) => typeof p?.symbol === "string" && p.symbol)
+    .map((p) => ({
+      symbol: p.symbol.toUpperCase(),
+      quantity: Number.isFinite(p.quantity) ? p.quantity : null,
+      avgCostBasis: Number.isFinite(p.averageCostBasis)
+        ? p.averageCostBasis
+        : null,
+    }));
+  return holdings.length ? holdings : null;
+}
+
 /**
- * The portfolio the browser synced via action=portfolioSync, or null when
- * none has been synced yet (fall back to REPORT_SYMBOLS).
+ * Everyone the report goes to: one user per portfolios/<email>.json synced
+ * from the browser, plus two fallbacks — the pre-multi-user portfolio.json
+ * (attributed to REPORT_EMAIL until that address re-syncs under the new
+ * scheme) and the REPORT_SYMBOLS env var when nothing was ever synced.
  */
-async function loadSyncedPortfolio(bucket) {
-  if (!bucket) return null;
-  try {
-    const res = await s3.send(
-      new GetObjectCommand({ Bucket: bucket, Key: PORTFOLIO_KEY }),
-    );
-    const data = JSON.parse(await res.Body.transformToString());
-    const holdings = (data?.positions ?? [])
-      .filter((p) => typeof p?.symbol === "string" && p.symbol)
-      .map((p) => ({
-        symbol: p.symbol.toUpperCase(),
-        quantity: Number.isFinite(p.quantity) ? p.quantity : null,
-        avgCostBasis: Number.isFinite(p.averageCostBasis)
-          ? p.averageCostBasis
-          : null,
-      }));
-    if (!holdings.length) return null;
-    return { holdings, updatedAt: data.updatedAt ?? null };
-  } catch (err) {
-    if (!(err instanceof NoSuchKey || err.name === "NoSuchKey")) {
-      console.error("dailyReport: failed to read synced portfolio:", err);
+async function loadReportUsers(bucket, fallbackEmail) {
+  const users = [];
+
+  if (bucket) {
+    try {
+      const listed = await s3.send(
+        new ListObjectsV2Command({ Bucket: bucket, Prefix: PORTFOLIO_PREFIX }),
+      );
+      for (const obj of listed.Contents ?? []) {
+        if (!obj.Key?.endsWith(".json")) continue;
+        const data = await getJson(bucket, obj.Key);
+        const holdings = toHoldings(data);
+        const email = typeof data?.email === "string" ? data.email : null;
+        if (!email || !holdings) continue;
+        users.push({
+          email,
+          holdings,
+          updatedAt: data.updatedAt ?? null,
+          source: "synced",
+        });
+      }
+    } catch (err) {
+      console.error("dailyReport: failed to list synced portfolios:", err);
     }
-    return null;
+
+    if (fallbackEmail && !users.some((u) => u.email === fallbackEmail)) {
+      try {
+        const data = await getJson(bucket, LEGACY_PORTFOLIO_KEY);
+        const holdings = toHoldings(data);
+        if (holdings) {
+          users.push({
+            email: fallbackEmail,
+            holdings,
+            updatedAt: data?.updatedAt ?? null,
+            source: "synced-legacy",
+          });
+        }
+      } catch (err) {
+        console.error("dailyReport: failed to read legacy portfolio:", err);
+      }
+    }
   }
+
+  if (!users.length) {
+    const holdings = parseReportSymbols(process.env.REPORT_SYMBOLS);
+    if (holdings.length) {
+      users.push({
+        email: fallbackEmail,
+        holdings,
+        updatedAt: null,
+        source: "env",
+      });
+    }
+  }
+
+  return users;
 }
 
 function saveState(bucket, state) {
@@ -238,26 +297,25 @@ async function mapPool(items, limit, fn) {
 export async function runDailyReport() {
   const startedAt = Date.now();
   const bucket = process.env.REPORT_STATE_BUCKET || "";
-
-  // Prefer the portfolio the browser synced (tracks the Fidelity import);
-  // REPORT_SYMBOLS is the fallback for accounts that never synced.
-  const synced = await loadSyncedPortfolio(bucket);
-  const holdings =
-    synced?.holdings ?? parseReportSymbols(process.env.REPORT_SYMBOLS);
-  if (!holdings.length) {
-    return {
-      statusCode: 400,
-      body: "No synced portfolio and REPORT_SYMBOLS is empty — nothing to report on",
-    };
-  }
-  console.log(
-    synced
-      ? `dailyReport: using synced portfolio (${holdings.length} positions, updated ${synced.updatedAt})`
-      : `dailyReport: using REPORT_SYMBOLS (${holdings.length} symbols)`,
-  );
-  const email = process.env.REPORT_EMAIL || "herosekai@gmail.com";
+  // The verified SES identity every report is sent FROM (recipients are the
+  // per-portfolio addresses). Also the fallback recipient for pre-multi-user
+  // portfolios and REPORT_SYMBOLS.
+  const senderEmail = process.env.REPORT_EMAIL || "";
   const dryRun = process.env.REPORT_DRY_RUN === "1";
   const alwaysSend = process.env.REPORT_ALWAYS_SEND === "1";
+
+  const users = await loadReportUsers(bucket, senderEmail);
+  if (!users.length) {
+    return {
+      statusCode: 400,
+      body: "No synced portfolios and REPORT_SYMBOLS is empty — nothing to report on",
+    };
+  }
+  for (const u of users) {
+    console.log(
+      `dailyReport: ${u.email || "(no email)"} — ${u.holdings.length} positions (${u.source}${u.updatedAt ? `, updated ${u.updatedAt}` : ""})`,
+    );
+  }
   if (!bucket) {
     console.warn(
       "dailyReport: REPORT_STATE_BUCKET not set — running stateless (no history, no tier-change detection).",
@@ -267,9 +325,25 @@ export async function runDailyReport() {
   const day = pacificDay();
   const state = await loadState(bucket);
   const symbolState = state.symbols || {};
+  // Per-user send bookkeeping, keyed by email. Old single-user states kept
+  // these fields at the top level — migrate them to the sender's entry.
+  const userState = { ...(state.users || {}) };
+  if (!state.users && (state.lastSendDay || state.lastHealthFlags)) {
+    userState[senderEmail || "default"] = {
+      lastSendDay: state.lastSendDay ?? null,
+      lastHealthFlags: state.lastHealthFlags ?? [],
+    };
+  }
 
-  // ── Fetch market data for all holdings (be polite to Yahoo) ─────────────
-  const fetched = await mapPool(holdings, SYMBOL_CONCURRENCY, async (h) => {
+  // ── Fetch market data once per unique symbol across all users ───────────
+  // (quantity/cost basis differ per user and are overlaid later).
+  const uniqueHoldings = [
+    ...new Map(
+      users.flatMap((u) => u.holdings).map((h) => [h.symbol, h]),
+    ).values(),
+  ];
+
+  const fetched = await mapPool(uniqueHoldings, SYMBOL_CONCURRENCY, async (h) => {
     try {
       return await fetchSymbolData(h, symbolState[h.symbol]);
     } catch (err) {
@@ -316,11 +390,11 @@ export async function runDailyReport() {
     }
   }
 
-  // ── Committee + history per holding ─────────────────────────────────────
-  const results = fetched.map((f) => {
-    const { symbol, quantity, avgCostBasis } = f.holding;
+  // ── Committee + history per symbol (user-independent) ───────────────────
+  const symbolResults = fetched.map((f) => {
+    const { symbol } = f.holding;
     if (f.error) {
-      return { symbol, quantity, avgCostBasis, error: f.error };
+      return { symbol, error: f.error };
     }
 
     const prevState = symbolState[symbol] || {};
@@ -338,8 +412,6 @@ export async function runDailyReport() {
 
     const base = {
       symbol,
-      quantity,
-      avgCostBasis,
       isFund,
       candles: f.candles,
       articles: f.archive,
@@ -401,79 +473,169 @@ export async function runDailyReport() {
     };
   });
 
-  // ── Portfolio health (needs quantities for value weights) ───────────────
-  const health = analyzePortfolioHealth(
-    results
-      .filter((r) => !r.error)
-      .map((r) => {
-        const lastClose = Number(r.candles?.at(-1)?.close);
-        const currentValue =
-          Number.isFinite(r.quantity) && Number.isFinite(lastClose)
-            ? r.quantity * lastClose
-            : null;
-        return {
-          symbol: r.symbol,
-          isFund: Boolean(r.isFund),
-          currentValue,
-          lastDate: r.candles?.at(-1)?.date ?? null,
-          closes: (r.candles ?? [])
-            .map((c) => Number(c.close))
-            .filter(Number.isFinite),
-          tier: r.report?.verdict?.tier ?? null,
-          action: r.report?.verdict?.action ?? null,
-          composite: r.report?.verdict?.composite ?? null,
-        };
-      }),
-  );
+  const resultBySymbol = new Map(symbolResults.map((r) => [r.symbol, r]));
 
-  // ── Decide whether to send (exception-based) ────────────────────────────
-  const anyNonHold = results.some(
-    (r) => r.report && r.report.verdict.tier !== "Hold",
-  );
-  const anyTierChange = results.some((r) => r.tierChange);
-
+  // ── Per user: health, send decision, email ──────────────────────────────
   const flagKey = (f) => `${f.kind}:${[...(f.symbols || [])].sort().join(",")}`;
-  const warnFlags = (health?.flags ?? []).filter((f) => f.severity === "warn");
-  const previousFlagKeys = new Set(
-    (state.lastHealthFlags ?? []).map(flagKey),
-  );
-  const anyNewWarnFlag = warnFlags.some((f) => !previousFlagKeys.has(flagKey(f)));
-
   const heartbeat = day.endsWith("-01");
-  const actionable = anyNonHold || anyTierChange || anyNewWarnFlag;
-  const shouldSend = actionable || heartbeat || alwaysSend;
 
-  const spanDays = Math.min(
-    ...results.filter((r) => !r.error && !r.isFund).map((r) =>
-      archiveSpanDays(r.articles),
-    ),
-    Infinity,
-  );
+  const nextUserState = {};
+  const summaries = [];
+  let sendsAttempted = 0;
+  let sendsFailed = 0;
 
-  const meta = {
-    day,
-    engineVersion: COMMITTEE_ENGINE_VERSION,
-    articlesScored,
-    sentimentPartial,
-    archiveSpanDays: Number.isFinite(spanDays) ? spanDays : null,
-    heartbeatOnly: heartbeat && !actionable,
-  };
+  for (const user of users) {
+    const userKey = user.email || "default";
+    const results = user.holdings.map((h) => ({
+      ...resultBySymbol.get(h.symbol),
+      quantity: h.quantity,
+      avgCostBasis: h.avgCostBasis,
+    }));
+
+    // Portfolio health (needs this user's quantities for value weights).
+    const health = analyzePortfolioHealth(
+      results
+        .filter((r) => !r.error)
+        .map((r) => {
+          const lastClose = Number(r.candles?.at(-1)?.close);
+          const currentValue =
+            Number.isFinite(r.quantity) && Number.isFinite(lastClose)
+              ? r.quantity * lastClose
+              : null;
+          return {
+            symbol: r.symbol,
+            isFund: Boolean(r.isFund),
+            currentValue,
+            lastDate: r.candles?.at(-1)?.date ?? null,
+            closes: (r.candles ?? [])
+              .map((c) => Number(c.close))
+              .filter(Number.isFinite),
+            tier: r.report?.verdict?.tier ?? null,
+            action: r.report?.verdict?.action ?? null,
+            composite: r.report?.verdict?.composite ?? null,
+          };
+        }),
+    );
+
+    // Decide whether to send (exception-based).
+    const anyNonHold = results.some(
+      (r) => r.report && r.report.verdict.tier !== "Hold",
+    );
+    const anyTierChange = results.some((r) => r.tierChange);
+
+    const warnFlags = (health?.flags ?? []).filter((f) => f.severity === "warn");
+    const previousFlagKeys = new Set(
+      (userState[userKey]?.lastHealthFlags ?? []).map(flagKey),
+    );
+    const anyNewWarnFlag = warnFlags.some(
+      (f) => !previousFlagKeys.has(flagKey(f)),
+    );
+
+    const actionable = anyNonHold || anyTierChange || anyNewWarnFlag;
+    const shouldSend = actionable || heartbeat || alwaysSend;
+
+    const persistedFlags = warnFlags.map((f) => ({
+      kind: f.kind,
+      symbols: f.symbols,
+    }));
+
+    if (!shouldSend) {
+      nextUserState[userKey] = {
+        lastSendDay: userState[userKey]?.lastSendDay ?? null,
+        lastHealthFlags: persistedFlags,
+      };
+      summaries.push(`${userKey}: skipped (all Hold, no changes)`);
+      continue;
+    }
+
+    const spanDays = Math.min(
+      ...results.filter((r) => !r.error && !r.isFund).map((r) =>
+        archiveSpanDays(r.articles),
+      ),
+      Infinity,
+    );
+
+    const meta = {
+      day,
+      engineVersion: COMMITTEE_ENGINE_VERSION,
+      articlesScored,
+      sentimentPartial,
+      archiveSpanDays: Number.isFinite(spanDays) ? spanDays : null,
+      heartbeatOnly: heartbeat && !actionable,
+    };
+
+    const { subject, html, text } = renderReportEmail(results, health, meta);
+
+    if (dryRun) {
+      console.log(`dailyReport DRY RUN [${userKey}] — subject: ${subject}`);
+      console.log(html);
+      // Also write the rendered email where a human can open it (local test
+      // runs; on Lambda /tmp is writable and this is best-effort anyway).
+      try {
+        const { writeFileSync } = await import("node:fs");
+        const { tmpdir } = await import("node:os");
+        const slug = userKey.replace(/[^a-z0-9]+/gi, "-");
+        const path = `${tmpdir()}/stockjs-report-${slug}.html`;
+        writeFileSync(path, html);
+        writeFileSync(`${tmpdir()}/stockjs-report-${slug}.txt`, text);
+        console.log(`dailyReport DRY RUN — rendered email written to ${path}`);
+      } catch {
+        // logging above is enough
+      }
+      nextUserState[userKey] = { lastSendDay: day, lastHealthFlags: persistedFlags };
+      summaries.push(`${userKey}: dry-run "${subject}"`);
+      continue;
+    }
+
+    if (!senderEmail || !user.email) {
+      console.error(
+        `dailyReport: cannot send to ${userKey} — REPORT_EMAIL (sender) or recipient missing`,
+      );
+      if (userState[userKey]) nextUserState[userKey] = userState[userKey];
+      summaries.push(`${userKey}: send SKIPPED (no sender/recipient)`);
+      continue;
+    }
+
+    sendsAttempted += 1;
+    try {
+      // Sent FROM the verified REPORT_EMAIL identity TO the portfolio owner.
+      await ses.send(
+        new SendEmailCommand({
+          Source: senderEmail,
+          Destination: { ToAddresses: [user.email] },
+          Message: {
+            Subject: { Data: subject, Charset: "UTF-8" },
+            Body: {
+              Html: { Data: html, Charset: "UTF-8" },
+              Text: { Data: text, Charset: "UTF-8" },
+            },
+          },
+        }),
+      );
+      nextUserState[userKey] = { lastSendDay: day, lastHealthFlags: persistedFlags };
+      summaries.push(`${userKey}: sent "${subject}"`);
+    } catch (err) {
+      // SES-sandbox recipients who haven't clicked their verification link
+      // land here. Keep their previous bookkeeping so tomorrow's run
+      // re-detects the same health flags and retries.
+      sendsFailed += 1;
+      console.error(`dailyReport: send to ${user.email} failed:`, err);
+      if (userState[userKey]) nextUserState[userKey] = userState[userKey];
+      summaries.push(`${userKey}: send FAILED (${err.name || "error"})`);
+    }
+  }
 
   // ── State to persist (article archive + history must accrue daily) ──────
   const nextState = {
-    version: 1,
+    version: 2,
     updatedAt: new Date().toISOString(),
     lastRunDay: day,
-    lastSendDay: shouldSend ? day : (state.lastSendDay ?? null),
-    lastHealthFlags: warnFlags.map((f) => ({
-      kind: f.kind,
-      symbols: f.symbols,
-    })),
+    users: nextUserState,
     symbols: {
       // Failed symbols keep their previous state so nothing is lost.
       ...symbolState,
       ...Object.fromEntries(
-        results
+        symbolResults
           .filter((r) => !r.error)
           .map((r) => [
             r.symbol,
@@ -484,56 +646,24 @@ export async function runDailyReport() {
   };
 
   const elapsed = () => `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;
+  const summary = summaries.join("; ");
 
-  if (!shouldSend) {
-    // Quiet day: history and the article archive must still accrue.
-    if (bucket) await saveState(bucket, nextState);
-    console.log(
-      `dailyReport: skipped (all Hold, no changes) — ${results.length} symbols, ${articlesScored} articles scored, ${elapsed()}`,
+  // Send-before-persist invariant: if every attempted send failed, don't
+  // advance the shared symbol history — tomorrow's run then re-detects
+  // today's tier changes and retries. On a partial failure the state does
+  // persist (other users' emails already went out), so the failed user may
+  // miss changes that happened exactly today.
+  if (sendsAttempted > 0 && sendsFailed === sendsAttempted) {
+    console.error(
+      `dailyReport: all ${sendsAttempted} sends failed — state not persisted`,
     );
-    return { statusCode: 200, body: "skipped: all Hold, no changes" };
+    return { statusCode: 502, body: summary };
   }
 
-  const { subject, html, text } = renderReportEmail(results, health, meta);
-
-  if (dryRun) {
-    console.log(`dailyReport DRY RUN — subject: ${subject}`);
-    console.log(html);
-    // Also write the rendered email where a human can open it (local test
-    // runs; on Lambda /tmp is writable and this is best-effort anyway).
-    try {
-      const { writeFileSync } = await import("node:fs");
-      const { tmpdir } = await import("node:os");
-      const path = `${tmpdir()}/stockjs-report.html`;
-      writeFileSync(path, html);
-      writeFileSync(`${tmpdir()}/stockjs-report.txt`, text);
-      console.log(`dailyReport DRY RUN — rendered email written to ${path}`);
-    } catch {
-      // logging above is enough
-    }
-    if (bucket) await saveState(bucket, nextState);
-    return { statusCode: 200, body: `dry-run: would send "${subject}"` };
-  }
-
-  // Send first; persist state ONLY after a successful send so a failed email
-  // means tomorrow's run re-detects the same changes and retries.
-  await ses.send(
-    new SendEmailCommand({
-      Source: email,
-      Destination: { ToAddresses: [email] },
-      Message: {
-        Subject: { Data: subject, Charset: "UTF-8" },
-        Body: {
-          Html: { Data: html, Charset: "UTF-8" },
-          Text: { Data: text, Charset: "UTF-8" },
-        },
-      },
-    }),
-  );
   if (bucket) await saveState(bucket, nextState);
 
   console.log(
-    `dailyReport: sent "${subject}" to ${email} — ${results.length} symbols, ${articlesScored} articles scored, ${elapsed()}`,
+    `dailyReport: ${summary} — ${uniqueHoldings.length} symbols, ${articlesScored} articles scored, ${elapsed()}`,
   );
-  return { statusCode: 200, body: "sent" };
+  return { statusCode: 200, body: summary };
 }

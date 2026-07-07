@@ -13,6 +13,7 @@ import SymbolChart from "./components/CandlestickChart/SymbolChart";
 import ChartSkeleton from "./components/CandlestickChart/ChartSkeleton";
 import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
 import ImportFidelityPortfolioModal from "./components/ImportFidelityPortfolioModal/ImportFidelityPortfolioModal";
+import ReportPortfolioSyncModal from "./components/ReportPortfolioSyncModal/ReportPortfolioSyncModal";
 import Navbar from "./components/Navbar/Navbar";
 import NavbarMini from "./components/Navbar/NavbarMini";
 import StockHeader from "./components/StockHeader/StockHeader";
@@ -33,6 +34,10 @@ import {
   shouldAutoRefreshToday,
   markAutoRefreshedToday,
 } from "./utils/dailyRefresh";
+import {
+  isReportSyncConfigured,
+  syncReportPortfolio,
+} from "./utils/reportPortfolioSync";
 
 // Bridges the current mode from ModeProvider into MUI's ThemeProvider. Lives
 // above SnackbarProvider so toasts (the refresh-all progress toast included)
@@ -54,6 +59,7 @@ function App() {
   const [showAddTickerModal, setShowAddTickerModal] = useState(false);
   const [showImportPortfolioModal, setShowImportPortfolioModal] =
     useState(false);
+  const [showReportSyncModal, setShowReportSyncModal] = useState(false);
 
   const [range, setRange] = useState();
   const [selectedSymbol, setSelectedSymbol] = useState(null);
@@ -124,10 +130,13 @@ function App() {
     : null;
 
   const handleDelete = () => {
-    deleteSymbolData(selectedSymbol).then(() => {
+    deleteSymbolData(selectedSymbol).then(async () => {
       handleGoHome();
       refreshStoredSymbols();
-      refreshPositions();
+      await refreshPositions();
+      if (isReportSyncConfigured()) {
+        await syncReportPortfolio();
+      }
     });
   };
 
@@ -139,18 +148,42 @@ function App() {
     }
   };
 
-  const handleImportPortfolioClose = (result) => {
+  const handleImportPortfolioClose = async (result) => {
     setShowImportPortfolioModal(false);
     if (!result) return;
 
-    refreshStoredSymbols();
-    refreshPositions();
+    await refreshStoredSymbols();
+    await refreshPositions();
 
     let message = `Imported ${result.imported} position${result.imported === 1 ? "" : "s"}.`;
     if (result.failed > 0) {
       message += ` ${result.failed} symbol(s) need a manual refresh for market data.`;
     }
+
+    if (isReportSyncConfigured()) {
+      const sync = await syncReportPortfolio();
+      if (sync.ok) {
+        message += ` Daily email updated (${sync.count} holdings).`;
+      } else if (sync.error) {
+        showSnackbar(
+          `${message} Email sync failed: ${sync.error}`,
+          "warning",
+        );
+        return;
+      }
+    }
+
     showSnackbar(message, result.failed > 0 ? "warning" : "success");
+  };
+
+  const handleReportSyncClose = (result) => {
+    setShowReportSyncModal(false);
+    if (result?.synced) {
+      showSnackbar(
+        `Daily email synced (${result.synced} holding${result.synced === 1 ? "" : "s"}).`,
+        "success",
+      );
+    }
   };
 
   return (
@@ -167,6 +200,7 @@ function App() {
             onClickImportPortfolioModal={() =>
               setShowImportPortfolioModal(true)
             }
+            onClickReportSyncModal={() => setShowReportSyncModal(true)}
             onClickSymbol={handleSelectSymbol}
             onClickHome={handleGoHome}
             onRefreshAllTickers={refreshAll}
@@ -184,6 +218,7 @@ function App() {
             onClickImportPortfolioModal={() =>
               setShowImportPortfolioModal(true)
             }
+            onClickReportSyncModal={() => setShowReportSyncModal(true)}
             onClickSymbol={handleSelectSymbol}
             onClickHome={handleGoHome}
             onRefreshAllTickers={refreshAll}
@@ -197,6 +232,13 @@ function App() {
 
         {showImportPortfolioModal && (
           <ImportFidelityPortfolioModal onClose={handleImportPortfolioClose} />
+        )}
+
+        {showReportSyncModal && (
+          <ReportPortfolioSyncModal
+            positionCount={positions.length}
+            onClose={handleReportSyncClose}
+          />
         )}
 
         <div

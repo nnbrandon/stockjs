@@ -37,11 +37,10 @@ MEMORY=2048
 TIMEOUT=300
 
 if [[ -z "$REPORT_SYMBOLS" ]]; then
-  echo "ERROR: set REPORT_SYMBOLS, e.g.:"
-  echo '  REPORT_SYMBOLS="AAPL:100:150.25,MSFT:50:300,VTI:20:220" '"$0"
-  echo '(format: SYMBOL[:quantity:avgCostBasis], quantity/cost optional —'
-  echo ' they enable the portfolio-health value weights)'
-  exit 1
+  echo "NOTE: REPORT_SYMBOLS not set — the daily report will use your synced"
+  echo "      portfolio from the app (sidebar → Sync email report) once you"
+  echo "      import holdings and paste the SYNC_TOKEN printed below."
+  REPORT_SYMBOLS=""
 fi
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
@@ -104,7 +103,10 @@ aws iam put-role-policy \
       {
         \"Effect\": \"Allow\",
         \"Action\": [\"s3:GetObject\", \"s3:PutObject\"],
-        \"Resource\": \"arn:aws:s3:::${BUCKET}/committee-state.json\"
+        \"Resource\": [
+          \"arn:aws:s3:::${BUCKET}/committee-state.json\",
+          \"arn:aws:s3:::${BUCKET}/portfolio.json\"
+        ]
       }
     ]
   }"
@@ -119,13 +121,19 @@ EXISTING_ENV="$(aws lambda get-function-configuration \
   --function-name "$FUNCTION_NAME" --region "$REGION" \
   --query 'Environment.Variables' --output json 2>/dev/null || echo 'null')"
 
-MERGED_ENV="$(python3 - "$EXISTING_ENV" "$REPORT_SYMBOLS" "$REPORT_EMAIL" "$BUCKET" <<'PY'
+# Shared secret for the browser's portfolio sync (action=portfolioSync).
+# Generated once and kept across re-runs; override with SYNC_TOKEN=... env.
+EXISTING_TOKEN="$(python3 -c "import json,sys; print((json.loads(sys.argv[1]) or {}).get('SYNC_TOKEN',''))" "$EXISTING_ENV")"
+SYNC_TOKEN="${SYNC_TOKEN:-${EXISTING_TOKEN:-$(openssl rand -hex 24)}}"
+
+MERGED_ENV="$(python3 - "$EXISTING_ENV" "$REPORT_SYMBOLS" "$REPORT_EMAIL" "$BUCKET" "$SYNC_TOKEN" <<'PY'
 import json, sys
 existing = json.loads(sys.argv[1]) or {}
 existing.update({
     "REPORT_SYMBOLS": sys.argv[2],
     "REPORT_EMAIL": sys.argv[3],
     "REPORT_STATE_BUCKET": sys.argv[4],
+    "SYNC_TOKEN": sys.argv[5],
 })
 print(json.dumps({"Variables": existing}))
 PY
@@ -208,6 +216,12 @@ fi
 echo ""
 echo "============================================================"
 echo " Done!"
+echo ""
+echo " Portfolio sync token (paste into the app: sidebar → Sync report"
+echo " portfolio). Anyone with this token can change which symbols the"
+echo " daily email covers — treat it like a password:"
+echo ""
+echo "   $SYNC_TOKEN"
 echo ""
 echo " Remaining manual steps:"
 if [[ "$VERIFY_STATUS" != "Success" ]]; then

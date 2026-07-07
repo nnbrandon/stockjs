@@ -188,6 +188,29 @@ class LambdaService {
       return urls.map((url) => ({ url, ok: false }));
     }
   }
+
+  // Push imported holdings to S3 so the scheduled daily email tracks the UI.
+  // Authenticated with the SYNC_TOKEN from setup-daily-report.sh.
+  async syncPortfolio(token, positions) {
+    try {
+      const response = await fetch(`${this.API_URL}?action=portfolioSync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, positions }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: data.error || "Sync failed" };
+      }
+      return {
+        ok: true,
+        count: data.count,
+        updatedAt: data.updatedAt,
+      };
+    } catch (err) {
+      return { ok: false, error: err?.message || "Sync failed" };
+    }
+  }
 }
 
 export default new LambdaService();

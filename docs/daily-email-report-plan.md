@@ -365,7 +365,9 @@ cold-start download is inbound and unbilled.
 ## Explicit non-goals / follow-ups
 
 - Portfolio auto-sync from the browser's Fidelity import (client → S3 via an
-  authenticated endpoint) — v1 uses `REPORT_SYMBOLS`.
+  authenticated endpoint) — **done**: sidebar → Sync email report; auto-syncs
+  on each Fidelity import when a token is saved. `REPORT_SYMBOLS` remains a
+  fallback when nothing has been synced yet.
 - Full-article crawling for sentiment (browser deep-review parity) — the
   extraction path is heavier; headlines+summaries are v1.
 - Baking the FinBERT model into the deploy artifact or a Lambda layer to

@@ -6,6 +6,7 @@ import AddIcon from "@mui/icons-material/Add";
 import HomeIcon from "@mui/icons-material/Home";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import Tooltip from "@mui/material/Tooltip";
 
 import styles from "./NavbarMini.module.css";
@@ -33,6 +34,7 @@ function NavbarMini({
   onExpandNav,
   onClickAddTickerModal,
   onClickImportPortfolioModal,
+  onClickReportSyncModal,
   onClickSymbol,
   onClickHome,
   onRefreshAllTickers,
@@ -172,6 +174,17 @@ function NavbarMini({
               aria-label="Import Fidelity portfolio"
             >
               <UploadFileIcon fontSize="small" />
+            </button>
+          </Tooltip>
+
+          <Tooltip title="Sync email report">
+            <button
+              type="button"
+              className={styles.iconActionBtn}
+              onClick={onClickReportSyncModal}
+              aria-label="Sync email report"
+            >
+              <EmailOutlinedIcon fontSize="small" />
             </button>
           </Tooltip>
         </div>

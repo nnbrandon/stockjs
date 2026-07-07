@@ -6,6 +6,7 @@ import AddIcon from "@mui/icons-material/Add";
 import HomeIcon from "@mui/icons-material/Home";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import Tooltip from "@mui/material/Tooltip";
 
 import styles from "./Navbar.module.css";
@@ -33,6 +34,7 @@ function Navbar({
   onCloseNav,
   onClickAddTickerModal,
   onClickImportPortfolioModal,
+  onClickReportSyncModal,
   onClickSymbol,
   onClickHome,
   onRefreshAllTickers,
@@ -159,6 +161,17 @@ function Navbar({
           >
             <UploadFileIcon fontSize="small" />
             Import Fidelity portfolio
+          </button>
+        </Tooltip>
+
+        <Tooltip title="Push your imported holdings to the daily email report (requires sync token from setup-daily-report.sh)">
+          <button
+            type="button"
+            className={styles.btnOutlined}
+            onClick={onClickReportSyncModal}
+          >
+            <EmailOutlinedIcon fontSize="small" />
+            Sync email report
           </button>
         </Tooltip>
 

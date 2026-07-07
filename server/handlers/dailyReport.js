@@ -40,6 +40,7 @@ import {
 } from "../lib/marketData.js";
 import { getClassifier, scoreNewArticles } from "../lib/sentiment.js";
 import { renderReportEmail } from "../lib/reportEmail.js";
+import { PORTFOLIO_KEY } from "./portfolioSync.js";
 
 const STATE_KEY = "committee-state.json";
 const CANDLE_DAYS = 420;
@@ -95,6 +96,36 @@ async function loadState(bucket) {
   } catch (err) {
     if (err instanceof NoSuchKey || err.name === "NoSuchKey") return {};
     throw err;
+  }
+}
+
+/**
+ * The portfolio the browser synced via action=portfolioSync, or null when
+ * none has been synced yet (fall back to REPORT_SYMBOLS).
+ */
+async function loadSyncedPortfolio(bucket) {
+  if (!bucket) return null;
+  try {
+    const res = await s3.send(
+      new GetObjectCommand({ Bucket: bucket, Key: PORTFOLIO_KEY }),
+    );
+    const data = JSON.parse(await res.Body.transformToString());
+    const holdings = (data?.positions ?? [])
+      .filter((p) => typeof p?.symbol === "string" && p.symbol)
+      .map((p) => ({
+        symbol: p.symbol.toUpperCase(),
+        quantity: Number.isFinite(p.quantity) ? p.quantity : null,
+        avgCostBasis: Number.isFinite(p.averageCostBasis)
+          ? p.averageCostBasis
+          : null,
+      }));
+    if (!holdings.length) return null;
+    return { holdings, updatedAt: data.updatedAt ?? null };
+  } catch (err) {
+    if (!(err instanceof NoSuchKey || err.name === "NoSuchKey")) {
+      console.error("dailyReport: failed to read synced portfolio:", err);
+    }
+    return null;
   }
 }
 
@@ -206,15 +237,24 @@ async function mapPool(items, limit, fn) {
 
 export async function runDailyReport() {
   const startedAt = Date.now();
-  const holdings = parseReportSymbols(process.env.REPORT_SYMBOLS);
+  const bucket = process.env.REPORT_STATE_BUCKET || "";
+
+  // Prefer the portfolio the browser synced (tracks the Fidelity import);
+  // REPORT_SYMBOLS is the fallback for accounts that never synced.
+  const synced = await loadSyncedPortfolio(bucket);
+  const holdings =
+    synced?.holdings ?? parseReportSymbols(process.env.REPORT_SYMBOLS);
   if (!holdings.length) {
     return {
       statusCode: 400,
-      body: "REPORT_SYMBOLS is empty — nothing to report on",
+      body: "No synced portfolio and REPORT_SYMBOLS is empty — nothing to report on",
     };
   }
-
-  const bucket = process.env.REPORT_STATE_BUCKET || "";
+  console.log(
+    synced
+      ? `dailyReport: using synced portfolio (${holdings.length} positions, updated ${synced.updatedAt})`
+      : `dailyReport: using REPORT_SYMBOLS (${holdings.length} symbols)`,
+  );
   const email = process.env.REPORT_EMAIL || "herosekai@gmail.com";
   const dryRun = process.env.REPORT_DRY_RUN === "1";
   const alwaysSend = process.env.REPORT_ALWAYS_SEND === "1";

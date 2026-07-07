@@ -15,6 +15,7 @@
 
 import { timingSafeEqual, createHash } from "node:crypto";
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   NoSuchKey,
   PutObjectCommand,
@@ -207,4 +208,55 @@ export async function syncPortfolio(body, corsOrigin) {
     },
     corsOrigin,
   );
+}
+
+/**
+ * The unsubscribe (action=removePortfolio): deletes the email's portfolio so
+ * the daily report stops covering it. Same credentials as syncPortfolio.
+ * Re-syncing later turns the report back on.
+ */
+export async function removePortfolio(body, corsOrigin) {
+  const globalToken = process.env.SYNC_TOKEN || "";
+  const bucket = process.env.REPORT_STATE_BUCKET || "";
+  if (!bucket) {
+    return errorResponse(
+      503,
+      "Portfolio sync is not configured on the server",
+      corsOrigin,
+    );
+  }
+
+  const email = normalizeEmail(body?.email);
+  if (!email) {
+    return errorResponse(400, "A valid email address is required", corsOrigin);
+  }
+
+  const perEmailHash = await loadTokenHash(bucket, email);
+  const authorized =
+    tokenMatchesHash(body?.token, perEmailHash) ||
+    tokenMatches(body?.token, globalToken);
+  if (!authorized) {
+    return errorResponse(403, "Invalid sync token", corsOrigin);
+  }
+
+  const keys = [portfolioKeyForEmail(email)];
+  // The report falls back to the legacy single-user portfolio.json for
+  // REPORT_EMAIL — for that address it must be deleted too, or the report
+  // would quietly keep sending from the stale snapshot.
+  if (email === normalizeEmail(process.env.REPORT_EMAIL)) {
+    keys.push(LEGACY_PORTFOLIO_KEY);
+  }
+
+  try {
+    for (const key of keys) {
+      // DeleteObject succeeds even when the key doesn't exist.
+      await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    }
+  } catch (err) {
+    console.error("portfolioSync: S3 delete failed:", err);
+    return errorResponse(502, "Failed to remove portfolio", corsOrigin);
+  }
+
+  console.log(`portfolioSync: removed portfolio for ${email}`);
+  return jsonResponse(200, { ok: true, removed: true }, corsOrigin);
 }

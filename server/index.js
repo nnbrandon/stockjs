@@ -7,7 +7,7 @@ import { fetchPrices } from "./handlers/prices.js";
 import { fetchQuote } from "./handlers/quote.js";
 import { fetchSymbolSearch } from "./handlers/search.js";
 import { fetchTrending } from "./handlers/trending.js";
-import { syncPortfolio } from "./handlers/portfolioSync.js";
+import { removePortfolio, syncPortfolio } from "./handlers/portfolioSync.js";
 import { requestSyncToken } from "./handlers/requestToken.js";
 import {
   corsPreflightResponse,
@@ -27,6 +27,7 @@ const VALID_ACTIONS = [
   "search",
   "portfolioSync",
   "requestToken",
+  "removePortfolio",
 ];
 
 // Lambda Function URLs deliver POST bodies as a (sometimes base64-encoded)
@@ -86,6 +87,8 @@ export const handler = async (event) => {
         return await syncPortfolio(parseBody(event), corsOrigin);
       case "requestToken":
         return await requestSyncToken(parseBody(event), corsOrigin);
+      case "removePortfolio":
+        return await removePortfolio(parseBody(event), corsOrigin);
       case "trending":
         return await fetchTrending(corsOrigin);
       case "search":

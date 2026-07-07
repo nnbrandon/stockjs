@@ -189,6 +189,26 @@ class LambdaService {
     }
   }
 
+  // Unsubscribe: delete this email's portfolio from S3 so the daily report
+  // stops covering it. Same credentials as syncPortfolio; re-syncing later
+  // turns the report back on.
+  async removePortfolio(token, email) {
+    try {
+      const response = await fetch(`${this.API_URL}?action=removePortfolio`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, email }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: data.error || "Could not stop the report" };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err?.message || "Could not stop the report" };
+    }
+  }
+
   // Ask the server to email a fresh sync token to `email`. Resolves to
   // { ok, tokenSent?, verificationSent?, error? } — verificationSent means
   // the address first has to click the AWS verification link, then request

@@ -10,6 +10,7 @@ import {
   getLastReportSyncAt,
   getReportSyncEmail,
   getReportSyncToken,
+  removeReportPortfolio,
   setReportSyncEmail,
   setReportSyncToken,
   syncReportPortfolio,
@@ -62,7 +63,9 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
       return;
     }
     if (!trimmedToken) {
-      setError('Paste your sync token — tap "Email me a sync token" to get one.');
+      setError(
+        'Paste your sync token — tap "Email me a sync token" to get one.',
+      );
       return;
     }
     if (positionCount === 0) {
@@ -76,7 +79,9 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
     try {
       const result = await syncReportPortfolio();
       if (!result.ok) {
-        setError(result.error || "Sync failed — check the token and try again.");
+        setError(
+          result.error || "Sync failed — check the token and try again.",
+        );
         return;
       }
       setLastSync(getLastReportSyncAt());
@@ -127,13 +132,39 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
     }
   }
 
-  function handleClearToken() {
-    setReportSyncToken("");
-    setReportSyncEmail("");
-    setToken("");
-    setEmail("");
-    setStatus("");
+  async function handleStopReport() {
     setError("");
+    setStatus("");
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedToken = token.trim();
+    if (!EMAIL_RE.test(trimmedEmail) || !trimmedToken) {
+      setError("Enter your email and sync token to stop the report.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Stop the daily report for ${trimmedEmail}? Your holdings will be removed from the server. You can Save & sync anytime to turn it back on.`,
+      )
+    ) {
+      return;
+    }
+
+    setIsBusy(true);
+    setReportSyncEmail(trimmedEmail);
+    setReportSyncToken(trimmedToken);
+    try {
+      const result = await removeReportPortfolio();
+      if (!result.ok) {
+        setError(result.error || "Could not stop the report — try again.");
+        return;
+      }
+      setLastSync(null);
+      setStatus(
+        `Daily report stopped for ${trimmedEmail} — your holdings were removed from the server.`,
+      );
+    } finally {
+      setIsBusy(false);
+    }
   }
 
   const lastSyncLabel = formatSyncTime(lastSync);
@@ -223,7 +254,9 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
         </div>
 
         {lastSyncLabel && (
-          <p className={addTickerStyles.subtitle}>Last synced: {lastSyncLabel}</p>
+          <p className={addTickerStyles.subtitle}>
+            Last synced: {lastSyncLabel}
+          </p>
         )}
 
         {status && (
@@ -240,10 +273,11 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
           <button
             type="button"
             className={addTickerStyles.btnSecondary}
-            onClick={handleClearToken}
-            disabled={isBusy || (!token && !email)}
+            onClick={handleStopReport}
+            disabled={isBusy || !token.trim() || !email.trim()}
+            title="Remove your holdings from the server so the daily email stops"
           >
-            Clear settings
+            Stop report
           </button>
           <button
             type="button"

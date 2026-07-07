@@ -63,3 +63,17 @@ export async function syncReportPortfolio(positions) {
   }
   return result;
 }
+
+/**
+ * Stop the daily report: delete this email's portfolio from the server.
+ * Local settings are kept so Save & sync can turn it back on later.
+ */
+export async function removeReportPortfolio() {
+  const token = getReportSyncToken();
+  const email = getReportSyncEmail();
+  if (!token || !email) return { ok: false, reason: "not-configured" };
+
+  const result = await LambdaService.removePortfolio(token, email);
+  if (result.ok) localStorage.removeItem(LAST_SYNC_KEY);
+  return result;
+}

@@ -164,7 +164,7 @@ function Navbar({
           </button>
         </Tooltip>
 
-        <Tooltip title="Push your imported holdings to the daily email report (requires sync token from setup-daily-report.sh)">
+        <Tooltip title="Push your imported holdings to the daily email report">
           <button
             type="button"
             className={styles.btnOutlined}

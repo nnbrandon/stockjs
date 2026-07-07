@@ -132,10 +132,7 @@ aws iam put-role-policy \
       {
         \"Effect\": \"Allow\",
         \"Action\": \"s3:ListBucket\",
-        \"Resource\": \"arn:aws:s3:::${BUCKET}\",
-        \"Condition\": {
-          \"StringLike\": { \"s3:prefix\": \"portfolios/*\" }
-        }
+        \"Resource\": \"arn:aws:s3:::${BUCKET}\"
       }
     ]
   }"
@@ -252,7 +249,15 @@ echo " each address gets its own portfolio and its own daily email)."
 echo " Anyone with this token can change which symbols the daily emails"
 echo " cover — treat it like a password:"
 echo ""
-echo "   $SYNC_TOKEN"
+# Never print the token into CI logs — on a public repo they're public.
+# It's already set on the Lambda either way; users get per-email tokens
+# from the app, and the master token is printable from a trusted shell.
+if [[ -n "${CI:-}" ]]; then
+  echo "   (masked in CI — run this script locally/CloudShell to print it,"
+  echo "    or read the SYNC_TOKEN env var off the Lambda in the console)"
+else
+  echo "   $SYNC_TOKEN"
+fi
 echo ""
 echo " Remaining manual steps:"
 if [[ "$VERIFY_STATUS" != "Success" ]]; then

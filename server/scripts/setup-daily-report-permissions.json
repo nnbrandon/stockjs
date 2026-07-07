@@ -1,5 +1,5 @@
 {
-  "_comment": "Every action server/scripts/setup-daily-report.sh needs, for accounts where the CLI user has a permissions boundary. Merge these statements into BOTH the boundary policy and the user's identity policy (both must allow), or skip all of this by running the script once from an admin CloudShell session. Replace <ACCOUNT_ID> with your account id.",
+  "_comment": "Every action server/scripts/setup-daily-report.sh needs, for accounts where the CLI user has a permissions boundary — including the CI user behind deploy-infra.yml, which re-runs the script on every change to it. Merge these statements into BOTH the boundary policy and the user's identity policy (both must allow), or run the script from an admin CloudShell session. Replace <ACCOUNT_ID> with your account id. The RolePolicies resources must include the function's ACTUAL execution role (the script auto-detects it; e.g. 'Lambda').",
   "Version": "2012-10-17",
   "Statement": [
     {
@@ -26,6 +26,7 @@
       "Effect": "Allow",
       "Action": ["iam:GetRole", "iam:CreateRole", "iam:PutRolePolicy"],
       "Resource": [
+        "arn:aws:iam::<ACCOUNT_ID>:role/Lambda",
         "arn:aws:iam::<ACCOUNT_ID>:role/stockjs-lambda-role",
         "arn:aws:iam::<ACCOUNT_ID>:role/stockjs-scheduler-role"
       ]

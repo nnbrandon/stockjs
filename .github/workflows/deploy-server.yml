@@ -12,6 +12,12 @@ on:
 permissions:
   contents: read
 
+# Same group as deploy-infra.yml so update-function-code never races the
+# setup script's update-function-configuration.
+concurrency:
+  group: stockjs-lambda
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

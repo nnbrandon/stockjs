@@ -1,0 +1,41 @@
+name: Sync report infra to AWS
+
+# Re-applies setup-daily-report.sh whenever it changes, so the IAM policy,
+# Lambda config, schedule, and env vars on AWS never drift from the script.
+# The script is idempotent — it creates what's missing and updates the rest.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/scripts/setup-daily-report.sh"
+      - ".github/workflows/deploy-infra.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Same group as the server deploy so a config update never races an
+# update-function-code from deploy-server.yml.
+concurrency:
+  group: stockjs-lambda
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # CI=true makes the script mask the SYNC_TOKEN — this is a public repo,
+      # so these logs are public too.
+      - name: Apply setup-daily-report.sh
+        run: ./server/scripts/setup-daily-report.sh
+        env:
+          REGION: ${{ vars.AWS_REGION }}

@@ -15,15 +15,15 @@ import CircularProgress from "@mui/material/CircularProgress";
 import {
   COMMITTEE_ENGINE_VERSION,
   runAnalystCommittee,
-} from "../../utils/analyst";
-import { getVerdictContext } from "../../utils/analyst/verdictContext";
+} from "@stockjs/committee-engine/analyst/index.js";
+import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
 import {
   getPreviousSnapshot,
   getScoreSeries,
   getTierChange,
-} from "../../utils/analyst/verdictHistory";
+} from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import { computePositionMetrics } from "../../utils/computePositionMetrics";
-import { getGuardrail } from "../../utils/guardrails";
+import { getGuardrail } from "@stockjs/committee-engine/guardrails.js";
 import PositionHolding from "../PositionHolding/PositionHolding";
 import TickerSparkline from "../SparklineChart/SparklineChart";
 import {
@@ -33,7 +33,7 @@ import {
   saveCommitteeSnapshot,
 } from "../../db";
 import calculateRange from "../../utils/calculateRange";
-import { isFundSymbol } from "../../utils/isFundSymbol";
+import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
 import { useRefreshSignal } from "../../hooks/useRefreshSignal";
 import useNewsIntelligence from "../../hooks/useNewsIntelligence";
 import useFinbert from "../../hooks/useFinbert";

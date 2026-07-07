@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   COMMITTEE_ENGINE_VERSION,
   runAnalystCommittee,
-} from "../utils/analyst";
+} from "@stockjs/committee-engine/analyst/index.js";
 import { saveCommitteeSnapshot } from "../db";
-import { getPreviousSnapshot } from "../utils/analyst/verdictHistory";
-import { analyzePortfolioHealth } from "../utils/portfolioHealth";
+import { getPreviousSnapshot } from "@stockjs/committee-engine/analyst/verdictHistory.js";
+import { analyzePortfolioHealth } from "@stockjs/committee-engine/portfolioHealth.js";
 import { computePositionMetrics } from "../utils/computePositionMetrics";
 import { loadCommitteeData } from "../utils/loadCommitteeData";
-import { isFundSymbol } from "../utils/isFundSymbol";
+import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
 import { isTradeableTickerSymbol } from "../utils/parseFidelityCsv";
 import { scorePortfolioNews } from "../utils/scorePortfolioNews";
 

@@ -9,8 +9,8 @@ import AiCommitteeHelpButton from "../AiCommitteeHelp/AiCommitteeHelpButton";
 import PortfolioHealthCard from "./PortfolioHealthCard";
 import ResizableSidebar from "../ResizableSidebar/ResizableSidebar";
 import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
-import { getVerdictContext } from "../../utils/analyst/verdictContext";
-import { getTierChange } from "../../utils/analyst/verdictHistory";
+import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
+import { getTierChange } from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import styles from "./PortfolioCommitteePanel.module.css";
 
 const FILTERS = {

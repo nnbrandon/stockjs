@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "server/**"
+      - "packages/committee-engine/**"
       - ".github/workflows/deploy-server.yml"
   workflow_dispatch:
 
@@ -29,8 +30,17 @@ jobs:
       # Production dependencies only — keeps the deployment package small.
       - run: npm ci --omit=dev
 
+      # Bundle the handler with the shared committee engine inlined — the zip
+      # has no workspace resolution, so the engine package is aliased straight
+      # to its source. Only @huggingface/transformers stays external (native
+      # onnxruntime binaries can't be bundled); it ships via node_modules.
+      - name: Bundle handler
+        run: npm run bundle
+
+      # Lambda handler must be set to "dist/index.handler" (one-time config —
+      # server/scripts/setup-daily-report.sh does it).
       - name: Package function
-        run: zip -r ../function.zip index.js package.json handlers lib node_modules
+        run: zip -r ../function.zip dist package.json node_modules
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:

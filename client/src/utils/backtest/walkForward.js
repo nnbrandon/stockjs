@@ -1,8 +1,8 @@
 // Pure walk-forward backtest logic. No IndexedDB, no DOM — testable in node.
 // The browser entry point (./index.js) feeds it data from the Dexie cache.
 
-import { runAnalystCommittee } from "../analyst";
-import { COMMITTEE_ENGINE_VERSION } from "../analyst/version";
+import { runAnalystCommittee } from "@stockjs/committee-engine/analyst/index.js";
+import { COMMITTEE_ENGINE_VERSION } from "@stockjs/committee-engine/analyst/version.js";
 
 // Fundamentals become public well after the quarter ends; shifting them by a
 // reporting lag keeps the replay (roughly) point-in-time.

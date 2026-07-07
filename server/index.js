@@ -40,6 +40,16 @@ function parseBody(event) {
 }
 
 export const handler = async (event) => {
+  // Internal actions arrive as a direct invoke payload (EventBridge Scheduler
+  // → {"action": "dailyReport"}). Function URL events carry the action in
+  // queryStringParameters instead, so the public URL can never trigger an
+  // email send. Lazily imported: the report path drags in FinBERT + AWS SDK
+  // clients that ordinary API requests should never pay for.
+  if (event.action === "dailyReport") {
+    const { runDailyReport } = await import("./handlers/dailyReport.js");
+    return runDailyReport();
+  }
+
   const corsOrigin = resolveCorsOrigin(event.headers || {});
 
   if (

@@ -7,12 +7,17 @@
   "scripts": {
     "dev": "node local-server.js",
     "start": "node local-server.js",
+    "bundle": "npx --yes esbuild@0.24 index.js --bundle --format=esm --platform=node --target=node22 --outfile=dist/index.mjs --alias:@stockjs/committee-engine=../packages/committee-engine/src --external:@huggingface/transformers --banner:js=\"import { createRequire as __cjsRequire } from 'node:module'; import { fileURLToPath as __fileURLToPath } from 'node:url'; import { dirname as __pathDirname } from 'node:path'; var require = __cjsRequire(import.meta.url); var __filename = __fileURLToPath(import.meta.url); var __dirname = __pathDirname(__filename);\"",
+    "report:dry": "npm run bundle && node scripts/dry-run-report.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1080.0",
+    "@aws-sdk/client-ses": "^3.1080.0",
+    "@huggingface/transformers": "^4.2.0",
     "yahoo-finance2": "^3.15.2"
   }
 }

@@ -1,4 +1,4 @@
-import { toIsoDate } from "../db/utils";
+import { toIsoDate } from "./dateUtils.js";
 
 // Quarter-end dates can differ by a few days between the fundamentals feed
 // and the earnings endpoint — bucket by calendar quarter for matching.

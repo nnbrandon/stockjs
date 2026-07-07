@@ -15,19 +15,9 @@ export async function withLog(label, fn) {
   }
 }
 
-/**
- * Coerce any date-like value (Date, ISO string, unix seconds, unix ms) to
- * an ISO string. Centralized so individual save functions don't each have
- * to second-guess Yahoo's response shape.
- */
-export function toIsoDate(value) {
-  if (value == null) return null;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === "number") {
-    return new Date(value < 1e11 ? value * 1000 : value).toISOString();
-  }
-  return new Date(value).toISOString();
-}
+// Single definition lives in the shared engine package (the server needs it
+// too); re-exported here so db-layer callers keep their import path.
+export { toIsoDate } from "@stockjs/committee-engine/dateUtils.js";
 
 /**
  * Shared filter for "is this row's `date` between startDate and endDate".

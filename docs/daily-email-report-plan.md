@@ -1,6 +1,13 @@
 # Plan: Daily AI Committee email report (9:00 AM Pacific, on Lambda)
 
-**Status: not started.** Self-contained handoff doc — implementable cold by
+**Status: implemented (all phases, 2026-07-07).** Code is done and verified
+locally (bundle builds, handlers unregressed, dry run clean, sentiment
+parity). Remaining manual steps: run
+`REPORT_SYMBOLS="..." ./server/scripts/setup-daily-report.sh` once with AWS
+credentials, click the SES verification link it emails, deploy (push to
+main), then test with a manual `aws lambda invoke` (see Verification 5–6).
+
+Self-contained handoff doc — implementable cold by
 any model/session with no conversation context. Written 2026-07-07, revised
 same day to add: a shared engine package (single source of truth for client
 and server), news sentiment in v1, and a free-tier cost budget.

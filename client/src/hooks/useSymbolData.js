@@ -7,7 +7,7 @@ import {
   getNewsBySymbol,
   getEarnings,
 } from "../db";
-import { mergeEarningsIntoQuarterly } from "../utils/mergeEarningsIntoQuarterly";
+import { mergeEarningsIntoQuarterly } from "@stockjs/committee-engine/mergeEarningsIntoQuarterly.js";
 import { useRefreshSignal } from "./useRefreshSignal";
 import calculateRange from "../utils/calculateRange";
 

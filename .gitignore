@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 function.zip
+
+# Local FinBERT model cache (server dry runs)
+.hf-cache

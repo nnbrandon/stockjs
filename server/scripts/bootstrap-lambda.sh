@@ -19,7 +19,9 @@ FUNCTION_NAME="${FUNCTION_NAME:-stockjs-api}"
 REGION="${REGION:-us-east-1}"
 ROLE_NAME="${ROLE_NAME:-stockjs-lambda-role}"
 RUNTIME="${RUNTIME:-nodejs22.x}"
-HANDLER="index.handler"
+# The deploy artifact is an esbuild bundle at dist/index.mjs (the shared
+# committee engine is inlined at build time — see deploy-server.yml).
+HANDLER="dist/index.handler"
 MEMORY="${MEMORY:-256}"
 TIMEOUT="${TIMEOUT:-30}"
 
@@ -80,9 +82,12 @@ fi
 echo "==> Installing production dependencies"
 ( cd "$SERVER_DIR" && npm ci --omit=dev >/dev/null )
 
+echo "==> Bundling handler (inlines the shared committee engine)"
+( cd "$SERVER_DIR" && npm run bundle >/dev/null )
+
 echo "==> Zipping function"
 ZIP_PATH="$(mktemp -d)/function.zip"
-( cd "$SERVER_DIR" && zip -qr "$ZIP_PATH" index.js package.json handlers lib node_modules )
+( cd "$SERVER_DIR" && zip -qr "$ZIP_PATH" dist package.json node_modules )
 
 # ── 3. Create or update the function ─────────────────────────────────────
 if aws lambda get-function --function-name "$FUNCTION_NAME" --region "$REGION" >/dev/null 2>&1; then
@@ -91,6 +96,20 @@ if aws lambda get-function --function-name "$FUNCTION_NAME" --region "$REGION" >
     --function-name "$FUNCTION_NAME" \
     --zip-file "fileb://$ZIP_PATH" \
     --region "$REGION" >/dev/null
+
+  # Functions created before the esbuild-bundle era still point at
+  # index.handler; flip them to the bundled entrypoint.
+  CURRENT_HANDLER="$(aws lambda get-function-configuration \
+    --function-name "$FUNCTION_NAME" --region "$REGION" \
+    --query Handler --output text)"
+  if [[ "$CURRENT_HANDLER" != "$HANDLER" ]]; then
+    echo "==> Updating handler: $CURRENT_HANDLER → $HANDLER"
+    aws lambda wait function-updated --function-name "$FUNCTION_NAME" --region "$REGION"
+    aws lambda update-function-configuration \
+      --function-name "$FUNCTION_NAME" \
+      --handler "$HANDLER" \
+      --region "$REGION" >/dev/null
+  fi
 else
   echo "==> Creating function $FUNCTION_NAME"
   aws lambda create-function \

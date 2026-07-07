@@ -14,13 +14,16 @@
 //      stuck in a batch with a long one.
 
 import { pipeline, env } from "@huggingface/transformers";
+import {
+  FINBERT_MODEL_ID as MODEL_ID,
+  NEUTRAL_SCORE,
+  prepareFinbertText,
+  toSignedScore,
+} from "@stockjs/committee-engine/finbertScore.js";
 
 // Always pull weights from the Hugging Face CDN; never look for local files.
 env.allowLocalModels = false;
 env.backends.onnx.wasm.numThreads = 1;
-
-const MODEL_ID = "Xenova/finbert";
-const MAX_CHARS = 1600; // ~roughly within the 512-token limit
 
 // Batch sizes tuned per backend: the GPU happily chews through bigger batches,
 // while WASM is single-threaded so smaller batches keep memory/latency sane.
@@ -65,26 +68,9 @@ async function getClassifier() {
   return classifierPromise;
 }
 
-// Map FinBERT's {positive, negative, neutral} probabilities to a single
-// signed score in [-1, 1] plus a confidence (the winning probability).
-function toSigned(predictions) {
-  let pos = 0;
-  let neg = 0;
-  let top = { label: "neutral", score: 0 };
-  for (const p of predictions) {
-    const label = String(p.label).toLowerCase();
-    if (label === "positive") pos = p.score;
-    else if (label === "negative") neg = p.score;
-    if (p.score > top.score) top = { label, score: p.score };
-  }
-  return {
-    sentiment: pos - neg, // -1..+1
-    confidence: top.score, // 0..1
-    label: top.label,
-  };
-}
-
-const NEUTRAL = { sentiment: 0, confidence: 0, label: "neutral" };
+// Score mapping + text prep live in the shared engine package so the Lambda
+// daily report produces byte-compatible scores (see finbertScore.js).
+const NEUTRAL = NEUTRAL_SCORE;
 
 function chunk(arr, size) {
   const out = [];
@@ -104,7 +90,7 @@ self.onmessage = async (event) => {
     // front so they don't need a model pass.
     const prepared = (items || []).map((item) => ({
       id: item.id,
-      text: (item.text || "").slice(0, MAX_CHARS).trim(),
+      text: prepareFinbertText(item.text),
     }));
 
     const scoreById = new Map();
@@ -135,7 +121,7 @@ self.onmessage = async (event) => {
         // arrays (per label).
         batch.forEach((b, idx) => {
           const p = preds[idx];
-          scoreById.set(b.id, toSigned(Array.isArray(p) ? p : [p]));
+          scoreById.set(b.id, toSignedScore(Array.isArray(p) ? p : [p]));
         });
         done += batch.length;
         self.postMessage({ type: "progress", done, total });

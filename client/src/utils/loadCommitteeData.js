@@ -8,7 +8,7 @@ import {
   getStockDataByDateRange,
 } from "../db";
 import calculateRange from "./calculateRange";
-import { mergeEarningsIntoQuarterly } from "./mergeEarningsIntoQuarterly";
+import { mergeEarningsIntoQuarterly } from "@stockjs/committee-engine/mergeEarningsIntoQuarterly.js";
 
 const FUNDAMENTALS_RANGE = calculateRange(365 * 25);
 const COMMITTEE_RANGE = calculateRange(365);

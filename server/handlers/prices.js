@@ -1,4 +1,4 @@
-import { yahooFinance } from "../lib/yahooFinance.js";
+import { fetchChartData } from "../lib/marketData.js";
 import { errorResponse, jsonResponse, requireParams } from "../lib/response.js";
 
 export async function fetchPrices(params, corsOrigin) {
@@ -6,15 +6,7 @@ export async function fetchPrices(params, corsOrigin) {
   if (missing) return missing;
 
   try {
-    const data = await yahooFinance.chart(
-      params.symbol,
-      {
-        period1: params.start,
-        period2: params.end,
-      },
-      { validateResult: false },
-    );
-
+    const data = await fetchChartData(params.symbol, params.start, params.end);
     return jsonResponse(200, data, corsOrigin);
   } catch (err) {
     console.error("prices error:", err);

@@ -1,10 +1,10 @@
 import LambdaService from "../LambdaService";
 import { saveNewsSentiment } from "../db";
-import { runNewsAgentPipeline } from "./analyst/newsAgent";
+import { runNewsAgentPipeline } from "./newsAgent";
 import {
   hasFinbertScore,
   selectNewsForAnalysis,
-} from "./selectNewsForAnalysis";
+} from "@stockjs/committee-engine/selectNewsForAnalysis.js";
 
 const PORTFOLIO_CRAWL_CONCURRENCY = 6;
 

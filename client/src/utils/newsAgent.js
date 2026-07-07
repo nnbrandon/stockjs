@@ -3,8 +3,8 @@
 // (our Lambda) with bounded concurrency → extract → persist → hand back to the
 // scorer. It streams a step log so the UI can render the tool-call activity.
 
-import { saveNewsBodies } from "../../db";
-import { titleKey } from "./sentiment";
+import { saveNewsBodies } from "../db";
+import { titleKey } from "@stockjs/committee-engine/analyst/sentiment.js";
 
 const DEFAULT_CONCURRENCY = 4;
 const DEFAULT_CAP = 8;

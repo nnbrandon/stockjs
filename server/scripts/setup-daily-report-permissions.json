@@ -1,0 +1,69 @@
+{
+  "_comment": "Every action server/scripts/setup-daily-report.sh needs, for accounts where the CLI user has a permissions boundary. Merge these statements into BOTH the boundary policy and the user's identity policy (both must allow), or skip all of this by running the script once from an admin CloudShell session. Replace <ACCOUNT_ID> with your account id.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SesVerifyAndCheck",
+      "Effect": "Allow",
+      "Action": [
+        "ses:VerifyEmailIdentity",
+        "ses:GetIdentityVerificationAttributes"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "StateBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:ListBucket",
+        "s3:PutPublicAccessBlock"
+      ],
+      "Resource": "arn:aws:s3:::stockjs-report-state-*"
+    },
+    {
+      "Sid": "RolePolicies",
+      "Effect": "Allow",
+      "Action": ["iam:GetRole", "iam:CreateRole", "iam:PutRolePolicy"],
+      "Resource": [
+        "arn:aws:iam::<ACCOUNT_ID>:role/stockjs-lambda-role",
+        "arn:aws:iam::<ACCOUNT_ID>:role/stockjs-scheduler-role"
+      ]
+    },
+    {
+      "Sid": "PassSchedulerRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/stockjs-scheduler-role",
+      "Condition": {
+        "StringEquals": { "iam:PassedToService": "scheduler.amazonaws.com" }
+      }
+    },
+    {
+      "Sid": "LambdaConfig",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:InvokeFunction"
+      ],
+      "Resource": "arn:aws:lambda:*:<ACCOUNT_ID>:function:stockjs-api"
+    },
+    {
+      "Sid": "DailySchedule",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:GetSchedule",
+        "scheduler:CreateSchedule",
+        "scheduler:UpdateSchedule"
+      ],
+      "Resource": "arn:aws:scheduler:*:<ACCOUNT_ID>:schedule/default/stockjs-daily-report"
+    },
+    {
+      "Sid": "BudgetGuardrail",
+      "Effect": "Allow",
+      "Action": ["budgets:ViewBudget", "budgets:ModifyBudget"],
+      "Resource": "*"
+    }
+  ]
+}

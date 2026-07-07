@@ -1,0 +1,11 @@
+{
+  "name": "@stockjs/committee-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The AI Committee engine — pure, synchronous, dependency-free JS shared by the browser client and the Lambda server. No network, no DOM, no Dexie, no AWS imports allowed in here.",
+  "exports": {
+    ".": "./src/index.js",
+    "./*": "./src/*"
+  }
+}

@@ -1,10 +1,10 @@
 import LambdaService from "../LambdaService";
 import { saveNewsSentiment } from "../db";
-import { runNewsAgentPipeline } from "./analyst/newsAgent";
+import { runNewsAgentPipeline } from "./newsAgent";
 import {
   hasFinbertScore,
   selectNewsForAnalysis,
-} from "./selectNewsForAnalysis";
+} from "@stockjs/committee-engine/selectNewsForAnalysis.js";
 
 /**
  * Crawl un-scored articles and score them with FinBERT. Persists scores to

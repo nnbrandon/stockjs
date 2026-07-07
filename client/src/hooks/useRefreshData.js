@@ -9,7 +9,7 @@ import {
   getEarnings,
 } from "../db";
 import LambdaService from "../LambdaService";
-import { mergeEarningsIntoQuarterly } from "../utils/mergeEarningsIntoQuarterly";
+import { mergeEarningsIntoQuarterly } from "@stockjs/committee-engine/mergeEarningsIntoQuarterly.js";
 import {
   useSnackbar,
   useRefreshProgress,

@@ -1,0 +1,361 @@
+// Pure rendering of the daily committee digest: (results, health, meta) →
+// {subject, html, text}. No AWS, no network — testable in isolation. Table
+// layout + inline CSS because email clients ignore stylesheets; a plain-text
+// alternative is built alongside.
+
+const TIER_COLORS = {
+  "Strong Buy": "#1a7f37",
+  Buy: "#2da44e",
+  Hold: "#9a6700",
+  Reduce: "#bc4c00",
+  Sell: "#cf222e",
+};
+
+const escapeHtml = (s = "") =>
+  String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+const fmtScore = (v) => (Number.isFinite(v) ? v.toFixed(0) : "—");
+
+function shortDate(day) {
+  const d = new Date(`${day}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(d);
+}
+
+function tierBadge(tier) {
+  const color = TIER_COLORS[tier] || "#57606a";
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;background:${color};color:#ffffff;font-size:13px;font-weight:700;">${escapeHtml(tier)}</span>`;
+}
+
+function describeTierChange(r) {
+  const c = r.tierChange;
+  const verb = c.direction === "upgrade" ? "upgraded" : "downgraded";
+  return `${r.symbol} ${verb}: ${c.fromTier} → ${r.report.verdict.tier}`;
+}
+
+function subjectLine(results, meta) {
+  const rated = results.filter((r) => r.report);
+  const buys = rated.filter((r) => r.report.verdict.action === "BUY").length;
+  const holds = rated.filter((r) => r.report.verdict.action === "HOLD").length;
+  const sells = rated.filter((r) => r.report.verdict.action === "SELL").length;
+  const changes = results.filter((r) => r.tierChange).length;
+
+  if (meta.heartbeatOnly) {
+    return `Portfolio committee — monthly check-in, all quiet — ${shortDate(meta.day)}`;
+  }
+
+  const counts = [
+    buys ? `${buys} Buy` : null,
+    holds ? `${holds} Hold` : null,
+    sells ? `${sells} Sell` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const changeNote = changes
+    ? ` (${changes} change${changes === 1 ? "" : "s"})`
+    : "";
+  return `Portfolio committee — ${counts || "no verdicts"}${changeNote} — ${shortDate(meta.day)}`;
+}
+
+function healthLines(health) {
+  if (!health) return [];
+  const lines = [];
+  if (Number.isFinite(health.weightedScore)) {
+    lines.push(
+      `Value-weighted committee score: ${health.weightedScore.toFixed(0)}/100 across ${health.ratedValuePct.toFixed(0)}% of portfolio value.`,
+    );
+  }
+  if (health.pctInSellRated > 0) {
+    lines.push(
+      `${health.pctInSellRated.toFixed(0)}% of your portfolio value sits in names the committee would sell (${health.sellRatedSymbols.join(", ")}).`,
+    );
+  }
+  for (const flag of health.flags || []) {
+    lines.push(`${flag.severity === "warn" ? "⚠ " : ""}${flag.text}`);
+  }
+  return lines;
+}
+
+function sellDetails(report) {
+  const pm = report.agents?.find((a) => a.key === "portfolioManager");
+  const plan = pm?.plan;
+  if (!plan || report.verdict.action !== "SELL") return null;
+  return {
+    reasons: (plan.reasons || []).slice(0, 4),
+    trimPct: Number.isFinite(plan.trimPct) ? plan.trimPct : null,
+    fullExit: Boolean(plan.fullExit),
+  };
+}
+
+function newsMoodBlock(r) {
+  const parts = [];
+  if (r.newsMood) parts.push({ text: r.newsMood });
+  if (r.topPositive?.title) {
+    parts.push({
+      prefix: "Most upbeat: ",
+      title: r.topPositive.title,
+      link: r.topPositive.link,
+    });
+  }
+  if (r.topNegative?.title) {
+    parts.push({
+      prefix: "Most negative: ",
+      title: r.topNegative.title,
+      link: r.topNegative.link,
+    });
+  }
+  return parts;
+}
+
+function holdingHtml(r) {
+  const cells = [];
+
+  if (r.error) {
+    return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">
+      <strong style="font-size:15px;">${escapeHtml(r.symbol)}</strong>
+      <span style="color:#cf222e;font-size:13px;"> — data fetch failed today (${escapeHtml(r.error)}); we'll try again tomorrow.</span>
+    </td></tr>`;
+  }
+
+  if (!r.report) {
+    const note = r.isFund
+      ? "Fund/ETF — tracks a basket of holdings, so the committee doesn't rate it. Counted in portfolio health."
+      : "Not enough data to run the committee (no financials or analyst coverage found).";
+    return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">
+      <strong style="font-size:15px;">${escapeHtml(r.symbol)}</strong>
+      <span style="color:#57606a;font-size:13px;"> — ${escapeHtml(note)}</span>
+    </td></tr>`;
+  }
+
+  const v = r.report.verdict;
+  const pm = r.report.agents?.find((a) => a.key === "portfolioManager");
+
+  cells.push(
+    `<div style="margin-bottom:6px;">
+      <strong style="font-size:16px;">${escapeHtml(r.symbol)}</strong>
+      &nbsp;${tierBadge(v.tier)}
+      <span style="color:#57606a;font-size:13px;">&nbsp;score ${fmtScore(v.composite)}/100 · ${escapeHtml(v.convictionLabel)} confidence</span>
+    </div>`,
+  );
+
+  if (r.tierChange) {
+    const color = r.tierChange.direction === "upgrade" ? "#1a7f37" : "#cf222e";
+    cells.push(
+      `<div style="color:${color};font-size:13px;font-weight:600;margin-bottom:6px;">${escapeHtml(describeTierChange(r))} (was ${fmtScore(r.tierChange.fromComposite)} on ${escapeHtml(r.tierChange.fromDay)})</div>`,
+    );
+  }
+
+  if (pm?.summary) {
+    cells.push(
+      `<div style="font-size:13px;color:#24292f;margin-bottom:6px;">${escapeHtml(pm.summary)}</div>`,
+    );
+  }
+
+  const mood = newsMoodBlock(r);
+  if (mood.length) {
+    const moodHtml = mood
+      .map((m) => {
+        if (m.text) return escapeHtml(m.text);
+        const title = escapeHtml(m.title);
+        const linked = m.link
+          ? `<a href="${escapeHtml(m.link)}" style="color:#0969da;">${title}</a>`
+          : `“${title}”`;
+        return `${escapeHtml(m.prefix)}${linked}`;
+      })
+      .join("<br/>");
+    cells.push(
+      `<div style="font-size:12px;color:#57606a;margin-bottom:6px;">${moodHtml}</div>`,
+    );
+  }
+
+  const sell = sellDetails(r.report);
+  if (sell) {
+    const reasonItems = sell.reasons
+      .map((reason) => `<li>${escapeHtml(reason)}</li>`)
+      .join("");
+    const trim =
+      sell.trimPct != null
+        ? `<div style="font-weight:600;margin-top:4px;">${
+            sell.fullExit
+              ? "Suggested action: exit the position."
+              : `Suggested action: trim about ${sell.trimPct}% of the position and reassess the rest.`
+          }</div>`
+        : "";
+    cells.push(
+      `<div style="font-size:12px;color:#82071e;background:#fff1f0;border-radius:6px;padding:8px 12px;">
+        <div style="font-weight:700;">Why the committee would sell:</div>
+        <ul style="margin:4px 0 0 18px;padding:0;">${reasonItems}</ul>${trim}
+      </div>`,
+    );
+  }
+
+  return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">${cells.join("")}</td></tr>`;
+}
+
+function holdingText(r) {
+  const lines = [];
+  if (r.error) {
+    lines.push(`${r.symbol}: data fetch failed today (${r.error}).`);
+    return lines;
+  }
+  if (!r.report) {
+    lines.push(
+      `${r.symbol}: ${r.isFund ? "fund/ETF — not rated by the committee." : "not enough data to run the committee."}`,
+    );
+    return lines;
+  }
+  const v = r.report.verdict;
+  const pm = r.report.agents?.find((a) => a.key === "portfolioManager");
+  lines.push(
+    `${r.symbol}: ${v.tier} — score ${fmtScore(v.composite)}/100 (${v.convictionLabel} confidence)`,
+  );
+  if (r.tierChange) {
+    lines.push(`  ${describeTierChange(r)}`);
+  }
+  if (pm?.summary) lines.push(`  ${pm.summary}`);
+  if (r.newsMood) lines.push(`  ${r.newsMood}`);
+  if (r.topPositive?.title)
+    lines.push(`  Most upbeat: ${r.topPositive.title} ${r.topPositive.link || ""}`);
+  if (r.topNegative?.title)
+    lines.push(
+      `  Most negative: ${r.topNegative.title} ${r.topNegative.link || ""}`,
+    );
+  const sell = sellDetails(r.report);
+  if (sell) {
+    lines.push("  Why the committee would sell:");
+    for (const reason of sell.reasons) lines.push(`   - ${reason}`);
+    if (sell.trimPct != null) {
+      lines.push(
+        sell.fullExit
+          ? "  Suggested action: exit the position."
+          : `  Suggested action: trim about ${sell.trimPct}% and reassess.`,
+      );
+    }
+  }
+  return lines;
+}
+
+/**
+ * @param {Array} results per-symbol report results (see dailyReport.js)
+ * @param {object|null} health analyzePortfolioHealth output
+ * @param {object} meta {day, engineVersion, articlesScored, sentimentPartial,
+ *                       archiveSpanDays, heartbeatOnly, failures}
+ */
+export function renderReportEmail(results, health, meta) {
+  const subject = subjectLine(results, meta);
+  const changes = results.filter((r) => r.tierChange);
+  const failures = results.filter((r) => r.error);
+  const hLines = healthLines(health);
+
+  // ── HTML ────────────────────────────────────────────────────────────────
+  const sections = [];
+
+  if (meta.heartbeatOnly) {
+    sections.push(
+      `<p style="font-size:14px;color:#24292f;">Monthly check-in: nothing actionable — every holding is rated Hold and nothing changed. This email exists so silence on other days can be trusted to mean “all quiet”, not “the pipeline died”.</p>`,
+    );
+  }
+
+  if (changes.length) {
+    const items = changes
+      .map((r) => {
+        const color =
+          r.tierChange.direction === "upgrade" ? "#1a7f37" : "#cf222e";
+        return `<li style="color:${color};font-weight:600;margin-bottom:4px;">${escapeHtml(describeTierChange(r))}</li>`;
+      })
+      .join("");
+    sections.push(
+      `<h2 style="font-size:15px;margin:18px 0 6px;">Tier changes</h2><ul style="margin:0 0 0 18px;padding:0;font-size:14px;">${items}</ul>`,
+    );
+  }
+
+  if (hLines.length) {
+    const items = hLines
+      .map((l) => `<li style="margin-bottom:4px;">${escapeHtml(l)}</li>`)
+      .join("");
+    sections.push(
+      `<h2 style="font-size:15px;margin:18px 0 6px;">Portfolio health</h2><ul style="margin:0 0 0 18px;padding:0;font-size:13px;color:#24292f;">${items}</ul>`,
+    );
+  }
+
+  if (failures.length) {
+    sections.push(
+      `<p style="font-size:13px;color:#cf222e;">${failures.length} symbol${failures.length === 1 ? "" : "s"} failed to fetch today: ${escapeHtml(failures.map((r) => r.symbol).join(", "))}.</p>`,
+    );
+  }
+
+  const rows = results.map(holdingHtml).join("");
+  sections.push(
+    `<h2 style="font-size:15px;margin:18px 0 6px;">Your holdings</h2>
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #d8dee4;border-radius:8px;border-collapse:separate;overflow:hidden;">${rows}</table>`,
+  );
+
+  const footerBits = [
+    `Engine ${escapeHtml(meta.engineVersion)}`,
+    `data as of ${escapeHtml(meta.day)} (America/Los_Angeles)`,
+    `${meta.articlesScored} article${meta.articlesScored === 1 ? "" : "s"} scored today`,
+  ];
+  if (meta.sentimentPartial) {
+    footerBits.push("news mood partial/unavailable today (model error)");
+  }
+  if (Number.isFinite(meta.archiveSpanDays) && meta.archiveSpanDays < 14) {
+    footerBits.push(
+      `news history still warming up (${Math.max(0, Math.round(meta.archiveSpanDays))} day${Math.round(meta.archiveSpanDays) === 1 ? "" : "s"})`,
+    );
+  }
+
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f6f8fa;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px;">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:10px;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <tr><td>
+        <h1 style="font-size:18px;margin:0 0 4px;">AI Committee — daily portfolio digest</h1>
+        <div style="font-size:12px;color:#57606a;margin-bottom:12px;">${escapeHtml(shortDate(meta.day))} · ${results.length} holding${results.length === 1 ? "" : "s"}</div>
+        ${sections.join("\n")}
+        <p style="font-size:11px;color:#8c959f;margin-top:20px;border-top:1px solid #d8dee4;padding-top:12px;">
+          ${footerBits.map(escapeHtml).join(" · ")}<br/>
+          Automated summary generated by your own AI Committee engine — not investment advice.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+  // ── Plain text ──────────────────────────────────────────────────────────
+  const textLines = [`AI COMMITTEE — DAILY PORTFOLIO DIGEST (${meta.day})`, ""];
+  if (meta.heartbeatOnly) {
+    textLines.push("Monthly check-in: all quiet — nothing actionable.", "");
+  }
+  if (changes.length) {
+    textLines.push("TIER CHANGES");
+    for (const r of changes) textLines.push(`  ${describeTierChange(r)}`);
+    textLines.push("");
+  }
+  if (hLines.length) {
+    textLines.push("PORTFOLIO HEALTH");
+    for (const l of hLines) textLines.push(`  ${l}`);
+    textLines.push("");
+  }
+  if (failures.length) {
+    textLines.push(
+      `${failures.length} symbol(s) failed to fetch today: ${failures.map((r) => r.symbol).join(", ")}`,
+      "",
+    );
+  }
+  textLines.push("YOUR HOLDINGS");
+  for (const r of results) {
+    textLines.push(...holdingText(r), "");
+  }
+  textLines.push(footerBits.join(" | "));
+  textLines.push(
+    "Automated summary generated by your own AI Committee engine — not investment advice.",
+  );
+
+  return { subject, html, text: textLines.join("\n") };
+}

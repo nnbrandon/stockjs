@@ -13,8 +13,8 @@ import {
   getStockDataBySymbol,
   getStoredSymbols,
 } from "../../db";
-import { isFundSymbol } from "../isFundSymbol";
-import { mergeEarningsIntoQuarterly } from "../mergeEarningsIntoQuarterly";
+import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
+import { mergeEarningsIntoQuarterly } from "@stockjs/committee-engine/mergeEarningsIntoQuarterly.js";
 import { computeMetrics, walkForward } from "./walkForward";
 
 const MIN_CANDLES = 500; // ~2 years

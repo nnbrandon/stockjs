@@ -3,7 +3,7 @@ import { scoreSymbolNews } from "../utils/scoreSymbolNews";
 import {
   hasFinbertScore,
   selectNewsForAnalysis,
-} from "../utils/selectNewsForAnalysis";
+} from "@stockjs/committee-engine/selectNewsForAnalysis.js";
 
 /**
  * Unified "news intelligence" for the AI Committee: crawl the selected

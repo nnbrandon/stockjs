@@ -26,7 +26,15 @@ set -euo pipefail
 
 FUNCTION_NAME="${FUNCTION_NAME:-stockjs-api}"
 REGION="${REGION:-us-east-1}"
-ROLE_NAME="${ROLE_NAME:-stockjs-lambda-role}"
+# The policy must land on the role the function ACTUALLY uses (e.g. this
+# account's function runs as role "Lambda", not stockjs-lambda-role), so
+# auto-detect it from the function config unless overridden.
+if [[ -z "${ROLE_NAME:-}" ]]; then
+  ROLE_NAME="$(aws lambda get-function-configuration \
+    --function-name "$FUNCTION_NAME" --region "$REGION" \
+    --query Role --output text | awk -F/ '{print $NF}')"
+  echo "==> Detected Lambda execution role: $ROLE_NAME"
+fi
 REPORT_EMAIL="${REPORT_EMAIL:-herosekai@gmail.com}"
 REPORT_SYMBOLS="${REPORT_SYMBOLS:-}"
 SCHEDULE_NAME="${SCHEDULE_NAME:-stockjs-daily-report}"

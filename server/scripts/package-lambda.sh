@@ -44,9 +44,12 @@ fs.writeFileSync(process.argv[1] + '/package.json', JSON.stringify({
 
 # --os/--cpu/--libc make platform-split optional deps (sharp) resolve for the
 # Lambda runtime even when packaging from a Mac.
-echo "==> Installing runtime dependencies (linux/x64)"
-( cd "$STAGE" && npm install --omit=dev --no-audit --no-fund \
-    --os=linux --cpu=x64 --libc=glibc >/dev/null )
+# ONNXRUNTIME_NODE_INSTALL=skip stops onnxruntime-node's postinstall from
+# downloading ~200MB of CUDA/TensorRT libraries on linux-x64 hosts (i.e. the
+# GitHub runner) — Lambda has no GPU and the CPU binary ships in the package.
+echo "==> Installing runtime dependencies (linux/x64, no CUDA)"
+( cd "$STAGE" && ONNXRUNTIME_NODE_INSTALL=skip npm install --omit=dev \
+    --no-audit --no-fund --os=linux --cpu=x64 --libc=glibc >/dev/null )
 
 echo "==> Pruning non-Lambda binaries"
 rm -rf "$STAGE/node_modules/onnxruntime-web"
@@ -54,6 +57,9 @@ ORT_BIN="$STAGE/node_modules/onnxruntime-node/bin"
 # Layout: bin/napi-v*/<platform>/<arch>/ — keep only linux/x64.
 find "$ORT_BIN" -mindepth 2 -maxdepth 2 -type d ! -name linux -exec rm -rf {} +
 find "$ORT_BIN" -mindepth 3 -maxdepth 3 -type d ! -name x64 -exec rm -rf {} +
+# GPU execution-provider libs (in case a future onnxruntime-node bundles or
+# downloads them despite the skip flag) — Lambda is CPU-only.
+find "$ORT_BIN" -type f \( -name "*providers_cuda*" -o -name "*providers_tensorrt*" \) -delete
 if ! find "$ORT_BIN" -type f -path "*/linux/x64/*" | grep -q .; then
   echo "ERROR: pruning removed the linux/x64 onnxruntime binary — the"
   echo "onnxruntime-node bin layout must have changed. Fix package-lambda.sh."

@@ -14,10 +14,17 @@
 // reads, no money, no PII beyond holdings.
 
 import { timingSafeEqual, createHash } from "node:crypto";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  NoSuchKey,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { errorResponse, jsonResponse } from "../lib/response.js";
 
 export const PORTFOLIO_PREFIX = "portfolios/";
+// Per-email sync tokens (sha256 hashes only), written by action=requestToken.
+export const TOKEN_PREFIX = "tokens/";
 // Pre-multi-user location, read as a fallback for REPORT_EMAIL's portfolio.
 export const LEGACY_PORTFOLIO_KEY = "portfolio.json";
 const MAX_POSITIONS = 200;
@@ -38,6 +45,12 @@ export function portfolioKeyForEmail(email) {
   return `${PORTFOLIO_PREFIX}${encodeURIComponent(email)}.json`;
 }
 
+export function tokenKeyForEmail(email) {
+  return `${TOKEN_PREFIX}${encodeURIComponent(email)}.json`;
+}
+
+export const sha256Hex = (s) => createHash("sha256").update(s).digest("hex");
+
 // Hash both sides so timingSafeEqual gets equal-length buffers regardless of
 // what the caller sent.
 function tokenMatches(provided, expected) {
@@ -47,6 +60,31 @@ function tokenMatches(provided, expected) {
   return timingSafeEqual(a, b);
 }
 
+/** Compare a provided token against a stored sha256-hex hash. */
+function tokenMatchesHash(provided, expectedHex) {
+  if (typeof provided !== "string" || !provided || !expectedHex) return false;
+  const a = createHash("sha256").update(provided).digest();
+  const b = Buffer.from(expectedHex, "hex");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+/** The per-email token hash written by action=requestToken, or null. */
+async function loadTokenHash(bucket, email) {
+  try {
+    const res = await s3.send(
+      new GetObjectCommand({ Bucket: bucket, Key: tokenKeyForEmail(email) }),
+    );
+    const data = JSON.parse(await res.Body.transformToString());
+    return typeof data?.tokenHash === "string" ? data.tokenHash : null;
+  } catch (err) {
+    if (!(err instanceof NoSuchKey || err.name === "NoSuchKey")) {
+      console.error("portfolioSync: failed to read token hash:", err);
+    }
+    return null;
+  }
+}
+
 const finiteOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
 
 /** Keep only the fields the report needs; drop anything malformed. */
@@ -54,7 +92,8 @@ function sanitizePositions(raw) {
   if (!Array.isArray(raw)) return null;
   const positions = [];
   for (const p of raw.slice(0, MAX_POSITIONS)) {
-    const symbol = typeof p?.symbol === "string" ? p.symbol.trim().toUpperCase() : "";
+    const symbol =
+      typeof p?.symbol === "string" ? p.symbol.trim().toUpperCase() : "";
     if (!symbol || !/^[A-Z0-9.\-]{1,12}$/.test(symbol)) continue;
     positions.push({
       symbol,
@@ -73,7 +112,7 @@ function sanitizePositions(raw) {
  *
  * SES is imported lazily so ordinary API requests don't pay for the client.
  */
-async function ensureEmailVerification(email) {
+export async function ensureEmailVerification(email) {
   try {
     const {
       SESClient,
@@ -100,9 +139,9 @@ async function ensureEmailVerification(email) {
 }
 
 export async function syncPortfolio(body, corsOrigin) {
-  const expected = process.env.SYNC_TOKEN || "";
+  const globalToken = process.env.SYNC_TOKEN || "";
   const bucket = process.env.REPORT_STATE_BUCKET || "";
-  if (!expected || !bucket) {
+  if (!bucket) {
     return errorResponse(
       503,
       "Portfolio sync is not configured on the server",
@@ -110,13 +149,20 @@ export async function syncPortfolio(body, corsOrigin) {
     );
   }
 
-  if (!tokenMatches(body?.token, expected)) {
-    return errorResponse(403, "Invalid sync token", corsOrigin);
-  }
-
   const email = normalizeEmail(body?.email);
   if (!email) {
     return errorResponse(400, "A valid email address is required", corsOrigin);
+  }
+
+  // Two accepted credentials: the per-email token this address requested via
+  // action=requestToken (only unlocks its own portfolio), or the global
+  // SYNC_TOKEN printed by setup-daily-report.sh (admin fallback).
+  const perEmailHash = await loadTokenHash(bucket, email);
+  const authorized =
+    tokenMatchesHash(body?.token, perEmailHash) ||
+    tokenMatches(body?.token, globalToken);
+  if (!authorized) {
+    return errorResponse(403, "Invalid sync token", corsOrigin);
   }
 
   const positions = sanitizePositions(body?.positions);

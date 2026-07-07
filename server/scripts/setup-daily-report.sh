@@ -125,7 +125,8 @@ aws iam put-role-policy \
         \"Resource\": [
           \"arn:aws:s3:::${BUCKET}/committee-state.json\",
           \"arn:aws:s3:::${BUCKET}/portfolio.json\",
-          \"arn:aws:s3:::${BUCKET}/portfolios/*\"
+          \"arn:aws:s3:::${BUCKET}/portfolios/*\",
+          \"arn:aws:s3:::${BUCKET}/tokens/*\"
         ]
       },
       {

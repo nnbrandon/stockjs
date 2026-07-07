@@ -189,6 +189,31 @@ class LambdaService {
     }
   }
 
+  // Ask the server to email a fresh sync token to `email`. Resolves to
+  // { ok, tokenSent?, verificationSent?, error? } — verificationSent means
+  // the address first has to click the AWS verification link, then request
+  // the token again.
+  async requestSyncToken(email) {
+    try {
+      const response = await fetch(`${this.API_URL}?action=requestToken`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: data.error || "Could not send the token" };
+      }
+      return {
+        ok: true,
+        tokenSent: Boolean(data.tokenSent),
+        verificationSent: Boolean(data.verificationSent),
+      };
+    } catch (err) {
+      return { ok: false, error: err?.message || "Could not send the token" };
+    }
+  }
+
   // Push imported holdings to S3 so the scheduled daily email tracks the UI.
   // Authenticated with the SYNC_TOKEN from setup-daily-report.sh; the email
   // address is the identity the portfolio is stored under (and where the

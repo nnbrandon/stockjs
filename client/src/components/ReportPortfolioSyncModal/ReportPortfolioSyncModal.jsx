@@ -5,6 +5,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 
 import addTickerStyles from "../AddTickerModal/AddTickerModal.module.css";
+import LambdaService from "../../LambdaService";
 import {
   getLastReportSyncAt,
   getReportSyncEmail,
@@ -56,12 +57,12 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
     setStatus("");
     const trimmedToken = token.trim();
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedToken) {
-      setError("Paste the sync token from setup-daily-report.sh.");
-      return;
-    }
     if (!EMAIL_RE.test(trimmedEmail)) {
       setError("Enter the email address the daily report should go to.");
+      return;
+    }
+    if (!trimmedToken) {
+      setError('Paste your sync token — tap "Email me a sync token" to get one.');
       return;
     }
     if (positionCount === 0) {
@@ -90,6 +91,37 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
       }
       setStatus(synced);
       onClose({ synced: result.count });
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleRequestToken() {
+    setError("");
+    setStatus("");
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      setError("Enter your email address first.");
+      return;
+    }
+
+    setIsBusy(true);
+    setReportSyncEmail(trimmedEmail);
+    try {
+      const result = await LambdaService.requestSyncToken(trimmedEmail);
+      if (!result.ok) {
+        setError(result.error || "Could not send the token — try again.");
+        return;
+      }
+      if (result.verificationSent) {
+        setStatus(
+          `AWS sent a verification email to ${trimmedEmail} — click its link, then tap "Email me a sync token" again.`,
+        );
+        return;
+      }
+      setStatus(
+        `Sync token sent to ${trimmedEmail} — check your inbox and paste it below.`,
+      );
     } finally {
       setIsBusy(false);
     }
@@ -137,11 +169,11 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
         </div>
 
         <p className={addTickerStyles.subtitle} style={{ marginBottom: 12 }}>
-          The report is emailed to the address below (first-time addresses get
-          an AWS verification link to click). Paste the{" "}
-          <strong>SYNC_TOKEN</strong> printed when you ran{" "}
-          <code>setup-daily-report.sh</code> in CloudShell. Treat it like a
-          password — it only controls which symbols the email covers.
+          <strong>Step 1:</strong> enter the email the report should go to and
+          tap <em>Email me a sync token</em>. First-time addresses get an AWS
+          verification link to click first. <strong>Step 2:</strong> paste the
+          token from your inbox below. Treat it like a password — it controls
+          which symbols your email covers.
         </p>
 
         <div className={addTickerStyles.field}>
@@ -161,12 +193,24 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
           />
         </div>
 
+        <div style={{ marginBottom: 12 }}>
+          <button
+            type="button"
+            className={addTickerStyles.btnSecondary}
+            onClick={handleRequestToken}
+            disabled={isBusy || !email.trim()}
+          >
+            <EmailOutlinedIcon fontSize="small" />
+            Email me a sync token
+          </button>
+        </div>
+
         <div className={addTickerStyles.field}>
           <TextField
             fullWidth
             type="password"
             autoComplete="off"
-            placeholder="Sync token"
+            placeholder="Sync token (from the email)"
             value={token}
             onChange={(e) => {
               setToken(e.target.value);

@@ -376,7 +376,10 @@ cold-start download is inbound and unbilled.
   is delivered to an address until its owner clicks that link. Per-user send
   bookkeeping lives under `users` in `committee-state.json`; the legacy
   single-user `portfolio.json` is still read for `REPORT_EMAIL` until that
-  address re-syncs.
+  address re-syncs. Tokens are self-service: `action=requestToken` emails a
+  fresh per-email token (sha256 hash stored at `tokens/<email>.json`) to a
+  verified address; `portfolioSync` accepts either that per-email token or
+  the global `SYNC_TOKEN` (admin fallback).
 - Full-article crawling for sentiment (browser deep-review parity) — the
   extraction path is heavier; headlines+summaries are v1.
 - Baking the FinBERT model into the deploy artifact or a Lambda layer to

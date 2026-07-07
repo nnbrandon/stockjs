@@ -27,25 +27,26 @@ function scoreMomentum(history, rawComposite) {
   if (!past) return null;
 
   const delta = rawComposite - past.composite;
-  if (delta <= -MOMENTUM_THRESHOLD) {
-    return {
-      nudge: -MOMENTUM_NUDGE,
-      finding: bear(
-        `The committee's own score has been sliding (${past.composite.toFixed(0)} → ${rawComposite.toFixed(0)} since ${past.day}) — the picture is deteriorating, not stabilizing`,
-        1,
-      ),
-    };
-  }
-  if (delta >= MOMENTUM_THRESHOLD) {
-    return {
-      nudge: MOMENTUM_NUDGE,
-      finding: bull(
-        `The committee's own score has been climbing (${past.composite.toFixed(0)} → ${rawComposite.toFixed(0)} since ${past.day}) — the picture is improving`,
-        1,
-      ),
-    };
-  }
+  if (delta <= -MOMENTUM_THRESHOLD) return { nudge: -MOMENTUM_NUDGE, past };
+  if (delta >= MOMENTUM_THRESHOLD) return { nudge: MOMENTUM_NUDGE, past };
   return null;
+}
+
+// Built after the nudge is applied so the finding quotes the same final
+// composite the verdict banner shows.
+function momentumFinding(momentum, finalComposite) {
+  if (!momentum) return null;
+  const from = momentum.past.composite.toFixed(0);
+  const to = finalComposite.toFixed(0);
+  return momentum.nudge < 0
+    ? bear(
+        `The committee's own score has been sliding (${from} → ${to} since ${momentum.past.day}) — the picture is deteriorating, not stabilizing`,
+        1,
+      )
+    : bull(
+        `The committee's own score has been climbing (${from} → ${to} since ${momentum.past.day}) — the picture is improving`,
+        1,
+      );
 }
 
 const fmtPrice = (n) =>
@@ -374,7 +375,7 @@ export function runPortfolioManager({
     plan,
     summary: buildThesis(tier, composite, convictionLabel, pillarScores),
     findings: [
-      ...(momentum ? [momentum.finding] : []),
+      ...(momentum ? [momentumFinding(momentum, composite)] : []),
       ...(chaseCapped
         ? [
             neutral(

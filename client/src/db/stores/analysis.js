@@ -1,7 +1,6 @@
 import { db } from "../database";
 
 const STORE = "analysis";
-const STALE_MS = 24 * 60 * 60 * 1000;
 
 /** One row per symbol, replaced on every fetch. */
 export async function saveAnalysis(symbol, row) {
@@ -20,13 +19,6 @@ export async function getAnalysis(symbol) {
   } catch {
     return null;
   }
-}
-
-/** True when there's no cached row or it's older than 24h. */
-export function isAnalysisStale(row) {
-  if (!row?.fetchedAt) return true;
-  const t = new Date(row.fetchedAt).getTime();
-  return !Number.isFinite(t) || Date.now() - t > STALE_MS;
 }
 
 export function deleteAnalysisForSymbol(symbol) {

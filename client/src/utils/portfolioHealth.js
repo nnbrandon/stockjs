@@ -57,13 +57,24 @@ export function analyzePortfolioHealth(items = []) {
   }
 
   // Correlation clusters: pairs of stocks that move together are closer to
-  // one bet than two.
+  // one bet than two. Series are aligned from the end, so if one symbol's
+  // cache is stale (ends weeks earlier) the returns don't line up day-to-day
+  // — skip pairs whose series end more than a week apart.
+  const MAX_END_GAP_MS = 7 * 24 * 60 * 60 * 1000;
   const withCloses = valued.filter(
     (i) => !i.isFund && Array.isArray(i.closes) && i.closes.length >= 61,
   );
+  const endTime = (i) => {
+    const t = i.lastDate ? new Date(i.lastDate).getTime() : NaN;
+    return Number.isFinite(t) ? t : null;
+  };
   const correlatedPairs = [];
   for (let a = 0; a < withCloses.length; a++) {
     for (let b = a + 1; b < withCloses.length; b++) {
+      const ta = endTime(withCloses[a]);
+      const tb = endTime(withCloses[b]);
+      if (ta != null && tb != null && Math.abs(ta - tb) > MAX_END_GAP_MS)
+        continue;
       const r = correlation(withCloses[a].closes, withCloses[b].closes);
       if (Number.isFinite(r) && r > CORRELATION_FLAG) {
         correlatedPairs.push({

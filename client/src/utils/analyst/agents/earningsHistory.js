@@ -1,5 +1,12 @@
 import { scaleClamp } from "../indicators";
-import { avg, bear, bull, neutral, sortByDateDesc } from "./helpers";
+import {
+  avg,
+  bear,
+  bull,
+  findYearAgoRow,
+  neutral,
+  sortByDateDesc,
+} from "./helpers";
 
 const EARNINGS_TRACK_QUARTERS = 8;
 const EPS_SURPRISE_THRESH = 5;
@@ -115,7 +122,9 @@ export function analyzeEarningsHistory(earnings = []) {
     }
   }
 
-  const yearAgo = tracked[4];
+  // Match by date, not position — a skipped quarter would silently shift a
+  // positional tracked[4] onto the wrong comparison quarter.
+  const yearAgo = findYearAgoRow(tracked, latest);
   if (
     yearAgo &&
     Number.isFinite(latest.revenueActual) &&

@@ -233,6 +233,7 @@ export default function usePortfolioCommittee(positions) {
               symbol: item.symbol,
               isFund: Boolean(item.isFund),
               currentValue: metrics?.currentValue ?? null,
+              lastDate: chartData.at(-1)?.date ?? null,
               closes: chartData
                 .map((c) => Number(c.close))
                 .filter(Number.isFinite),

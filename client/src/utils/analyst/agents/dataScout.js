@@ -192,6 +192,10 @@ export function runDataScout({
             ),
           );
         }
+      } else if (inUptrend === null) {
+        // Not enough history to know the trend — don't let RSI lean either
+        // way beyond a mild nudge.
+        rsiScore = rsi14 >= 70 ? 45 : rsi14 < 30 ? 50 : 55;
       } else if (rsi14 >= 70) {
         rsiScore = 40;
         findings.push(
@@ -304,6 +308,18 @@ export function runDataScout({
     const latest = q[0];
     const yearAgo = findYearAgoRow(q, latest); // same quarter, prior year
 
+    // Fresh earnings land as earnings-only rows (revenue but usually no net
+    // income), which would silently blank the margin and profitability
+    // checks right after a report — the moment they matter most. Fall back
+    // to the newest row with full income-statement data for those checks.
+    const latestIncome =
+      q.find(
+        (r) =>
+          Number.isFinite(r.netIncome) && Number.isFinite(r.totalRevenue),
+      ) ?? latest;
+    const incomeYearAgo =
+      latestIncome === latest ? yearAgo : findYearAgoRow(q, latestIncome);
+
     // Revenue growth YoY
     if (
       yearAgo &&
@@ -330,9 +346,14 @@ export function runDataScout({
     }
 
     // Net income / profitability
-    if (yearAgo && Number.isFinite(latest.netIncome) && yearAgo.netIncome) {
+    if (
+      incomeYearAgo &&
+      Number.isFinite(latestIncome.netIncome) &&
+      incomeYearAgo.netIncome
+    ) {
       const niG =
-        ((latest.netIncome - yearAgo.netIncome) / Math.abs(yearAgo.netIncome)) *
+        ((latestIncome.netIncome - incomeYearAgo.netIncome) /
+          Math.abs(incomeYearAgo.netIncome)) *
         100;
       metrics.netIncomeGrowthYoY = niG;
       components.push(scaleClamp(niG, -25, 40, 5, 95));
@@ -348,16 +369,16 @@ export function runDataScout({
           ),
         );
     }
-    if (Number.isFinite(latest.netIncome)) {
-      if (latest.netIncome <= 0) {
+    if (Number.isFinite(latestIncome.netIncome)) {
+      if (latestIncome.netIncome <= 0) {
         components.push(20);
         findings.push(bear("Lost money in the latest quarter", 2));
       }
     }
 
     // Net margin
-    if (Number.isFinite(latest.netIncome) && latest.totalRevenue) {
-      const margin = (latest.netIncome / latest.totalRevenue) * 100;
+    if (Number.isFinite(latestIncome.netIncome) && latestIncome.totalRevenue) {
+      const margin = (latestIncome.netIncome / latestIncome.totalRevenue) * 100;
       metrics.netMargin = margin;
       components.push(scaleClamp(margin, -5, 25, 10, 90));
       if (margin > 15)
@@ -372,8 +393,12 @@ export function runDataScout({
 
       // Margin trend: profitability quietly eroding is one of the earliest
       // signs a business is deteriorating, before revenue growth rolls over.
-      if (Number.isFinite(yearAgo?.netIncome) && yearAgo?.totalRevenue) {
-        const marginThen = (yearAgo.netIncome / yearAgo.totalRevenue) * 100;
+      if (
+        Number.isFinite(incomeYearAgo?.netIncome) &&
+        incomeYearAgo?.totalRevenue
+      ) {
+        const marginThen =
+          (incomeYearAgo.netIncome / incomeYearAgo.totalRevenue) * 100;
         const marginChange = margin - marginThen;
         metrics.netMarginChange = marginChange;
         if (marginChange <= -3) {
@@ -404,15 +429,30 @@ export function runDataScout({
       if (rows.length < 4) return null;
       return rows.reduce((s, r) => s + r[field], 0);
     };
+    // Ratios must compare the SAME four quarters — summing each field over
+    // its own latest-4 window can silently mix quarters when one statement
+    // lags the other.
+    const ttmPaired = (fieldA, fieldB) => {
+      const rows = q
+        .filter(
+          (r) => Number.isFinite(r[fieldA]) && Number.isFinite(r[fieldB]),
+        )
+        .slice(0, 4);
+      if (rows.length < 4) return null;
+      return [
+        rows.reduce((s, r) => s + r[fieldA], 0),
+        rows.reduce((s, r) => s + r[fieldB], 0),
+      ];
+    };
     const fcfTTM = ttmSum("freeCashFlow");
-    const revenueTTM = ttmSum("totalRevenue");
     const netIncomeTTM = ttmSum("netIncome");
     metrics.fcfTTM = fcfTTM;
 
     // Free-cash-flow margin: how much of each sales dollar becomes cash the
     // company can actually spend.
-    if (Number.isFinite(fcfTTM) && Number.isFinite(revenueTTM) && revenueTTM > 0) {
-      const fcfMargin = (fcfTTM / revenueTTM) * 100;
+    const fcfVsRevenue = ttmPaired("freeCashFlow", "totalRevenue");
+    if (fcfVsRevenue && fcfVsRevenue[1] > 0) {
+      const fcfMargin = (fcfVsRevenue[0] / fcfVsRevenue[1]) * 100;
       metrics.fcfMargin = fcfMargin;
       components.push(scaleClamp(fcfMargin, -5, 20, 5, 90));
       if (fcfMargin > 15)
@@ -429,8 +469,10 @@ export function runDataScout({
     }
 
     // Earnings quality: profits that don't turn into cash are a warning sign.
-    if (Number.isFinite(fcfTTM) && Number.isFinite(netIncomeTTM)) {
-      if (netIncomeTTM > 0 && fcfTTM < 0) {
+    const fcfVsIncome = ttmPaired("freeCashFlow", "netIncome");
+    if (fcfVsIncome) {
+      const [fcfP, niP] = fcfVsIncome;
+      if (niP > 0 && fcfP < 0) {
         components.push(10);
         findings.push(
           bear(
@@ -438,7 +480,7 @@ export function runDataScout({
             2,
           ),
         );
-      } else if (netIncomeTTM > 0 && fcfTTM < 0.5 * netIncomeTTM) {
+      } else if (niP > 0 && fcfP < 0.5 * niP) {
         components.push(25);
         findings.push(
           bear(
@@ -446,7 +488,7 @@ export function runDataScout({
             2,
           ),
         );
-      } else if (netIncomeTTM > 0 && fcfTTM > netIncomeTTM * 1.1) {
+      } else if (niP > 0 && fcfP > niP * 1.1) {
         findings.push(
           bull(
             "Generates more cash than its reported profit — high-quality earnings",
@@ -577,11 +619,18 @@ export function runDataScout({
       } else {
         metrics.trailingPE = null;
         // No profits to value it on — fall back to price-to-free-cash-flow
-        // when the company generates cash and we know the share count.
-        const shares =
-          [latest.dilutedAverageShares, latest.basicAverageShares].find(
+        // when the company generates cash and we know the share count. The
+        // newest row may be earnings-only (no share count) — search back.
+        const sharesRow = q.find((r) =>
+          [r.dilutedAverageShares, r.basicAverageShares].some(
             (s) => Number.isFinite(s) && s > 0,
-          ) ?? null;
+          ),
+        );
+        const shares = sharesRow
+          ? [sharesRow.dilutedAverageShares, sharesRow.basicAverageShares].find(
+              (s) => Number.isFinite(s) && s > 0,
+            )
+          : null;
         if (Number.isFinite(fcfTTM) && fcfTTM > 0 && shares) {
           const pfcf = metrics.price / (fcfTTM / shares);
           metrics.priceToFcf = pfcf;

@@ -63,17 +63,6 @@ export async function getCommitteeHistory(symbol, limit = MAX_ROWS_PER_SYMBOL) {
   }
 }
 
-/** Latest snapshots for many symbols at once: {symbol: row[]}. */
-export async function getCommitteeHistoryForSymbols(symbols, limit = 30) {
-  const out = {};
-  await Promise.all(
-    (symbols || []).map(async (symbol) => {
-      out[symbol] = await getCommitteeHistory(symbol, limit);
-    }),
-  );
-  return out;
-}
-
 export function deleteCommitteeHistoryForSymbol(symbol) {
   return db[STORE].where("symbol").equals(symbol).delete();
 }

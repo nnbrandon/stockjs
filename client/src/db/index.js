@@ -54,14 +54,12 @@ export { saveEarnings, getEarnings } from "./stores/earnings";
 export {
   saveCommitteeSnapshot,
   getCommitteeHistory,
-  getCommitteeHistoryForSymbols,
   deleteCommitteeHistoryForSymbol,
 } from "./stores/committeeHistory";
 
 export {
   saveAnalysis,
   getAnalysis,
-  isAnalysisStale,
   deleteAnalysisForSymbol,
 } from "./stores/analysis";
 

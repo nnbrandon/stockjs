@@ -3,6 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import LambdaService from "../LambdaService";
 import { isTradeableTickerSymbol } from "../utils/parseFidelityCsv";
 import {
+  getCommitteeGeneratedAt,
+  getCommitteeHealth,
+  getCommitteeRow,
+  isCommitteeCacheLoaded,
+  resetCommitteeCache,
+  storeCommitteeResponse,
+} from "../utils/committeeServerCache";
+import {
   getReportSyncEmail,
   getReportSyncToken,
   isReportSyncConfigured,
@@ -11,18 +19,9 @@ import {
 // Server-backed committee (single source of truth): the Lambda pipeline is
 // the only thing that fetches, FinBERT-scores, and judges. This hook READS
 // the last stored run on mount (fast) and `run()` asks the server to analyze
-// now — the same stored state also feeds the daily email, so the UI and the
-// email can never disagree.
-
-/** Session-only cache — survives in-app navigation, cleared on page refresh. */
-let sessionCache = null;
-
-function buildPositionKey(positions) {
-  return positions
-    .map((p) => p.symbol)
-    .sort()
-    .join("|");
-}
+// now — the same stored state also feeds the daily email and the per-ticker
+// AnalystPanel (via the shared committeeServerCache), so no surface can
+// disagree with another.
 
 /** Server row + local position → the item shape the panels render. */
 function toItem(row, position) {
@@ -43,15 +42,17 @@ function toItem(row, position) {
   };
 }
 
-function mapServerResponse(data, tradeablePositions) {
-  const rowsBySymbol = new Map(
-    (data.results ?? []).map((r) => [r.symbol, r]),
-  );
+function mapFromCache(email, tradeablePositions) {
   const results = tradeablePositions.map((position) =>
-    toItem(rowsBySymbol.get(position.symbol), position),
+    toItem(getCommitteeRow(email, position.symbol), position),
   );
   const anyAnalyzed = results.some((r) => r.report || r.isFund);
-  return { results, health: data.health ?? null, anyAnalyzed };
+  return {
+    results,
+    health: getCommitteeHealth(email),
+    generatedAt: getCommitteeGeneratedAt(email),
+    anyAnalyzed,
+  };
 }
 
 export default function usePortfolioCommittee(positions) {
@@ -61,13 +62,18 @@ export default function usePortfolioCommittee(positions) {
   );
 
   const positionKey = useMemo(
-    () => buildPositionKey(tradeablePositions),
+    () =>
+      tradeablePositions
+        .map((p) => p.symbol)
+        .sort()
+        .join("|"),
     [tradeablePositions],
   );
 
   const [status, setStatus] = useState("idle");
   const [results, setResults] = useState([]);
   const [health, setHealth] = useState(null);
+  const [generatedAt, setGeneratedAt] = useState(null);
   const [progress, setProgress] = useState({
     done: 0,
     total: 0,
@@ -78,21 +84,31 @@ export default function usePortfolioCommittee(positions) {
 
   const configured = isReportSyncConfigured();
 
+  const applyView = useCallback(
+    (view) => {
+      setResults(view.results);
+      setHealth(view.health);
+      setGeneratedAt(view.generatedAt);
+      setStatus(view.anyAnalyzed ? "done" : "idle");
+    },
+    [],
+  );
+
   // On mount / portfolio change: show the last stored server run (pure read).
   useEffect(() => {
     if (!tradeablePositions.length) return undefined;
-
-    if (sessionCache?.positionKey === positionKey) {
-      setStatus("done");
-      setResults(sessionCache.results);
-      setHealth(sessionCache.health);
-      return undefined;
-    }
 
     if (!configured) {
       setStatus("idle");
       setResults([]);
       setHealth(null);
+      setGeneratedAt(null);
+      return undefined;
+    }
+
+    const email = getReportSyncEmail();
+    if (isCommitteeCacheLoaded(email)) {
+      applyView(mapFromCache(email, tradeablePositions));
       return undefined;
     }
 
@@ -108,7 +124,7 @@ export default function usePortfolioCommittee(positions) {
       });
       const data = await LambdaService.fetchCommitteeResults(
         getReportSyncToken(),
-        getReportSyncEmail(),
+        email,
       );
       if (cancelled) return;
       if (!data.ok) {
@@ -116,20 +132,13 @@ export default function usePortfolioCommittee(positions) {
         setStatus("idle");
         return;
       }
-      const mapped = mapServerResponse(data, tradeablePositions);
-      if (!mapped.anyAnalyzed) {
-        setStatus("idle");
-        return;
-      }
-      sessionCache = { positionKey, ...mapped };
-      setResults(mapped.results);
-      setHealth(mapped.health);
-      setStatus("done");
+      storeCommitteeResponse(email, data);
+      applyView(mapFromCache(email, tradeablePositions));
     })();
     return () => {
       cancelled = true;
     };
-  }, [positionKey, tradeablePositions, configured]);
+  }, [positionKey, tradeablePositions, configured, applyView]);
 
   // Ask the server to analyze NOW. The result is persisted server-side, so
   // the next daily email is built from this exact run.
@@ -146,26 +155,29 @@ export default function usePortfolioCommittee(positions) {
       detail: `Analyzing ${tradeablePositions.length} holding${tradeablePositions.length === 1 ? "" : "s"} on the server — first run can take a minute…`,
     });
 
+    const email = getReportSyncEmail();
     const data = await LambdaService.runCommitteeServer(
       getReportSyncToken(),
-      getReportSyncEmail(),
+      email,
     );
     if (!data.ok) {
       setStatus("error");
       return;
     }
-    const mapped = mapServerResponse(data, tradeablePositions);
-    sessionCache = { positionKey, ...mapped };
-    setResults(mapped.results);
-    setHealth(mapped.health);
+    storeCommitteeResponse(email, data);
+    const view = mapFromCache(email, tradeablePositions);
+    setResults(view.results);
+    setHealth(view.health);
+    setGeneratedAt(view.generatedAt);
     setStatus("done");
-  }, [tradeablePositions, positionKey, configured]);
+  }, [tradeablePositions, configured]);
 
   const reset = useCallback(() => {
-    sessionCache = null;
+    resetCommitteeCache();
     setStatus("idle");
     setResults([]);
     setHealth(null);
+    setGeneratedAt(null);
     setProgress({
       done: 0,
       total: 0,
@@ -181,6 +193,7 @@ export default function usePortfolioCommittee(positions) {
     progress,
     reviewMode: "server",
     health,
+    generatedAt,
     run,
     reset,
     count: tradeablePositions.length,

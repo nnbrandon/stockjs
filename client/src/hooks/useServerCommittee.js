@@ -2,30 +2,21 @@ import { useCallback, useEffect, useState } from "react";
 
 import LambdaService from "../LambdaService";
 import {
+  getCommitteeRow,
+  isCommitteeCacheLoaded,
+  storeCommitteeResponse,
+} from "../utils/committeeServerCache";
+import {
   getReportSyncEmail,
   getReportSyncToken,
   isReportSyncConfigured,
 } from "../utils/reportPortfolioSync";
 
 // One symbol's view of the server-side committee (single source of truth).
-// Held symbols come from the last stored run (fast read, shared with the
-// portfolio panel and the daily email); any symbol — held or browsed — can
-// be (re)analyzed on demand via action=runCommittee.
-
-/** Session cache: symbol → server row. Cleared on page refresh. */
-let rowCache = new Map();
-let cachedEmail = null;
-let resultsFetched = false;
-
-function cacheRows(email, rows) {
-  if (cachedEmail !== email) {
-    rowCache = new Map();
-    cachedEmail = email;
-  }
-  for (const row of rows ?? []) {
-    if (row?.symbol) rowCache.set(row.symbol, row);
-  }
-}
+// Held symbols come from the last stored run — read through the same shared
+// cache the portfolio panel uses, so runs triggered anywhere update both
+// surfaces. Any symbol, held or browsed, can be (re)analyzed on demand via
+// action=runCommittee.
 
 /**
  * Statuses: "unconfigured" (sync not set up), "loading" (reading stored
@@ -47,16 +38,10 @@ export default function useServerCommittee(symbol) {
     }
 
     const email = getReportSyncEmail();
-    if (cachedEmail === email && rowCache.has(symbol)) {
-      const cached = rowCache.get(symbol);
+    if (isCommitteeCacheLoaded(email)) {
+      const cached = getCommitteeRow(email, symbol);
       setRow(cached);
-      setStatus(cached.latest ? "done" : "norun");
-      return undefined;
-    }
-    if (resultsFetched && cachedEmail === email) {
-      // Stored results already loaded this session; this symbol isn't held.
-      setRow(null);
-      setStatus("norun");
+      setStatus(cached?.latest ? "done" : "norun");
       return undefined;
     }
 
@@ -68,14 +53,9 @@ export default function useServerCommittee(symbol) {
         email,
       );
       if (!active) return;
-      if (data.ok) {
-        resultsFetched = true;
-        cacheRows(email, data.results);
-      }
-      const found = data.ok
-        ? (data.results ?? []).find((r) => r.symbol === symbol)
-        : null;
-      setRow(found ?? null);
+      if (data.ok) storeCommitteeResponse(email, data);
+      const found = data.ok ? getCommitteeRow(email, symbol) : null;
+      setRow(found);
       setStatus(found?.latest ? "done" : "norun");
     })();
     return () => {
@@ -98,9 +78,9 @@ export default function useServerCommittee(symbol) {
       setStatus("error");
       return;
     }
-    cacheRows(email, data.results);
-    const found = (data.results ?? []).find((r) => r.symbol === symbol);
-    setRow(found ?? null);
+    storeCommitteeResponse(email, data);
+    const found = getCommitteeRow(email, symbol);
+    setRow(found);
     setStatus(found?.latest ? "done" : "error");
   }, [symbol, configured]);
 

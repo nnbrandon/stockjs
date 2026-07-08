@@ -13,6 +13,14 @@ report, and the dev-only backtest harness (which still uses the engine
 in-browser by design). Dexie's `news`/`committeeHistory` stores remain but
 nothing writes committee data to them anymore.
 
+**Hardening pass (same day):** both panels share one client-side cache
+(`utils/committeeServerCache.js`) so a run from either surface updates both;
+the portfolio panel shows when the run happened; dev credentials can come
+from `client/.env.local` (`VITE_REPORT_SYNC_EMAIL`/`_TOKEN`, dev-only, take
+precedence over localStorage); and `setup-daily-report.sh` aborts on
+unreadable SES/env state and skips the Lambda config write when nothing
+changed (no more mid-deploy 503 blips or accidental SYNC_TOKEN rotation).
+
 ## Why
 
 The browser and the Lambda each accumulated their own news archive and ran the

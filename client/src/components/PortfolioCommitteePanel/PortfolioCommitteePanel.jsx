@@ -276,6 +276,7 @@ export default function PortfolioCommitteePanel({
     results,
     progress,
     health,
+    generatedAt,
     run,
     reset,
     count,
@@ -408,7 +409,9 @@ export default function PortfolioCommitteePanel({
         {status === "done" && (
           <>
             <p className={styles.reviewMode}>
-              Server review — same run as your daily email
+              {generatedAt
+                ? `Analyzed ${new Date(generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} — same run as your daily email`
+                : "Server review — same run as your daily email"}
             </p>
 
             <PortfolioHealthCard health={health} />

@@ -147,20 +147,18 @@ aws iam put-role-policy \
 
 # ── 4. Lambda config: sizing + env vars + bundled handler ────────────────
 # FinBERT needs the memory; the crawl + model cold-start needs the timeout.
-echo "==> Lambda: timeout ${TIMEOUT}s, memory ${MEMORY}MB, handler $HANDLER"
 
-# update-function-configuration REPLACES the whole env map — merge with
-# whatever is already set so unrelated vars survive. A failed read must ABORT
-# rather than fall back to empty: proceeding would silently rotate SYNC_TOKEN
+# The whole current config in one read. A failed read must ABORT rather than
+# fall back to empty: proceeding would silently rotate SYNC_TOKEN
 # (invalidating what users pasted into the app) and drop unrelated vars.
-if ! EXISTING_ENV="$(aws lambda get-function-configuration \
-  --function-name "$FUNCTION_NAME" --region "$REGION" \
-  --query 'Environment.Variables' --output json)"; then
-  echo "ERROR: could not read the function's current env vars — refusing to"
-  echo "       continue (a blind write would rotate SYNC_TOKEN and drop vars)."
+if ! CURRENT_CONFIG="$(aws lambda get-function-configuration \
+  --function-name "$FUNCTION_NAME" --region "$REGION" --output json)"; then
+  echo "ERROR: could not read the function's current configuration — refusing"
+  echo "       to continue (a blind write would rotate SYNC_TOKEN and drop vars)."
   exit 1
 fi
-# An unset env map serializes as 'null' — that's a legitimate first run.
+# An unset env map reads as null — that's a legitimate first run.
+EXISTING_ENV="$(python3 -c "import json,sys; print(json.dumps((json.loads(sys.argv[1]).get('Environment') or {}).get('Variables')))" "$CURRENT_CONFIG")"
 
 # Shared secret for the browser's portfolio sync (action=portfolioSync).
 # Generated once and kept across re-runs; override with SYNC_TOKEN=... env.
@@ -180,15 +178,37 @@ print(json.dumps({"Variables": existing}))
 PY
 )"
 
-aws lambda wait function-updated --function-name "$FUNCTION_NAME" --region "$REGION"
-aws lambda update-function-configuration \
-  --function-name "$FUNCTION_NAME" \
-  --region "$REGION" \
-  --handler "$HANDLER" \
-  --timeout "$TIMEOUT" \
-  --memory-size "$MEMORY" \
-  --environment "$MERGED_ENV" >/dev/null
-aws lambda wait function-updated --function-name "$FUNCTION_NAME" --region "$REGION"
+# Idempotent apply: skip the write when nothing would change. Every config
+# update briefly disrupts in-flight requests (the CORS-less 503s the browser
+# reports as CORS errors), so CI re-runs of an unchanged config must be no-ops.
+CONFIG_MATCHES="$(python3 - "$CURRENT_CONFIG" "$MERGED_ENV" "$HANDLER" "$TIMEOUT" "$MEMORY" <<'PY'
+import json, sys
+cur = json.loads(sys.argv[1])
+desired_env = json.loads(sys.argv[2])["Variables"]
+ok = (
+    cur.get("Handler") == sys.argv[3]
+    and cur.get("Timeout") == int(sys.argv[4])
+    and cur.get("MemorySize") == int(sys.argv[5])
+    and ((cur.get("Environment") or {}).get("Variables") or {}) == desired_env
+)
+print("yes" if ok else "no")
+PY
+)"
+
+if [[ "$CONFIG_MATCHES" == "yes" ]]; then
+  echo "==> Lambda: configuration already up to date — skipping"
+else
+  echo "==> Lambda: timeout ${TIMEOUT}s, memory ${MEMORY}MB, handler $HANDLER"
+  aws lambda wait function-updated --function-name "$FUNCTION_NAME" --region "$REGION"
+  aws lambda update-function-configuration \
+    --function-name "$FUNCTION_NAME" \
+    --region "$REGION" \
+    --handler "$HANDLER" \
+    --timeout "$TIMEOUT" \
+    --memory-size "$MEMORY" \
+    --environment "$MERGED_ENV" >/dev/null
+  aws lambda wait function-updated --function-name "$FUNCTION_NAME" --region "$REGION"
+fi
 
 # ── 5. EventBridge Scheduler → direct Lambda invoke ──────────────────────
 if aws iam get-role --role-name "$SCHEDULER_ROLE_NAME" >/dev/null 2>&1; then

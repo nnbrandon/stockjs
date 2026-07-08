@@ -4,6 +4,27 @@
   gap: 8px;
 }
 
+/* Inline buttons on desktop; a single ⋯ menu on phones. */
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kebab {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .inline {
+    display: none;
+  }
+
+  .kebab {
+    display: flex;
+  }
+}
+
 .btnAction {
   padding: 7px 16px;
   border-radius: var(--shape-radius-sm);
@@ -36,6 +57,52 @@
 .btnAction svg {
   width: 16px;
   height: 16px;
+}
+
+.btnAddWatchlist {
+  padding: 7px 16px;
+  border-radius: var(--shape-radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition:
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--palette-success);
+  border: 1px solid var(--palette-success);
+  color: #fff;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.btnAddWatchlist:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+.btnAddWatchlist:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btnAddWatchlist svg {
+  width: 16px;
+  height: 16px;
+}
+
+.memberBadge {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--shape-radius-sm);
+  display: grid;
+  place-items: center;
+  color: var(--palette-success);
+  border: 1px solid var(--palette-divider);
+}
+.memberBadge svg {
+  width: 18px;
+  height: 18px;
 }
 
 .iconAction {

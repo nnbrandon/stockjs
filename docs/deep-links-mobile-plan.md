@@ -1,6 +1,8 @@
 # Plan: React Router + email deep links + mobile-friendly stock view
 
-**Status: NOT implemented — written 2026-07-08 for implementation by Opus.**
+**Status: IMPLEMENTED 2026-07-08 (Opus). All five phases landed; verified via
+eslint + esbuild bundle + a server-side email render test. Live browser smoke
+test not run locally — Vite dev won't boot on Node 20.11.1 (needs 20.19+).**
 Read `docs/single-source-of-truth-plan.md` first for how the AI Committee
 now works (server-side runs, `action=committeeResults`/`runCommittee`,
 sync-token auth) — this plan builds on that architecture and must not
@@ -168,12 +170,42 @@ The target experience on a phone (mail app → `#/stock/AAPL/committee`):
 Two gaps when the deep link opens on a device that has never run the app:
 
 1. **No IndexedDB data** (candles/fundamentals/news for the chart and
-   position card). The stock route must detect "symbol not in IDB" and
-   trigger the existing seed path (`utils/addSymbolToWatchlist.js` fetches
-   + persists everything) with a loading state, instead of rendering empty
-   panels. Reuse, don't reimplement. Note `addSymbolToWatchlist` returns
-   `{ alreadyStored }` and is idempotent-ish — safe to call on route entry
-   when the symbol isn't in `storedSymbols`.
+   position card). The stock route must detect "symbol not stored" and
+   fetch/persist the data with a loading state — but **viewing a symbol
+   must NOT add it to the watchlist** (product decision, 2026-07-08).
+   Deep-linking or browsing to a ticker shows its full detail page; the
+   user explicitly opts in to tracking it.
+
+   This requires splitting two concepts the codebase currently conflates:
+   - **Data cache** (IDB stores: candles, fundamentals, earnings, news) —
+     any viewed symbol gets seeded here so the page works.
+   - **Watchlist membership** — currently DERIVED from the data cache
+     (`getStoredSymbols` = distinct symbols in the stockData store, feeds
+     the Navbar list). Introduce an explicit membership store (a small
+     Dexie store `watchlist: "symbol"` via a new schema version — follow
+     the versioning rules in `db/database.js`; do NOT edit released
+     versions). Migration: on upgrade, populate membership from the
+     current `storedSymbols` so nobody's existing watchlist changes.
+   - `useStoredSymbols`/Navbar then read membership, not the data cache.
+     `addSymbolToWatchlist` = seed data + add membership (unchanged
+     behavior for search/add-ticker flows). The stock route's cold-start
+     seed = data only, no membership.
+   - **"Add to watchlist" button, top-right corner of the stock details
+     page**, shown only when the viewed symbol isn't a member (holdings
+     and existing watchlist symbols show nothing, or a subtle ✓). Tapping
+     it adds membership (data is already seeded) and updates the Navbar.
+     Must be reachable on mobile (the top-right of the stock view header
+     at 390px, not buried in a collapsed sidebar).
+   - `deleteSymbolData` (remove-ticker flow) must also remove membership.
+   - The Fidelity portfolio import must add membership for every imported
+     holding (today they appear in the watchlist implicitly via their
+     seeded data; with the split that stops being automatic — grep the
+     import flow for where symbols get seeded and add membership there).
+   - **Nonexistent-but-well-formed ticker** (`#/stock/ZZZZZ` passes the
+     format regex, then the Yahoo fetch fails): the route must catch the
+     seed failure and render a clear error state ("Couldn't find data for
+     ZZZZZ") with a link home — not a spinner forever, not a crash, and
+     nothing persisted to IDB for the bad symbol.
 2. **No sync credentials** → the AI Committee tab already renders a
    "set up the email report first (sidebar → Sync email report)" prompt
    (`AnalystPanel`, `unconfigured` status). On mobile ensure that prompt
@@ -187,6 +219,31 @@ Two gaps when the deep link opens on a device that has never run the app:
      invalidates the desktop's saved token (desktop dev setups using
      `.env.local` with the master token are unaffected). Acceptable for
      now; a multi-token store is a possible follow-up, not in scope.
+
+### Phase 5 — Browse-first navigation: search input + trending
+
+With viewing decoupled from the watchlist (Phase 4), browsing flows stop
+mutating the watchlist:
+
+1. **Search input for browsing.** Add a search box that navigates to
+   `#/stock/SYM` — it does NOT add to the watchlist (the detail page's
+   top-right Add button is the opt-in). Reuse the existing
+   `hooks/useSymbolSearch.js` (debounced `LambdaService.searchSymbols`)
+   for typeahead results; render name + symbol, Enter/tap navigates.
+   Placement: in the top bar so it exists on both home and stock views;
+   on mobile it can collapse to a search icon that expands. The existing
+   `AddTickerModal` keeps its own search + add flow unchanged (it's the
+   explicit "add a ticker" action) — do not merge the two in this pass.
+2. **Trending stocks (Home) become pure navigation.** Today
+   `components/TrendingStocks/TrendingStocks.jsx` → `handleSelect` calls
+   `addSymbolToWatchlist(symbol)` for unknown symbols before selecting —
+   remove that: clicking a trending tile just navigates to
+   `#/stock/SYM`. This deletes the `addingSymbol` spinner state and the
+   `watchlistSymbols`/`onWatchlistChange` props (check both call sites —
+   `HomeView` and anywhere else — and clean up the prop plumbing). Data
+   loading for the clicked symbol is handled by the stock route's
+   cold-start seeding from Phase 4; the Add button on the detail page is
+   how a trending stock earns a watchlist spot.
 
 ## Verification (local Node is 20.11.1 — Vite build FAILS locally; use these)
 
@@ -204,6 +261,10 @@ Two gaps when the deep link opens on a device that has never run the app:
   - Back/forward, tab switching, home button, ticker delete.
   - Chrome devtools mobile emulation at 390px: stock view, committee tab,
     sync-setup prompt path.
+  - Browse-first flows: search → navigate to a symbol NOT on the watchlist
+    → detail page loads (seeded), watchlist unchanged, Add button visible
+    top-right → tap Add → appears in Navbar. Trending tile click does the
+    same (no auto-add, no spinner-on-tile).
 - Server: `cd server && npm run bundle && REPORT_SYMBOLS="AAPL:10:150"
   REPORT_EMAIL=test@example.com node scripts/dry-run-report.mjs` — open the
   dry-run HTML it writes to /tmp and confirm each symbol is a working link

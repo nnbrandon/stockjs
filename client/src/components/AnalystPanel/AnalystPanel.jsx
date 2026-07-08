@@ -7,6 +7,7 @@ import SouthEastIcon from "@mui/icons-material/SouthEast";
 import BalanceIcon from "@mui/icons-material/Balance";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import PsychologyIcon from "@mui/icons-material/Psychology";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -354,6 +355,7 @@ export default function AnalystPanel({
   symbol,
   position,
   positionsLoading = false,
+  onOpenSyncSetup,
   compact = false,
 }) {
   // Verdicts come from the server (single source of truth — the same stored
@@ -428,9 +430,21 @@ export default function AnalystPanel({
   if (committee.status === "unconfigured") {
     return (
       <div className={styles.empty}>
-        The AI Committee runs on the server so this panel, the portfolio review,
-        and your daily email always agree. Set up the email report first
-        (sidebar → Sync email report), then come back here.
+        <p>
+          The AI Committee runs on the server so this panel, the portfolio
+          review, and your daily email always agree. Set up the email report
+          first, then come back here.
+        </p>
+        {onOpenSyncSetup && (
+          <button
+            type="button"
+            className={styles.naButton}
+            onClick={onOpenSyncSetup}
+          >
+            <EmailOutlinedIcon sx={{ fontSize: 15, mr: 0.5 }} />
+            Set up email report
+          </button>
+        )}
       </div>
     );
   }

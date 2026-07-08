@@ -27,6 +27,14 @@
   padding: 10px 14px;
 }
 
+/* Four columns squeeze to ~90px each on a phone and everything wraps. Drop to
+   a 2×2 grid so each stat gets room to breathe. */
+@media (max-width: 768px) {
+  .statRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .statLabel {
   font-size: 10px;
   color: var(--palette-text-disabled);

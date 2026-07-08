@@ -2,6 +2,9 @@
 .listCompact {
   display: flex;
   flex-direction: column;
+  /* Fill the (now full-height) scroll container so the pagination row can sit
+     at the bottom instead of floating mid-panel with dead space below it. */
+  min-height: 100%;
 }
 
 .item,

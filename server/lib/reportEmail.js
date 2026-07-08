@@ -11,12 +11,25 @@ const TIER_COLORS = {
   Sell: "#cf222e",
 };
 
+// Where the app is hosted. Deep links open the stock's detail view with the
+// AI Committee tab active (HashRouter — the #/ fragment survives email-client
+// link rewriting and needs no server-side routing on GitHub Pages).
+const DEFAULT_APP_URL = "https://nnbrandon.github.io/stockjs";
+
 const escapeHtml = (s = "") =>
   String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+
+const stockUrl = (appUrl, symbol) =>
+  `${appUrl}/#/stock/${encodeURIComponent(symbol)}/committee`;
+
+// A symbol rendered as a tappable link to its detail page. `inner` is the
+// pre-styled label markup (e.g. a <strong>); we only add the anchor + color.
+const symbolLink = (appUrl, symbol, inner) =>
+  `<a href="${escapeHtml(stockUrl(appUrl, symbol))}" style="color:#0969da;text-decoration:none;">${inner}</a>`;
 
 const fmtScore = (v) => (Number.isFinite(v) ? v.toFixed(0) : "—");
 
@@ -110,12 +123,12 @@ function newsMoodBlock(r) {
   return parts;
 }
 
-function holdingHtml(r) {
+function holdingHtml(r, appUrl) {
   const cells = [];
 
   if (r.error) {
     return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">
-      <strong style="font-size:15px;">${escapeHtml(r.symbol)}</strong>
+      ${symbolLink(appUrl, r.symbol, `<strong style="font-size:15px;">${escapeHtml(r.symbol)}</strong>`)}
       <span style="color:#cf222e;font-size:13px;"> — data fetch failed today (${escapeHtml(r.error)}); we'll try again tomorrow.</span>
     </td></tr>`;
   }
@@ -125,7 +138,7 @@ function holdingHtml(r) {
       ? "Fund/ETF — tracks a basket of holdings, so the committee doesn't rate it. Counted in portfolio health."
       : "Not enough data to run the committee (no financials or analyst coverage found).";
     return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">
-      <strong style="font-size:15px;">${escapeHtml(r.symbol)}</strong>
+      ${symbolLink(appUrl, r.symbol, `<strong style="font-size:15px;">${escapeHtml(r.symbol)}</strong>`)}
       <span style="color:#57606a;font-size:13px;"> — ${escapeHtml(note)}</span>
     </td></tr>`;
   }
@@ -135,7 +148,7 @@ function holdingHtml(r) {
 
   cells.push(
     `<div style="margin-bottom:6px;">
-      <strong style="font-size:16px;">${escapeHtml(r.symbol)}</strong>
+      ${symbolLink(appUrl, r.symbol, `<strong style="font-size:16px;">${escapeHtml(r.symbol)}</strong>`)}
       &nbsp;${tierBadge(v.tier)}
       <span style="color:#57606a;font-size:13px;">&nbsp;score ${fmtScore(v.composite)}/100 · ${escapeHtml(v.convictionLabel)} confidence</span>
     </div>`,
@@ -195,16 +208,19 @@ function holdingHtml(r) {
   return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">${cells.join("")}</td></tr>`;
 }
 
-function holdingText(r) {
+function holdingText(r, appUrl) {
   const lines = [];
+  const link = () => lines.push(`  ${stockUrl(appUrl, r.symbol)}`);
   if (r.error) {
     lines.push(`${r.symbol}: data fetch failed today (${r.error}).`);
+    link();
     return lines;
   }
   if (!r.report) {
     lines.push(
       `${r.symbol}: ${r.isFund ? "fund/ETF — not rated by the committee." : "not enough data to run the committee."}`,
     );
+    link();
     return lines;
   }
   const v = r.report.verdict;
@@ -212,6 +228,7 @@ function holdingText(r) {
   lines.push(
     `${r.symbol}: ${v.tier} — score ${fmtScore(v.composite)}/100 (${v.convictionLabel} confidence)`,
   );
+  link();
   if (r.tierChange) {
     lines.push(`  ${describeTierChange(r)}`);
   }
@@ -273,6 +290,7 @@ function sortForListing(results) {
  */
 export function renderReportEmail(unsorted, health, meta) {
   const results = sortForListing(unsorted);
+  const appUrl = meta.appUrl || DEFAULT_APP_URL;
   const subject = subjectLine(results, meta);
   const changes = results.filter((r) => r.tierChange);
   const failures = results.filter((r) => r.error);
@@ -309,10 +327,12 @@ export function renderReportEmail(unsorted, health, meta) {
     );
   }
 
-  const rows = results.map(holdingHtml).join("");
+  const rows = results.map((r) => holdingHtml(r, appUrl)).join("");
   sections.push(
     `<h2 style="font-size:15px;margin:18px 0 6px;">Your holdings</h2>
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #d8dee4;border-radius:8px;border-collapse:separate;overflow:hidden;">${rows}</table>`,
+     <p style="font-size:12px;color:#57606a;margin:0 0 8px;">Tap any symbol to open it in the app with the AI Committee tab.</p>
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #d8dee4;border-radius:8px;border-collapse:separate;overflow:hidden;">${rows}</table>
+     <p style="font-size:12px;margin:12px 0 0;"><a href="${escapeHtml(`${appUrl}/#/`)}" style="color:#0969da;text-decoration:none;">Open your portfolio →</a></p>`,
   );
 
   const footerBits = [
@@ -365,8 +385,9 @@ export function renderReportEmail(unsorted, health, meta) {
   }
   textLines.push("YOUR HOLDINGS");
   for (const r of results) {
-    textLines.push(...holdingText(r), "");
+    textLines.push(...holdingText(r, appUrl), "");
   }
+  textLines.push(`Open your portfolio: ${appUrl}/#/`, "");
   textLines.push(footerBits.join(" | "));
   textLines.push(
     "Automated summary generated by your own AI Committee engine — not investment advice.",

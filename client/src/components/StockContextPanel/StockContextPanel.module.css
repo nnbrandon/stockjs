@@ -133,3 +133,14 @@
     border-top: 1px solid var(--palette-divider);
   }
 }
+
+/* On phones the committee/news panel is the point — let it fill the screen
+   (the 420px tablet cap would otherwise leave dead space below it) so its
+   internal scroll area gets the full viewport height. 56px ≈ the mobile top
+   bar. */
+@media (max-width: 768px) {
+  .panel {
+    max-height: none;
+    min-height: calc(100dvh - 56px);
+  }
+}

@@ -99,6 +99,35 @@ const schemaVersions = [
       analysis: null,
     },
   },
+  {
+    // Watchlist membership becomes an explicit store instead of being derived
+    // from "any symbol with cached candles" (see docs/deep-links-mobile-
+    // plan.md). Deep-linking to or browsing a ticker now seeds its data cache
+    // WITHOUT adding it to the watchlist — membership is an explicit opt-in.
+    // Migration backfills membership from every symbol that currently has
+    // stored candles so nobody's existing watchlist changes.
+    version: 7,
+    stores: {
+      stockData:
+        "[symbol+shortenedDate], open, close, high, low, volume, adjClose, name",
+      quarterlyResult: "[symbol+date], symbol, date",
+      annualResult: "[symbol+date], symbol, date",
+      news: "id, symbol, date",
+      earnings: "[symbol+date], symbol, date",
+      positions: "symbol, quantity, averageCostBasis, importedAt, source",
+      watchlist: "symbol",
+    },
+    async upgrade(tx) {
+      // Distinct symbols currently in the data cache = the pre-split
+      // watchlist. Read the compound primary keys (cursor-free) and dedupe
+      // the leading symbol component, mirroring getStoredSymbols().
+      const keys = await tx.table("stockData").toCollection().primaryKeys();
+      const symbols = [...new Set(keys.map((key) => key[0]))];
+      if (symbols.length) {
+        await tx.table("watchlist").bulkPut(symbols.map((symbol) => ({ symbol })));
+      }
+    },
+  },
 ];
 
 export const db = new Dexie("StocksDB");

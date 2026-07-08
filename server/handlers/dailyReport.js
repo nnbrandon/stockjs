@@ -204,6 +204,9 @@ export async function runDailyReport() {
       articlesScored,
       sentimentPartial,
       archiveSpanDays: Number.isFinite(spanDays) ? spanDays : null,
+      // Base URL for the email's deep links (defaults to the GH Pages site in
+      // reportEmail.js if unset). Override with APP_URL for a custom domain.
+      appUrl: process.env.APP_URL || undefined,
     };
 
     const { subject, html, text } = renderReportEmail(results, health, meta);

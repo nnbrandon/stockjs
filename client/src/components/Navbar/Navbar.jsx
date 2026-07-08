@@ -14,6 +14,7 @@ import getMarketSession, {
   marketSessionLabel,
 } from "../../utils/marketSession";
 import NavItem from "./NavItem";
+import SymbolSearch from "../SymbolSearch/SymbolSearch";
 
 function formatNyTime() {
   return new Date().toLocaleTimeString("en-US", {
@@ -103,6 +104,10 @@ function Navbar({
         </button>
       </div>
 
+      <div className={styles.searchWrap}>
+        <SymbolSearch onSelectSymbol={(symbol) => onClickSymbol(symbol)} />
+      </div>
+
       <div className={styles.watchlistLabel}>
         Watchlist
         <span className={styles.chipCount}>
@@ -130,15 +135,6 @@ function Navbar({
       </ul>
 
       <div className={styles.footer}>
-        <button
-          type="button"
-          className={styles.btnOutlined}
-          onClick={onClickAddTickerModal}
-        >
-          <AddIcon fontSize="small" />
-          Add ticker
-        </button>
-
         <Tooltip title={refreshTooltip} disableHoverListener={!refreshTooltip}>
           <span>
             <button

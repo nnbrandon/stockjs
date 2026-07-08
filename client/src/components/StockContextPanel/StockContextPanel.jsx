@@ -46,6 +46,7 @@ export default function StockContextPanel({
   positionsLoading,
   activeTab,
   onTabChange,
+  onOpenSyncSetup,
   panelWidth,
   isResizing,
   onResizeStart,
@@ -124,6 +125,7 @@ export default function StockContextPanel({
                 symbol={selectedSymbol}
                 position={position}
                 positionsLoading={positionsLoading}
+                onOpenSyncSetup={onOpenSyncSetup}
                 compact
               />
             </LoadingPanel>

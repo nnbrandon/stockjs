@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
-import AddIcon from "@mui/icons-material/Add";
 import HomeIcon from "@mui/icons-material/Home";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
@@ -32,7 +31,6 @@ function NavbarMini({
   selectedSymbol,
   storedSymbolsWithNames,
   onExpandNav,
-  onClickAddTickerModal,
   onClickImportPortfolioModal,
   onClickReportSyncModal,
   onClickSymbol,
@@ -138,17 +136,6 @@ function NavbarMini({
 
       <div className={styles.footer}>
         <div className={styles.actionRow}>
-          <Tooltip title="Add ticker">
-            <button
-              type="button"
-              className={styles.iconActionBtn}
-              onClick={onClickAddTickerModal}
-              aria-label="Add ticker"
-            >
-              <AddIcon fontSize="small" />
-            </button>
-          </Tooltip>
-
           <Tooltip title={refreshTooltip}>
             <span style={{ flex: 1, display: "flex" }}>
               <button

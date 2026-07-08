@@ -37,6 +37,9 @@ if [[ -z "${ROLE_NAME:-}" ]]; then
 fi
 REPORT_EMAIL="${REPORT_EMAIL:-herosekai@gmail.com}"
 REPORT_SYMBOLS="${REPORT_SYMBOLS:-}"
+# Base URL the email's deep links point at (the GitHub Pages project site by
+# default; override for a custom domain).
+APP_URL="${APP_URL:-https://nnbrandon.github.io/stockjs}"
 SCHEDULE_NAME="${SCHEDULE_NAME:-stockjs-daily-report}"
 SCHEDULE_EXPRESSION="${SCHEDULE_EXPRESSION:-cron(0 9 * * ? *)}"
 SCHEDULER_ROLE_NAME="${SCHEDULER_ROLE_NAME:-stockjs-scheduler-role}"
@@ -165,7 +168,7 @@ EXISTING_ENV="$(python3 -c "import json,sys; print(json.dumps((json.loads(sys.ar
 EXISTING_TOKEN="$(python3 -c "import json,sys; print((json.loads(sys.argv[1]) or {}).get('SYNC_TOKEN',''))" "$EXISTING_ENV")"
 SYNC_TOKEN="${SYNC_TOKEN:-${EXISTING_TOKEN:-$(openssl rand -hex 24)}}"
 
-MERGED_ENV="$(python3 - "$EXISTING_ENV" "$REPORT_SYMBOLS" "$REPORT_EMAIL" "$BUCKET" "$SYNC_TOKEN" <<'PY'
+MERGED_ENV="$(python3 - "$EXISTING_ENV" "$REPORT_SYMBOLS" "$REPORT_EMAIL" "$BUCKET" "$SYNC_TOKEN" "$APP_URL" <<'PY'
 import json, sys
 existing = json.loads(sys.argv[1]) or {}
 existing.update({
@@ -173,6 +176,7 @@ existing.update({
     "REPORT_EMAIL": sys.argv[3],
     "REPORT_STATE_BUCKET": sys.argv[4],
     "SYNC_TOKEN": sys.argv[5],
+    "APP_URL": sys.argv[6],
 })
 print(json.dumps({"Variables": existing}))
 PY

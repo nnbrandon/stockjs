@@ -8,7 +8,7 @@ import isObject from "lodash/isObject";
 import styles from "./AddTickerModal.module.css";
 import sp500 from "./sp500.json";
 import useSymbolSearch from "../../hooks/useSymbolSearch";
-import { getStoredSymbols } from "../../db";
+import { isInWatchlist } from "../../db";
 import { addSymbolToWatchlist } from "../../utils/addSymbolToWatchlist";
 
 const SP500_OPTIONS = sp500.map(({ Symbol, Name }) => ({
@@ -104,8 +104,7 @@ function AddTickerModal({ onClose }) {
       return;
     }
 
-    const storedSymbols = await getStoredSymbols();
-    if (storedSymbols.includes(tickerInputValue)) {
+    if (await isInWatchlist(tickerInputValue)) {
       setError(`${tickerInputValue} is already added.`);
       setShowError(true);
       return;

@@ -1,6 +1,8 @@
 // App.js
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMatch, useNavigate } from "react-router";
 import { ThemeProvider, CssBaseline } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
 import { lightTheme, darkTheme } from "./theme";
 import { deleteSymbolData } from "./db";
 import useStoredSymbols from "./hooks/useStoredSymbols";
@@ -9,6 +11,7 @@ import useSymbolData from "./hooks/useSymbolData";
 import useLiveStockData from "./hooks/useLiveStockData";
 import useRefreshData from "./hooks/useRefreshData";
 import useResizablePanelWidth from "./hooks/useResizablePanelWidth";
+import useEnsureSymbolData from "./hooks/useEnsureSymbolData";
 import SymbolChart from "./components/CandlestickChart/SymbolChart";
 import ChartSkeleton from "./components/CandlestickChart/ChartSkeleton";
 import AddTickerModal from "./components/AddTickerModal/AddTickerModal";
@@ -16,6 +19,7 @@ import ImportFidelityPortfolioModal from "./components/ImportFidelityPortfolioMo
 import ReportPortfolioSyncModal from "./components/ReportPortfolioSyncModal/ReportPortfolioSyncModal";
 import Navbar from "./components/Navbar/Navbar";
 import NavbarMini from "./components/Navbar/NavbarMini";
+import SymbolSearch from "./components/SymbolSearch/SymbolSearch";
 import StockHeader from "./components/StockHeader/StockHeader";
 import StockActions from "./components/StockActions/StockActions";
 import StatRow from "./components/StatRow/StatRow";
@@ -38,6 +42,8 @@ import {
   isReportSyncConfigured,
   syncReportPortfolio,
 } from "./utils/reportPortfolioSync";
+import { addSymbolToWatchlist } from "./utils/addSymbolToWatchlist";
+import normalizeSymbol from "./utils/normalizeSymbol";
 
 // Bridges the current mode from ModeProvider into MUI's ThemeProvider. Lives
 // above SnackbarProvider so toasts (the refresh-all progress toast included)
@@ -55,30 +61,77 @@ function ThemedRoot({ children }) {
 function App() {
   const { mode, toggleTheme } = useMode();
   const showSnackbar = useSnackbar();
+  const navigate = useNavigate();
+
   const [showNavBar, setShowNavBar] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showAddTickerModal, setShowAddTickerModal] = useState(false);
   const [showImportPortfolioModal, setShowImportPortfolioModal] =
     useState(false);
   const [showReportSyncModal, setShowReportSyncModal] = useState(false);
+  const [isAddingToWatchlist, setIsAddingToWatchlist] = useState(false);
 
   const [range, setRange] = useState();
-  const [selectedSymbol, setSelectedSymbol] = useState(null);
-  const [contextTab, setContextTab] = useState(0);
   const {
     width: panelWidth,
     isResizing,
     onResizeStart,
   } = useResizablePanelWidth();
 
-  const handleSelectSymbol = (symbol, options = {}) => {
-    setSelectedSymbol(symbol);
-    setContextTab(options.openCommittee ? 1 : 0);
-  };
+  // ── Navigation is derived from the URL (HashRouter) — no parallel state ──
+  // /stock/:symbol            → News tab; /stock/:symbol/committee → AI tab.
+  const stockMatch = useMatch("/stock/:symbol");
+  const committeeMatch = useMatch("/stock/:symbol/committee");
+  const routeSymbolRaw =
+    committeeMatch?.params.symbol ?? stockMatch?.params.symbol ?? null;
+  const selectedSymbol = useMemo(
+    () => normalizeSymbol(routeSymbolRaw),
+    [routeSymbolRaw],
+  );
+  const contextTab = committeeMatch ? 1 : 0;
 
-  const handleGoHome = () => {
-    setSelectedSymbol(null);
-    setContextTab(0);
-  };
+  const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
+
+  const handleSelectSymbol = useCallback(
+    (symbol, options = {}) => {
+      const normalized = normalizeSymbol(symbol);
+      if (!normalized) return;
+      setMobileNavOpen(false);
+      navigate(
+        options.openCommittee
+          ? `/stock/${normalized}/committee`
+          : `/stock/${normalized}`,
+      );
+    },
+    [navigate],
+  );
+
+  const handleGoHome = useCallback(() => {
+    setMobileNavOpen(false);
+    navigate("/");
+  }, [navigate]);
+
+  // Tab switch replaces history so Back leaves the stock view rather than
+  // cycling News ↔ AI Committee.
+  const handleTabChange = useCallback(
+    (tab) => {
+      if (!selectedSymbol) return;
+      navigate(
+        tab === 1
+          ? `/stock/${selectedSymbol}/committee`
+          : `/stock/${selectedSymbol}`,
+        { replace: true },
+      );
+    },
+    [navigate, selectedSymbol],
+  );
+
+  // A URL with a malformed symbol (hand-edited) → home.
+  useEffect(() => {
+    if (routeSymbolRaw && !selectedSymbol) {
+      navigate("/", { replace: true });
+    }
+  }, [routeSymbolRaw, selectedSymbol, navigate]);
 
   const { storedSymbolsWithNames, refresh: refreshStoredSymbols } =
     useStoredSymbols();
@@ -91,6 +144,12 @@ function App() {
 
   const symbolData = useSymbolData(selectedSymbol, range);
 
+  // Cold-start: a deep-linked/browsed symbol may have no cached data yet.
+  // Seed it (data only — NOT watchlist membership) so the page works.
+  const ensureData = useEnsureSymbolData(selectedSymbol);
+  const isSeeding = ensureData.status === "seeding";
+  const seedError = ensureData.status === "error" ? ensureData.error : null;
+
   // While the market is open, poll every watchlist symbol's 6-month price
   // history once a minute and push live updates into IndexedDB; useSymbolData
   // and the sidebar sparklines re-read on signal.
@@ -99,6 +158,10 @@ function App() {
     [storedSymbolsWithNames],
   );
   useLiveStockData(watchlistSymbols);
+
+  const isSelectedMember = selectedSymbol
+    ? watchlistSymbols.includes(selectedSymbol)
+    : false;
 
   const { refreshSymbol, refreshAll, isRefreshingData, isRefreshingAll } =
     useRefreshData({
@@ -122,7 +185,8 @@ function App() {
     refreshAll();
   }, [storedSymbolsWithNames, refreshAll]);
 
-  const isChartLoading = symbolData.isLoading || isRefreshingAll;
+  const isChartLoading =
+    symbolData.isLoading || isRefreshingAll || isSeeding;
   const hasChartData = symbolData.chartData && symbolData.chartData.length > 0;
   const hasPortfolio = positions.length > 0;
   const selectedPosition = selectedSymbol
@@ -138,6 +202,36 @@ function App() {
         await syncReportPortfolio();
       }
     });
+  };
+
+  const handleAddToWatchlist = async () => {
+    if (!selectedSymbol) return;
+    setIsAddingToWatchlist(true);
+    try {
+      await addSymbolToWatchlist(selectedSymbol);
+      await refreshStoredSymbols();
+      showSnackbar(`${selectedSymbol} added to your watchlist.`, "success");
+    } catch (error) {
+      showSnackbar(
+        `Couldn't add ${selectedSymbol}: ${error.message}`,
+        "error",
+      );
+    } finally {
+      setIsAddingToWatchlist(false);
+    }
+  };
+
+  const openAddTicker = () => {
+    setMobileNavOpen(false);
+    setShowAddTickerModal(true);
+  };
+  const openImport = () => {
+    setMobileNavOpen(false);
+    setShowImportPortfolioModal(true);
+  };
+  const openSync = () => {
+    setMobileNavOpen(false);
+    setShowReportSyncModal(true);
   };
 
   const handleAddTickerClose = (tickerInputValue) => {
@@ -186,45 +280,95 @@ function App() {
     }
   };
 
+  // Shared props for the sidebar (rendered as desktop rail AND mobile drawer).
+  const navProps = {
+    mode,
+    toggleTheme,
+    storedSymbolsWithNames,
+    selectedSymbol,
+    onClickAddTickerModal: openAddTicker,
+    onClickImportPortfolioModal: openImport,
+    onClickReportSyncModal: openSync,
+    onClickSymbol: handleSelectSymbol,
+    onClickHome: handleGoHome,
+    onRefreshAllTickers: refreshAll,
+    isRefreshingAll,
+  };
+
+  const stockActions = (
+    <StockActions
+      selectedSymbol={selectedSymbol}
+      isRefreshingData={isRefreshingData}
+      onRefresh={refreshSymbol}
+      onDelete={handleDelete}
+      isMember={isSelectedMember}
+      isAddingToWatchlist={isAddingToWatchlist}
+      onAddToWatchlist={handleAddToWatchlist}
+    />
+  );
+
   return (
     <PortfolioCommitteeProvider positions={positions}>
       <div className={styles.container}>
-        {showNavBar && (
-          <Navbar
-            mode={mode}
-            toggleTheme={toggleTheme}
-            storedSymbolsWithNames={storedSymbolsWithNames}
-            selectedSymbol={selectedSymbol}
-            onCloseNav={() => setShowNavBar(false)}
-            onClickAddTickerModal={() => setShowAddTickerModal(true)}
-            onClickImportPortfolioModal={() =>
-              setShowImportPortfolioModal(true)
-            }
-            onClickReportSyncModal={() => setShowReportSyncModal(true)}
-            onClickSymbol={handleSelectSymbol}
-            onClickHome={handleGoHome}
-            onRefreshAllTickers={refreshAll}
-            isRefreshingAll={isRefreshingAll}
+        {/* Desktop sidebar (display:contents on desktop, hidden on mobile) */}
+        <div className={styles.desktopNav}>
+          {showNavBar ? (
+            <Navbar {...navProps} onCloseNav={() => setShowNavBar(false)} />
+          ) : (
+            <NavbarMini
+              mode={mode}
+              toggleTheme={toggleTheme}
+              storedSymbolsWithNames={storedSymbolsWithNames}
+              selectedSymbol={selectedSymbol}
+              onClickImportPortfolioModal={openImport}
+              onClickReportSyncModal={openSync}
+              onClickSymbol={handleSelectSymbol}
+              onClickHome={handleGoHome}
+              onRefreshAllTickers={refreshAll}
+              isRefreshingAll={isRefreshingAll}
+              onExpandNav={() => setShowNavBar(true)}
+            />
+          )}
+        </div>
+
+        {/* Mobile top bar (hidden on desktop) */}
+        <header className={styles.mobileTopBar}>
+          <button
+            type="button"
+            className={styles.mobileMenuBtn}
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Open menu"
+          >
+            <MenuIcon fontSize="small" />
+          </button>
+          <button
+            type="button"
+            className={styles.mobileLogo}
+            onClick={handleGoHome}
+          >
+            stockjs
+          </button>
+          <div className={styles.mobileSearch}>
+            <SymbolSearch
+              onSelectSymbol={handleSelectSymbol}
+              placeholder="Search…"
+            />
+          </div>
+        </header>
+
+        {/* Mobile drawer + backdrop (hidden on desktop) */}
+        {mobileNavOpen && (
+          <div
+            className={styles.mobileBackdrop}
+            onClick={closeMobileNav}
+            aria-hidden
           />
         )}
-        {!showNavBar && (
-          <NavbarMini
-            mode={mode}
-            toggleTheme={toggleTheme}
-            storedSymbolsWithNames={storedSymbolsWithNames}
-            selectedSymbol={selectedSymbol}
-            onExpandNav={() => setShowNavBar(true)}
-            onClickAddTickerModal={() => setShowAddTickerModal(true)}
-            onClickImportPortfolioModal={() =>
-              setShowImportPortfolioModal(true)
-            }
-            onClickReportSyncModal={() => setShowReportSyncModal(true)}
-            onClickSymbol={handleSelectSymbol}
-            onClickHome={handleGoHome}
-            onRefreshAllTickers={refreshAll}
-            isRefreshingAll={isRefreshingAll}
-          />
-        )}
+        <div
+          className={`${styles.mobileNav} ${mobileNavOpen ? styles.mobileNavOpen : ""}`}
+        >
+          <Navbar {...navProps} onCloseNav={closeMobileNav} />
+        </div>
 
         {showAddTickerModal && (
           <AddTickerModal range={range} onClose={handleAddTickerClose} />
@@ -248,31 +392,10 @@ function App() {
             hasPortfolio ? (
               <div className={styles.homeWorkspace}>
                 <div className={styles.homeMain}>
-                  <StockHeader
-                    selectedSymbol={selectedSymbol}
-                    chartData={symbolData.chartData}
-                  >
-                    <StockActions
-                      selectedSymbol={selectedSymbol}
-                      isRefreshingData={isRefreshingData}
-                      onRefresh={refreshSymbol}
-                      onDelete={handleDelete}
-                    />
-                  </StockHeader>
-
-                  <StatRow
-                    symbol={selectedSymbol}
-                    chartData={symbolData.chartData}
-                    averageVolumePast30Days={symbolData.averageVolumePast30Days}
-                    isLoading={isChartLoading}
-                  />
-
                   <HomeView
                     positions={positions}
-                    watchlistSymbols={watchlistSymbols}
                     onSelectSymbol={handleSelectSymbol}
-                    onWatchlistChange={refreshStoredSymbols}
-                    onImportPortfolio={() => setShowImportPortfolioModal(true)}
+                    onImportPortfolio={openImport}
                   />
                 </div>
 
@@ -285,35 +408,26 @@ function App() {
                 />
               </div>
             ) : (
-              <>
-                <StockHeader
-                  selectedSymbol={selectedSymbol}
-                  chartData={symbolData.chartData}
-                >
-                  <StockActions
-                    selectedSymbol={selectedSymbol}
-                    isRefreshingData={isRefreshingData}
-                    onRefresh={refreshSymbol}
-                    onDelete={handleDelete}
-                  />
-                </StockHeader>
-
-                <StatRow
-                  symbol={selectedSymbol}
-                  chartData={symbolData.chartData}
-                  averageVolumePast30Days={symbolData.averageVolumePast30Days}
-                  isLoading={isChartLoading}
-                />
-
-                <HomeView
-                  positions={positions}
-                  watchlistSymbols={watchlistSymbols}
-                  onSelectSymbol={handleSelectSymbol}
-                  onWatchlistChange={refreshStoredSymbols}
-                  onImportPortfolio={() => setShowImportPortfolioModal(true)}
-                />
-              </>
+              <HomeView
+                positions={positions}
+                onSelectSymbol={handleSelectSymbol}
+                onImportPortfolio={openImport}
+              />
             )
+          ) : seedError ? (
+            <div className={styles.errorState}>
+              <h2 className={styles.errorTitle}>
+                Couldn&apos;t load {selectedSymbol}
+              </h2>
+              <p className={styles.errorText}>{seedError}</p>
+              <button
+                type="button"
+                className={styles.errorHomeBtn}
+                onClick={handleGoHome}
+              >
+                Back to home
+              </button>
+            </div>
           ) : (
             <div className={styles.symbolWorkspace}>
               <div className={styles.symbolMain}>
@@ -323,12 +437,7 @@ function App() {
                   position={selectedPosition}
                   isLoading={isChartLoading}
                 >
-                  <StockActions
-                    selectedSymbol={selectedSymbol}
-                    isRefreshingData={isRefreshingData}
-                    onRefresh={refreshSymbol}
-                    onDelete={handleDelete}
-                  />
+                  {stockActions}
                 </StockHeader>
 
                 <StatRow
@@ -363,7 +472,8 @@ function App() {
                 position={selectedPosition}
                 positionsLoading={positionsLoading}
                 activeTab={contextTab}
-                onTabChange={setContextTab}
+                onTabChange={handleTabChange}
+                onOpenSyncSetup={openSync}
                 panelWidth={panelWidth}
                 isResizing={isResizing}
                 onResizeStart={onResizeStart}

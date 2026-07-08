@@ -1,11 +1,18 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { HashRouter } from 'react-router'
 import './index.css'
 import App from './App.jsx'
 
+// HashRouter (not BrowserRouter): GitHub Pages serves static files, so hash
+// URLs (/stockjs/#/stock/AAPL/committee) load index.html directly with no
+// server-side 404 rewrite, and survive email-client link rewriting. See
+// docs/deep-links-mobile-plan.md.
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <HashRouter>
+      <App />
+    </HashRouter>
   </StrictMode>,
 )
 

@@ -10,9 +10,7 @@ const FIDELITY_IMPORT_TOOLTIP =
 
 export default function HomeView({
   positions,
-  watchlistSymbols,
   onSelectSymbol,
-  onWatchlistChange,
   onImportPortfolio,
 }) {
   const hasPortfolio = positions.length > 0;
@@ -20,12 +18,7 @@ export default function HomeView({
   if (hasPortfolio) {
     return (
       <>
-        <TrendingStocks
-          compact
-          watchlistSymbols={watchlistSymbols}
-          onSelectSymbol={onSelectSymbol}
-          onWatchlistChange={onWatchlistChange}
-        />
+        <TrendingStocks compact onSelectSymbol={onSelectSymbol} />
         <PortfolioSummary
           positions={positions}
           onSelectSymbol={onSelectSymbol}
@@ -40,8 +33,8 @@ export default function HomeView({
         <div className={styles.discoveryIntro}>
           <h2 className={styles.title}>Trending stocks</h2>
           <p className={styles.subtitle}>
-            Popular on Yahoo Finance right now. Click a ticker to add it to your
-            watchlist and open the chart.
+            Popular on Yahoo Finance right now. Tap a ticker to open its detail
+            page.
           </p>
         </div>
         <Tooltip title={FIDELITY_IMPORT_TOOLTIP}>
@@ -56,12 +49,7 @@ export default function HomeView({
         </Tooltip>
       </div>
 
-      <TrendingStocks
-        hideHeader
-        watchlistSymbols={watchlistSymbols}
-        onSelectSymbol={onSelectSymbol}
-        onWatchlistChange={onWatchlistChange}
-      />
+      <TrendingStocks hideHeader onSelectSymbol={onSelectSymbol} />
     </div>
   );
 }

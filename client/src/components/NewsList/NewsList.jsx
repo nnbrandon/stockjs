@@ -71,7 +71,7 @@ export default function NewsList({ news = [], compact = false }) {
         <NewsItem key={item.id || idx} item={item} compact={compact} />
       ))}
       {pageCount > 1 && (
-        <Box display="flex" justifyContent="center" mt={1.5}>
+        <Box display="flex" justifyContent="center" mt="auto" pt={1.5}>
           <Pagination
             count={pageCount}
             page={page}

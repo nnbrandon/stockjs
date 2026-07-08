@@ -1,21 +1,20 @@
-import { useRef, useState } from "react";
-import AddIcon from "@mui/icons-material/Add";
-import CheckIcon from "@mui/icons-material/Check";
+import { useRef } from "react";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import useTrendingStocks from "../../hooks/useTrendingStocks";
-import { addSymbolToWatchlist } from "../../utils/addSymbolToWatchlist";
 import { formatDollars } from "../../utils/computePositionMetrics";
-import { useSnackbar } from "../SnackbarProvider";
 import styles from "./TrendingStocks.module.css";
 
+// Trending tiles are pure navigation: tapping one opens the stock's detail
+// page (data is seeded there on demand). Adding to the watchlist is an
+// explicit action on the detail page — browsing never mutates the watchlist.
 function dollarChange(price, changePercent) {
   if (!Number.isFinite(price) || !Number.isFinite(changePercent)) return null;
   return (price * changePercent) / (100 + changePercent);
 }
 
-function TickerTile({ stock, inWatchlist, isAdding, onSelect }) {
+function TickerTile({ stock, onSelect }) {
   const isUp = stock.changePercent >= 0;
   const hasChange = Number.isFinite(stock.changePercent);
   const change = dollarChange(stock.price, stock.changePercent);
@@ -24,14 +23,9 @@ function TickerTile({ stock, inWatchlist, isAdding, onSelect }) {
   return (
     <button
       type="button"
-      className={`${styles.tile} ${inWatchlist ? styles.tileWatching : ""}`}
+      className={styles.tile}
       onClick={() => onSelect(stock.symbol)}
-      disabled={isAdding}
-      aria-label={
-        inWatchlist
-          ? `View ${stock.symbol}${stock.name ? `, ${stock.name}` : ""}`
-          : `Add ${stock.symbol}${stock.name ? `, ${stock.name}` : ""} to watchlist`
-      }
+      aria-label={`View ${stock.symbol}${stock.name ? `, ${stock.name}` : ""}`}
     >
       <div className={styles.tileSymbol}>{stock.symbol}</div>
       {stock.name && <div className={styles.tileName}>{stock.name}</div>}
@@ -43,15 +37,11 @@ function TickerTile({ stock, inWatchlist, isAdding, onSelect }) {
           {Math.abs(stock.changePercent).toFixed(2)}%
         </div>
       )}
-      {inWatchlist && (
-        <CheckIcon className={styles.tileCheck} aria-hidden sx={{ fontSize: 12 }} />
-      )}
-      {isAdding && <span className={styles.tileSpinner} aria-hidden />}
     </button>
   );
 }
 
-function TickerStrip({ stocks, watchlistSymbols, addingSymbol, onSelect }) {
+function TickerStrip({ stocks, onSelect }) {
   const scrollRef = useRef(null);
 
   const scroll = (direction) => {
@@ -74,13 +64,7 @@ function TickerStrip({ stocks, watchlistSymbols, addingSymbol, onSelect }) {
       </button>
       <div className={styles.stripScroll} ref={scrollRef}>
         {stocks.map((stock) => (
-          <TickerTile
-            key={stock.symbol}
-            stock={stock}
-            inWatchlist={watchlistSymbols.includes(stock.symbol)}
-            isAdding={addingSymbol === stock.symbol}
-            onSelect={onSelect}
-          />
+          <TickerTile key={stock.symbol} stock={stock} onSelect={onSelect} />
         ))}
       </div>
       <button
@@ -95,7 +79,7 @@ function TickerStrip({ stocks, watchlistSymbols, addingSymbol, onSelect }) {
   );
 }
 
-function TrendingCard({ stock, inWatchlist, isAdding, onSelect }) {
+function TrendingCard({ stock, onSelect }) {
   const isUp = stock.changePercent >= 0;
   const sign = isUp ? "+" : "−";
   const hasChange = Number.isFinite(stock.changePercent);
@@ -103,14 +87,9 @@ function TrendingCard({ stock, inWatchlist, isAdding, onSelect }) {
   return (
     <button
       type="button"
-      className={`${styles.card} ${inWatchlist ? styles.inWatchlist : ""}`}
+      className={styles.card}
       onClick={() => onSelect(stock.symbol)}
-      disabled={isAdding}
-      aria-label={
-        inWatchlist
-          ? `View ${stock.symbol}`
-          : `Add ${stock.symbol} to watchlist`
-      }
+      aria-label={`View ${stock.symbol}`}
     >
       <div className={styles.row}>
         <span className={styles.symbol}>{stock.symbol}</span>
@@ -128,51 +107,17 @@ function TrendingCard({ stock, inWatchlist, isAdding, onSelect }) {
         ) : (
           <span />
         )}
-        {isAdding ? (
-          <span className={styles.spinner} aria-hidden />
-        ) : inWatchlist ? (
-          <span className={styles.badge}>
-            <CheckIcon className={styles.checkIcon} />
-            Watching
-          </span>
-        ) : (
-          <span className={styles.addBtn} aria-hidden>
-            <AddIcon sx={{ fontSize: 14 }} />
-          </span>
-        )}
       </div>
     </button>
   );
 }
 
 export default function TrendingStocks({
-  watchlistSymbols,
   onSelectSymbol,
-  onWatchlistChange,
   compact = false,
   hideHeader = false,
 }) {
-  const showSnackbar = useSnackbar();
   const { data: stocks = [], isLoading, error, refetch } = useTrendingStocks();
-  const [addingSymbol, setAddingSymbol] = useState(null);
-
-  const handleSelect = async (symbol) => {
-    if (watchlistSymbols.includes(symbol)) {
-      onSelectSymbol(symbol);
-      return;
-    }
-
-    setAddingSymbol(symbol);
-    try {
-      await addSymbolToWatchlist(symbol);
-      onWatchlistChange();
-      onSelectSymbol(symbol);
-    } catch (err) {
-      showSnackbar(`Error adding ${symbol}: ${err.message}`, "error");
-    } finally {
-      setAddingSymbol(null);
-    }
-  };
 
   if (compact) {
     return (
@@ -202,12 +147,7 @@ export default function TrendingStocks({
         )}
 
         {!isLoading && !error && stocks.length > 0 && (
-          <TickerStrip
-            stocks={stocks}
-            watchlistSymbols={watchlistSymbols}
-            addingSymbol={addingSymbol}
-            onSelect={handleSelect}
-          />
+          <TickerStrip stocks={stocks} onSelect={onSelectSymbol} />
         )}
       </section>
     );
@@ -219,8 +159,8 @@ export default function TrendingStocks({
         <div className={styles.header}>
           <h2 className={styles.title}>Trending stocks</h2>
           <p className={styles.subtitle}>
-            Popular on Yahoo Finance right now. Click a ticker to add it to your
-            watchlist and open the chart.
+            Popular on Yahoo Finance right now. Tap a ticker to open its detail
+            page.
           </p>
         </div>
       )}
@@ -254,9 +194,7 @@ export default function TrendingStocks({
             <TrendingCard
               key={stock.symbol}
               stock={stock}
-              inWatchlist={watchlistSymbols.includes(stock.symbol)}
-              isAdding={addingSymbol === stock.symbol}
-              onSelect={handleSelect}
+              onSelect={onSelectSymbol}
             />
           ))}
         </div>

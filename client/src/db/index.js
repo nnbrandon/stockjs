@@ -20,6 +20,7 @@ import { deleteFundamentalsForSymbol } from "./stores/fundamentals";
 import { deleteNewsForSymbol } from "./stores/news";
 import { deleteEarningsForSymbol } from "./stores/earnings";
 import { deletePositionForSymbol } from "./stores/positions";
+import { removeFromWatchlist } from "./stores/watchlist";
 
 export { db, CURRENT_DB_VERSION, STORE_NAMES } from "./database";
 
@@ -56,6 +57,14 @@ export {
   deletePositionForSymbol,
 } from "./stores/positions";
 
+export {
+  getWatchlistSymbols,
+  getWatchlistWithNames,
+  isInWatchlist,
+  addToWatchlist,
+  removeFromWatchlist,
+} from "./stores/watchlist";
+
 /**
  * Remove every trace of a symbol across every store. Add new stores' delete
  * helpers to this list as the schema grows.
@@ -68,6 +77,7 @@ export async function deleteSymbolData(symbol) {
       deleteNewsForSymbol(symbol),
       deleteEarningsForSymbol(symbol),
       deletePositionForSymbol(symbol),
+      removeFromWatchlist(symbol),
     ]),
   );
 }

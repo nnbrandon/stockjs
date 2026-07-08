@@ -1,0 +1,21 @@
+.optionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  width: 100%;
+}
+
+.optionSymbol {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--palette-text-primary);
+}
+
+.optionName {
+  font-size: 11.5px;
+  color: var(--palette-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

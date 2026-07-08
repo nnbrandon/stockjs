@@ -98,7 +98,7 @@ function GamePlan({ plan, hasPosition, position, positionMetrics }) {
             </span>
           </div>
           <div className={styles.planItem}>
-            <span className={styles.planLabel}>Take profit near</span>
+            <span className={styles.planLabel}>Reassess near</span>
             <span className={`${styles.planValue} ${styles.planPos}`}>
               {fmtPrice(plan.targetPrice)}
             </span>
@@ -111,9 +111,12 @@ function GamePlan({ plan, hasPosition, position, positionMetrics }) {
           </div>
         </div>
         <p className={styles.planNote}>
-          Sized so a stopped-out trade costs at most ~
-          {plan.portfolioRiskPct.toFixed(1)}% of your portfolio, aiming to make{" "}
-          {plan.rewardRisk}× what's risked.
+          Sized so a wrong call costs at most ~
+          {plan.portfolioRiskPct.toFixed(1)}% of your portfolio. This is a risk
+          plan, not a trading plan: for a long-term position, the sell level is
+          where the thesis breaks — above it, ignore daily noise — and the
+          reassess level is a checkpoint to re-review, not an order to sell a
+          winner.
         </p>
       </div>
     );
@@ -306,7 +309,9 @@ function ServerNewsIntelligence({ latest, articles }) {
           News intelligence
         </div>
       </div>
-      {latest?.newsMood && <p className={styles.naCoverage}>{latest.newsMood}</p>}
+      {latest?.newsMood && (
+        <p className={styles.naCoverage}>{latest.newsMood}</p>
+      )}
       {links.length > 0 && (
         <ul className={styles.findingList}>
           {links.map((l) => (
@@ -400,8 +405,7 @@ export default function AnalystPanel({
   );
 
   const positionMetrics = useMemo(
-    () =>
-      position ? computePositionMetrics(position, yearCandles) : null,
+    () => (position ? computePositionMetrics(position, yearCandles) : null),
     [position, yearCandles],
   );
 
@@ -424,9 +428,9 @@ export default function AnalystPanel({
   if (committee.status === "unconfigured") {
     return (
       <div className={styles.empty}>
-        The AI Committee runs on the server so this panel, the portfolio
-        review, and your daily email always agree. Set up the email report
-        first (sidebar → Sync email report), then come back here.
+        The AI Committee runs on the server so this panel, the portfolio review,
+        and your daily email always agree. Set up the email report first
+        (sidebar → Sync email report), then come back here.
       </div>
     );
   }
@@ -458,7 +462,11 @@ export default function AnalystPanel({
         ) : (
           <p>No stored verdict for {symbol} yet.</p>
         )}
-        <button type="button" className={styles.naButton} onClick={committee.run}>
+        <button
+          type="button"
+          className={styles.naButton}
+          onClick={committee.run}
+        >
           <AutoAwesomeIcon sx={{ fontSize: 15, mr: 0.5 }} />
           Run committee on server
         </button>
@@ -564,16 +572,17 @@ export default function AnalystPanel({
           </div>
           <TickerSparkline
             data={scoreSeries.map((p) => p.composite)}
-            isUp={
-              scoreSeries.at(-1).composite >= scoreSeries[0].composite
-            }
+            isUp={scoreSeries.at(-1).composite >= scoreSeries[0].composite}
             height={36}
           />
         </div>
       )}
 
       {/* Server news read (FinBERT-scored archive) */}
-      <ServerNewsIntelligence latest={latest} articles={committee.row?.articles} />
+      <ServerNewsIntelligence
+        latest={latest}
+        articles={committee.row?.articles}
+      />
 
       {/* Committee transcript */}
       <div className={styles.committee}>

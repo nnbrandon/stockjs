@@ -154,8 +154,7 @@ function buildExitPlan(metrics, bearAgent, pillars, tier, conviction) {
 function buildWatchPlan(metrics) {
   const { price, sma50, sma200 } = metrics;
   if (!Number.isFinite(price)) return null;
-  const aboveLevel =
-    Number.isFinite(sma50) && price < sma50 ? sma50 : null;
+  const aboveLevel = Number.isFinite(sma50) && price < sma50 ? sma50 : null;
   const belowLevel = Number.isFinite(sma200)
     ? sma200
     : Number.isFinite(sma50)
@@ -164,7 +163,8 @@ function buildWatchPlan(metrics) {
   return {
     kind: "watch",
     upgradePrice: aboveLevel,
-    downgradePrice: Number.isFinite(belowLevel) && belowLevel < price ? belowLevel : null,
+    downgradePrice:
+      Number.isFinite(belowLevel) && belowLevel < price ? belowLevel : null,
     actionable: false,
   };
 }
@@ -183,13 +183,19 @@ function buildPlanFindings(action, tier, plan) {
     );
     out.push(
       neutral(
-        `If buying: keep it to about ${plan.positionSizePct.toFixed(1)}% of your portfolio, plan your exit near ${fmtPrice(plan.stopPrice)} (${plan.stopDistancePct.toFixed(1)}% below), and aim for ${fmtPrice(plan.targetPrice)} — twice the risk taken.`,
+        `If buying: keep it to about ${plan.positionSizePct.toFixed(1)}% of your portfolio, and treat ${fmtPrice(plan.stopPrice)} (${plan.stopDistancePct.toFixed(1)}% below) as the line where this thesis is wrong.`,
         1,
       ),
     );
     out.push(
       neutral(
-        "This call is wrong if the price closes below that exit level — sell there rather than averaging down.",
+        `For a long-term position: above that line, ignore the day-to-day noise. ${fmtPrice(plan.targetPrice)} is a checkpoint to re-review the thesis — not an order to sell a winner.`,
+        1,
+      ),
+    );
+    out.push(
+      neutral(
+        "Below it, sell rather than averaging down — being wrong small is how long-term investors stay in the game.",
         1,
       ),
     );

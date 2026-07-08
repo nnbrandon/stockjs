@@ -42,7 +42,9 @@ export async function requestSyncToken(body, corsOrigin) {
     return errorResponse(400, "A valid email address is required", corsOrigin);
   }
 
-  const verified = await ensureEmailVerification(email);
+  // resend:true — this is an explicit user request, so a lost/expired
+  // verification link gets a fresh one instead of silence.
+  const verified = await ensureEmailVerification(email, { resend: true });
   if (verified !== true) {
     // The SES sandbox can't deliver to this address yet — the verification
     // email is on its way (or already sitting in their inbox).

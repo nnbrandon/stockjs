@@ -52,57 +52,6 @@ export function pacificDay(date = new Date()) {
 }
 
 /**
- * Merge two article pools by id, preferring the version that carries a
- * FinBERT score — this is how the browser's already-scored archive beats the
- * server's unscored copy of the same article.
- */
-export function mergeScoredArticles(base = [], extra = []) {
-  const byId = new Map();
-  for (const a of base) {
-    if (a?.id != null) byId.set(a.id, a);
-  }
-  for (const a of extra) {
-    if (a?.id == null) continue;
-    const existing = byId.get(a.id);
-    if (!existing || (!hasFinbertScore(existing) && hasFinbertScore(a))) {
-      byId.set(a.id, a);
-    }
-  }
-  return [...byId.values()];
-}
-
-/** Union history rows by day; `preferred` rows win. Oldest → newest. */
-export function mergeHistoryRows(preferred = [], extra = []) {
-  const byDay = new Map();
-  for (const r of extra) {
-    if (r?.day) byDay.set(r.day, r);
-  }
-  for (const r of preferred) {
-    if (r?.day) byDay.set(r.day, r);
-  }
-  return [...byDay.values()]
-    .sort((a, b) => (a.day < b.day ? -1 : 1))
-    .slice(-MAX_HISTORY_ROWS);
-}
-
-/**
- * Pool every user's browser-synced evidence per symbol, so the per-symbol
- * committee run sees the union of what all the browsers saw.
- */
-export function collectSyncedEvidence(users) {
-  const bySymbol = new Map();
-  for (const u of users) {
-    for (const [symbol, entry] of Object.entries(u.symbols ?? {})) {
-      const agg = bySymbol.get(symbol) ?? { articles: [], history: [] };
-      agg.articles = mergeScoredArticles(agg.articles, entry?.articles ?? []);
-      agg.history = mergeHistoryRows(agg.history, entry?.history ?? []);
-      bySymbol.set(symbol, agg);
-    }
-  }
-  return bySymbol;
-}
-
-/**
  * Merge today's fetched articles into the rolling archive: dedupe by id,
  * drop rows older than the window, newest first (selectNewsForAnalysis
  * expects the client's newest-first ordering).
@@ -155,7 +104,7 @@ function hasAnalysisCoverage(analysis) {
 }
 
 /** Network phase for one holding — everything except FinBERT + committee. */
-async function fetchSymbolData(holding, symbolState, synced) {
+async function fetchSymbolData(holding, symbolState) {
   const { symbol } = holding;
   const end = new Date();
   const start = new Date(end);
@@ -176,13 +125,7 @@ async function fetchSymbolData(holding, symbolState, synced) {
     }),
   ]);
 
-  // Browser-synced articles join the pool first (their FinBERT scores win
-  // over unscored copies), then today's fetch tops it up.
-  const pooled = mergeScoredArticles(
-    symbolState?.articles ?? [],
-    synced?.articles ?? [],
-  );
-  const archive = updateArticleArchive(pooled, freshNews);
+  const archive = updateArticleArchive(symbolState?.articles ?? [], freshNews);
 
   return { holding, candles, fundamentals, analysis, archive };
 }
@@ -209,11 +152,7 @@ async function mapPool(items, limit, fn) {
  * Returns per-symbol results (keyed off state.symbols for continuity) plus
  * run metadata. Pure with respect to `state` — callers persist.
  */
-export async function analyzeSymbols(
-  uniqueHoldings,
-  state,
-  syncedEvidence = new Map(),
-) {
+export async function analyzeSymbols(uniqueHoldings, state) {
   const symbolState = state.symbols || {};
   const day = pacificDay();
 
@@ -222,11 +161,7 @@ export async function analyzeSymbols(
     SYMBOL_CONCURRENCY,
     async (h) => {
       try {
-        return await fetchSymbolData(
-          h,
-          symbolState[h.symbol],
-          syncedEvidence.get(h.symbol),
-        );
+        return await fetchSymbolData(h, symbolState[h.symbol]);
       } catch (err) {
         console.error(`pipeline: ${h.symbol} fetch failed:`, err);
         return { holding: h, error: err.message || "fetch failed" };
@@ -281,13 +216,7 @@ export async function analyzeSymbols(
     }
 
     const prevState = symbolState[symbol] || {};
-    // The browser's synced history fills days the server never saw (its own
-    // rows win on collisions), so tier-change detection and the engine's
-    // history-aware rules match what the UI would conclude.
-    const history = mergeHistoryRows(
-      Array.isArray(prevState.history) ? prevState.history : [],
-      syncedEvidence.get(symbol)?.history ?? [],
-    );
+    const history = Array.isArray(prevState.history) ? prevState.history : [];
 
     const quarterly = mergeEarningsIntoQuarterly(
       f.fundamentals.quarterlyResult ?? [],
@@ -327,8 +256,8 @@ export async function analyzeSymbols(
     const previousSnapshot = getPreviousSnapshot(history);
     const tierChange = getTierChange(report, previousSnapshot);
 
-    // Same row shape as the client's committeeHistory store; same-day
-    // re-runs overwrite, like the client.
+    // One verdict-history row per symbol per day; same-day re-runs overwrite
+    // (mirrors how the browser used to snapshot).
     const bearAgent = report.agents?.find((a) => a.key === "bear");
     const row = {
       symbol,

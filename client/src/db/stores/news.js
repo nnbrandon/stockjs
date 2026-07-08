@@ -26,7 +26,7 @@ export async function saveNewsBodies(updates = []) {
   await withLog(`news: enriched ${valid.length} article bodies`, () =>
     db.transaction("rw", db[STORE], async () => {
       for (const u of valid) {
-        const updated = await db[STORE].update(u.id, {
+        await db[STORE].update(u.id, {
           body: u.body,
           ...(u.excerpt ? { excerpt: u.excerpt } : {}),
           enrichedAt: u.fetchedAt || new Date().toISOString(),
@@ -35,34 +35,6 @@ export async function saveNewsBodies(updates = []) {
     }),
   );
 
-  // Read back to prove the text is actually stored.
-  const stored = await db[STORE].bulkGet(valid.map((u) => u.id));
-
-  return valid.length;
-}
-
-// Cache FinBERT scores onto the news rows so we never re-score an article we've
-// already analyzed. `model` = { sentiment, confidence, label }; analyzeNews-
-// Sentiment reads it back via `item.model`.
-const MODEL_VERSION = "finbert-prosus-v1";
-
-export async function saveNewsSentiment(updates = []) {
-  const valid = updates.filter(
-    (u) => u && u.id != null && u.model && Number.isFinite(u.model.sentiment),
-  );
-  if (!valid.length) return 0;
-
-  await withLog(`news: cached ${valid.length} FinBERT scores`, () =>
-    db.transaction("rw", db[STORE], async () => {
-      for (const u of valid) {
-        await db[STORE].update(u.id, {
-          model: u.model,
-          modelVersion: MODEL_VERSION,
-          scoredAt: new Date().toISOString(),
-        });
-      }
-    }),
-  );
   return valid.length;
 }
 

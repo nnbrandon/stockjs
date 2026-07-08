@@ -82,6 +82,23 @@ const schemaVersions = [
       analysis: "symbol",
     },
   },
+  {
+    // The AI Committee moved server-side (see docs/single-source-of-truth-
+    // plan.md): verdict history and analyst estimates live in S3 state now,
+    // so their local stores are dropped along with their data.
+    version: 6,
+    stores: {
+      stockData:
+        "[symbol+shortenedDate], open, close, high, low, volume, adjClose, name",
+      quarterlyResult: "[symbol+date], symbol, date",
+      annualResult: "[symbol+date], symbol, date",
+      news: "id, symbol, date",
+      earnings: "[symbol+date], symbol, date",
+      positions: "symbol, quantity, averageCostBasis, importedAt, source",
+      committeeHistory: null,
+      analysis: null,
+    },
+  },
 ];
 
 export const db = new Dexie("StocksDB");

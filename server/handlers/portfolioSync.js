@@ -107,98 +107,6 @@ export async function authenticateSync(body, bucket) {
 
 const finiteOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
 
-// Caps for the browser's synced evidence (scored articles + verdict history).
-const MAX_SYNC_ARTICLES = 150;
-const MAX_SYNC_HISTORY = 60;
-
-const cleanStr = (v, max = 600) =>
-  typeof v === "string" && v ? v.slice(0, max) : undefined;
-
-/** Whitelist one synced article; FinBERT scores ride along in `model`. */
-function sanitizeArticle(raw) {
-  const id =
-    typeof raw?.id === "string" || typeof raw?.id === "number" ? raw.id : null;
-  const title = cleanStr(raw?.title);
-  const date = cleanStr(raw?.date, 40);
-  if (id == null || !title || !date) return null;
-
-  const article = {
-    id,
-    title,
-    publisher: cleanStr(raw.publisher, 120),
-    link: cleanStr(raw.link, 1000),
-    date,
-  };
-  const summary = cleanStr(raw.summary, 2000);
-  if (summary) article.summary = summary;
-
-  const sentiment = Number(raw?.model?.sentiment);
-  if (Number.isFinite(sentiment)) {
-    article.model = {
-      sentiment,
-      ...(Number.isFinite(Number(raw.model.confidence))
-        ? { confidence: Number(raw.model.confidence) }
-        : {}),
-      ...(cleanStr(raw.model.label, 20)
-        ? { label: cleanStr(raw.model.label, 20) }
-        : {}),
-    };
-    const modelVersion = cleanStr(raw.modelVersion, 40);
-    if (modelVersion) article.modelVersion = modelVersion;
-  }
-  return article;
-}
-
-/** Whitelist one committee-history row (same shape the report itself saves). */
-function sanitizeHistoryRow(raw, symbol) {
-  const day = cleanStr(raw?.day, 10);
-  const composite = Number(raw?.composite);
-  const tier = cleanStr(raw?.tier, 20);
-  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
-  if (!Number.isFinite(composite) || !tier) return null;
-
-  return {
-    symbol,
-    day,
-    engineVersion: Number.isFinite(Number(raw.engineVersion))
-      ? Number(raw.engineVersion)
-      : (cleanStr(raw.engineVersion, 20) ?? null),
-    composite,
-    tier,
-    action: cleanStr(raw.action, 200) ?? null,
-    conviction: cleanStr(raw.conviction, 40) ?? null,
-    technical: finiteOrNull(raw.technical),
-    fundamental: finiteOrNull(raw.fundamental),
-    sentiment: finiteOrNull(raw.sentiment),
-    exitSignals: raw.exitSignals ?? null,
-    generatedAt: cleanStr(raw.generatedAt, 40) ?? null,
-  };
-}
-
-/**
- * The browser's per-symbol evidence: scored news archive + verdict history.
- * Only symbols present in the synced positions are kept; everything else is
- * dropped so a hostile payload can't stuff the state object.
- */
-function sanitizeSymbolEvidence(raw, validSymbols) {
-  if (!raw || typeof raw !== "object") return null;
-  const out = {};
-  for (const symbol of validSymbols) {
-    const entry = raw[symbol];
-    if (!entry || typeof entry !== "object") continue;
-    const articles = (Array.isArray(entry.articles) ? entry.articles : [])
-      .slice(0, MAX_SYNC_ARTICLES)
-      .map(sanitizeArticle)
-      .filter(Boolean);
-    const history = (Array.isArray(entry.history) ? entry.history : [])
-      .slice(-MAX_SYNC_HISTORY)
-      .map((r) => sanitizeHistoryRow(r, symbol))
-      .filter(Boolean);
-    if (articles.length || history.length) out[symbol] = { articles, history };
-  }
-  return Object.keys(out).length ? out : null;
-}
-
 /** Keep only the fields the report needs; drop anything malformed. */
 function sanitizePositions(raw) {
   if (!Array.isArray(raw)) return null;
@@ -222,9 +130,14 @@ function sanitizePositions(raw) {
  * verified, false when pending/just started, null when SES was unreachable —
  * best-effort, a sync must never fail over this.
  *
+ * `resend: true` re-sends even for Pending addresses — right for explicit
+ * user requests (the "Email me a sync token" button), where the previous
+ * link may be lost or expired (SES links last 24h). The default skips
+ * Pending so automatic paths (every portfolio sync) can't spam.
+ *
  * SES is imported lazily so ordinary API requests don't pay for the client.
  */
-export async function ensureEmailVerification(email) {
+export async function ensureEmailVerification(email, { resend = false } = {}) {
   try {
     const {
       SESClient,
@@ -237,9 +150,7 @@ export async function ensureEmailVerification(email) {
     );
     const status = res.VerificationAttributes?.[email]?.VerificationStatus;
     if (status === "Success") return true;
-    // Only kick off verification for addresses SES has never seen — pending
-    // ones already got the email, and re-sending on every sync would spam.
-    if (!status || status === "NotStarted" || status === "Failed") {
+    if (resend || !status || status === "NotStarted" || status === "Failed") {
       await ses.send(new VerifyEmailIdentityCommand({ EmailAddress: email }));
       console.log(`portfolioSync: sent SES verification email to ${email}`);
     }
@@ -269,20 +180,12 @@ export async function syncPortfolio(body, corsOrigin) {
     return errorResponse(400, "No valid positions in request", corsOrigin);
   }
 
-  // The browser's evidence (scored articles + history) keeps the emailed
-  // verdicts consistent with what the UI computed from the same data.
-  const symbols = sanitizeSymbolEvidence(
-    body?.symbols,
-    positions.map((p) => p.symbol),
-  );
-
   const payload = {
     version: 2,
     email,
     updatedAt: new Date().toISOString(),
     source: "client",
     positions,
-    ...(symbols ? { symbols } : {}),
   };
 
   try {

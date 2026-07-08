@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   addStockData,
-  saveAnalysis,
   saveFundamentals,
   saveNewsArticles,
   saveEarnings,
@@ -36,28 +35,25 @@ const DEFAULT_RANGE = calculateRange(180);
 async function fetchAndPersist(symbol, seedRange) {
   const priceRange = await priceRangeSinceLastCandle(symbol, seedRange);
 
-  const [historicalData, fundamentalsData, newsData, analysisData] =
-    await Promise.all([
-      LambdaService.fetchHistoricalData(
-        symbol,
-        priceRange.startDate,
-        priceRange.endDate,
-      ),
-      LambdaService.fetchFundamentals(
-        symbol,
-        FUNDAMENTALS_RANGE.startDate,
-        FUNDAMENTALS_RANGE.endDate,
-      ),
-      LambdaService.fetchNews(symbol),
-      LambdaService.fetchAnalysis(symbol), // best-effort, resolves to null
-    ]);
+  const [historicalData, fundamentalsData, newsData] = await Promise.all([
+    LambdaService.fetchHistoricalData(
+      symbol,
+      priceRange.startDate,
+      priceRange.endDate,
+    ),
+    LambdaService.fetchFundamentals(
+      symbol,
+      FUNDAMENTALS_RANGE.startDate,
+      FUNDAMENTALS_RANGE.endDate,
+    ),
+    LambdaService.fetchNews(symbol),
+  ]);
 
   await Promise.all([
     addStockData(historicalData),
     saveFundamentals(symbol, fundamentalsData),
     saveNewsArticles(symbol, newsData),
     saveEarnings(symbol, fundamentalsData.earningsResult),
-    analysisData ? saveAnalysis(symbol, analysisData) : Promise.resolve(),
   ]);
 
   const [quarterlyRaw, earningsRows] = await Promise.all([

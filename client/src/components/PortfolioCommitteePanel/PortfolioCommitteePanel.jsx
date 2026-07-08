@@ -400,7 +400,7 @@ export default function PortfolioCommitteePanel({
             </p>
             <RunButtons
               count={count}
-              disabled={runDisabled}
+              disabled={runDisabled || !configured}
               onRun={handleRun}
             />
           </div>
@@ -410,8 +410,8 @@ export default function PortfolioCommitteePanel({
           <>
             <p className={styles.reviewMode}>
               {generatedAt
-                ? `Analyzed ${new Date(generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} — same run as your daily email`
-                : "Server review — same run as your daily email"}
+                ? `Analyzed ${new Date(generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} — same results as your daily email`
+                : "Server review — same results as your daily email"}
             </p>
 
             <PortfolioHealthCard health={health} />

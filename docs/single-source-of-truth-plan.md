@@ -129,8 +129,11 @@ users[email]: {
 - On-demand runs cost seconds-to-a-minute (server round trip + possible cold
   model) vs instant cached local runs. Scheduled 9 AM runs keep results warm
   so the common case is a fast read.
-- The evidence sync (portfolioSync `symbols` payload) becomes a one-time
-  seeding mechanism; harmless to keep, removable once state is warm.
+- The evidence sync (portfolioSync `symbols` payload) was a one-time seeding
+  mechanism — **removed 2026-07-07** once the server state was warm, along
+  with the committee-only IndexedDB stores (`committeeHistory`, `analysis`;
+  Dexie v6 drops them) and the client's analysis fetch. IndexedDB remains
+  for charts, positions, financials, and the news tab.
 
 ## Verification
 

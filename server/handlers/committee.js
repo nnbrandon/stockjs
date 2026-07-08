@@ -119,22 +119,13 @@ export async function runCommittee(body, corsOrigin) {
     );
   }
 
-  const {
-    analyzeSymbols,
-    collectSyncedEvidence,
-    computeUserView,
-    nextSymbolStateEntries,
-  } = await import("../lib/committeePipeline.js");
+  const { analyzeSymbols, computeUserView, nextSymbolStateEntries } =
+    await import("../lib/committeePipeline.js");
 
   const state = await loadState(bucket);
-  const evidence = collectSyncedEvidence([
-    { symbols: portfolio?.symbols ?? null },
-  ]);
-
   const { symbolResults, articlesScored, generatedAt } = await analyzeSymbols(
     runHoldings,
     state,
-    evidence,
   );
   const resultBySymbol = new Map(symbolResults.map((r) => [r.symbol, r]));
   const { health } = computeUserView(holdings, resultBySymbol);
@@ -142,17 +133,22 @@ export async function runCommittee(body, corsOrigin) {
   // Persist held symbols only; leave email bookkeeping (lastSendDay,
   // lastHealthFlags) untouched so on-demand runs never suppress the daily
   // email's "new since yesterday" detection.
+  //
+  // Overlay onto a FRESH read of the state, not the snapshot from before the
+  // analysis: the run takes minutes, and saving the stale base would erase
+  // whatever a concurrent run (e.g. the 9 AM report) persisted meanwhile.
   const persistedResults = symbolResults.filter((r) => heldSymbols.has(r.symbol));
+  const baseState = await loadState(bucket);
   const nextState = {
-    ...state,
+    ...baseState,
     version: 3,
     updatedAt: generatedAt,
     users: {
-      ...(state.users || {}),
+      ...(baseState.users || {}),
       ...(holdings.length
         ? {
             [email]: {
-              ...(state.users?.[email] || {}),
+              ...(baseState.users?.[email] || {}),
               health,
               healthGeneratedAt: generatedAt,
             },
@@ -160,7 +156,7 @@ export async function runCommittee(body, corsOrigin) {
         : {}),
     },
     symbols: {
-      ...(state.symbols || {}),
+      ...(baseState.symbols || {}),
       ...nextSymbolStateEntries(persistedResults, generatedAt),
     },
   };

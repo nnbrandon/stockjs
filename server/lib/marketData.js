@@ -191,13 +191,18 @@ export async function fetchAnalysisData(symbol) {
  * `{id, title, publisher, link, date (ISO), thumbnail}`.
  */
 export async function fetchNewsData(symbol) {
+  // Yahoo's search feed has no date-range support — it returns the N most
+  // recent articles, capped server-side (usually well under this). Ask for
+  // the max anyway; the rolling archive in committee-state.json is what
+  // turns these shallow daily fetches into a 30-day window, and
+  // selectNewsForAnalysis samples evenly across that window.
   const result = await yahooFinance.search(
     symbol,
     {
       lang: "en-US",
       region: "US",
       quotesCount: 6,
-      newsCount: 20,
+      newsCount: 50,
     },
     { validateResult: false },
   );

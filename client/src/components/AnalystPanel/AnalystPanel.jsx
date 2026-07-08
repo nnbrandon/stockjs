@@ -586,8 +586,8 @@ export default function AnalystPanel({
       <div className={styles.naHead}>
         <p className={styles.naResult}>
           {fmtGeneratedAt(latest?.generatedAt)
-            ? `Analyzed ${fmtGeneratedAt(latest.generatedAt)} — same run as your daily email.`
-            : "Same run as your daily email."}
+            ? `Analyzed ${fmtGeneratedAt(latest.generatedAt)} — same result as your daily email.`
+            : "Same result as your daily email."}
         </p>
         <button
           type="button"

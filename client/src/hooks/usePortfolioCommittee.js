@@ -9,6 +9,7 @@ import {
   isCommitteeCacheLoaded,
   resetCommitteeCache,
   storeCommitteeResponse,
+  subscribeCommitteeCache,
 } from "../utils/committeeServerCache";
 import {
   getReportSyncEmail,
@@ -93,6 +94,26 @@ export default function usePortfolioCommittee(positions) {
     },
     [],
   );
+
+  // Cache writes from anywhere (e.g. an AnalystPanel run on a single symbol)
+  // must refresh this always-mounted provider too — its own effects only run
+  // on mount/portfolio change.
+  useEffect(() => {
+    return subscribeCommitteeCache(() => {
+      if (!configured || !tradeablePositions.length) return;
+      const email = getReportSyncEmail();
+      if (!isCommitteeCacheLoaded(email)) return;
+      setStatus((current) => {
+        // Never interrupt an in-flight run's own state handling.
+        if (current === "running") return current;
+        const view = mapFromCache(email, tradeablePositions);
+        setResults(view.results);
+        setHealth(view.health);
+        setGeneratedAt(view.generatedAt);
+        return view.anyAnalyzed ? "done" : "idle";
+      });
+    });
+  }, [configured, tradeablePositions]);
 
   // On mount / portfolio change: show the last stored server run (pure read).
   useEffect(() => {

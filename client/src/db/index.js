@@ -20,8 +20,6 @@ import { deleteFundamentalsForSymbol } from "./stores/fundamentals";
 import { deleteNewsForSymbol } from "./stores/news";
 import { deleteEarningsForSymbol } from "./stores/earnings";
 import { deletePositionForSymbol } from "./stores/positions";
-import { deleteCommitteeHistoryForSymbol } from "./stores/committeeHistory";
-import { deleteAnalysisForSymbol } from "./stores/analysis";
 
 export { db, CURRENT_DB_VERSION, STORE_NAMES } from "./database";
 
@@ -45,23 +43,10 @@ export {
 export {
   saveNewsArticles,
   saveNewsBodies,
-  saveNewsSentiment,
   getNewsBySymbol,
 } from "./stores/news";
 
 export { saveEarnings, getEarnings } from "./stores/earnings";
-
-export {
-  saveCommitteeSnapshot,
-  getCommitteeHistory,
-  deleteCommitteeHistoryForSymbol,
-} from "./stores/committeeHistory";
-
-export {
-  saveAnalysis,
-  getAnalysis,
-  deleteAnalysisForSymbol,
-} from "./stores/analysis";
 
 export {
   getAllPositions,
@@ -83,8 +68,6 @@ export async function deleteSymbolData(symbol) {
       deleteNewsForSymbol(symbol),
       deleteEarningsForSymbol(symbol),
       deletePositionForSymbol(symbol),
-      deleteCommitteeHistoryForSymbol(symbol),
-      deleteAnalysisForSymbol(symbol),
     ]),
   );
 }

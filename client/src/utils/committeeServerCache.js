@@ -10,6 +10,21 @@ let health = null;
 let generatedAt = null;
 let loaded = false;
 
+// Both panels stay mounted across navigation (the portfolio provider lives
+// at App level), so cache writes must notify them — without this, a run
+// triggered from one surface leaves the other rendering its stale copy.
+const listeners = new Set();
+
+function notify() {
+  for (const fn of listeners) fn();
+}
+
+/** Subscribe to cache changes; returns the unsubscribe function. */
+export function subscribeCommitteeCache(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 function ensureEmail(email) {
   if (cacheEmail !== email) {
     cacheEmail = email;
@@ -46,6 +61,7 @@ export function storeCommitteeResponse(email, data) {
   if (data.health != null) health = data.health;
   if (data.generatedAt) generatedAt = data.generatedAt;
   loaded = true;
+  notify();
 }
 
 export function resetCommitteeCache() {
@@ -54,4 +70,5 @@ export function resetCommitteeCache() {
   health = null;
   generatedAt = null;
   loaded = false;
+  notify();
 }

@@ -5,6 +5,7 @@ import {
   getCommitteeRow,
   isCommitteeCacheLoaded,
   storeCommitteeResponse,
+  subscribeCommitteeCache,
 } from "../utils/committeeServerCache";
 import {
   getReportSyncEmail,
@@ -61,6 +62,22 @@ export default function useServerCommittee(symbol) {
     return () => {
       active = false;
     };
+  }, [symbol, configured]);
+
+  // Refresh from cache writes made elsewhere (portfolio-panel runs) so an
+  // open ticker view doesn't keep rendering a superseded verdict.
+  useEffect(() => {
+    if (!symbol || !configured) return undefined;
+    return subscribeCommitteeCache(() => {
+      const email = getReportSyncEmail();
+      if (!isCommitteeCacheLoaded(email)) return;
+      setStatus((current) => {
+        if (current === "running" || current === "loading") return current;
+        const cached = getCommitteeRow(email, symbol);
+        setRow(cached);
+        return cached?.latest ? "done" : "norun";
+      });
+    });
   }, [symbol, configured]);
 
   const run = useCallback(async () => {

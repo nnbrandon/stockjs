@@ -18,10 +18,7 @@ import { COMMITTEE_ENGINE_VERSION } from "@stockjs/committee-engine/analyst/inde
 import {
   analyzeSymbols,
   archiveSpanDays,
-  collectSyncedEvidence,
   computeUserView,
-  mergeHistoryRows,
-  mergeScoredArticles,
   nextSymbolStateEntries,
   pacificDay,
   updateArticleArchive,
@@ -31,7 +28,7 @@ import { renderReportEmail } from "../lib/reportEmail.js";
 import { LEGACY_PORTFOLIO_KEY, PORTFOLIO_PREFIX } from "./portfolioSync.js";
 
 // Compatibility re-exports — scripts and tests import these from here.
-export { mergeHistoryRows, mergeScoredArticles, pacificDay, updateArticleArchive };
+export { pacificDay, updateArticleArchive };
 
 const s3 = new S3Client({});
 const ses = new SESClient({});
@@ -80,11 +77,6 @@ async function loadReportUsers(bucket, fallbackEmail) {
         users.push({
           email,
           holdings,
-          // Browser-synced evidence per symbol (scored articles + history).
-          symbols:
-            data.symbols && typeof data.symbols === "object"
-              ? data.symbols
-              : null,
           updatedAt: data.updatedAt ?? null,
           source: "synced",
         });
@@ -101,7 +93,6 @@ async function loadReportUsers(bucket, fallbackEmail) {
           users.push({
             email: fallbackEmail,
             holdings,
-            symbols: null,
             updatedAt: data?.updatedAt ?? null,
             source: "synced-legacy",
           });
@@ -118,7 +109,6 @@ async function loadReportUsers(bucket, fallbackEmail) {
       users.push({
         email: fallbackEmail,
         holdings,
-        symbols: null,
         updatedAt: null,
         source: "env",
       });
@@ -176,7 +166,7 @@ export async function runDailyReport() {
     ).values(),
   ];
   const { symbolResults, articlesScored, sentimentPartial, day, generatedAt } =
-    await analyzeSymbols(uniqueHoldings, state, collectSyncedEvidence(users));
+    await analyzeSymbols(uniqueHoldings, state);
   const resultBySymbol = new Map(symbolResults.map((r) => [r.symbol, r]));
 
   // ── Per user: health, send decision, email ──────────────────────────────
@@ -304,14 +294,19 @@ export async function runDailyReport() {
   }
 
   // ── State to persist (article archive + history must accrue daily) ──────
+  // Overlay onto a FRESH read: the analysis takes minutes, and saving over
+  // whatever a concurrent action=runCommittee persisted meanwhile would
+  // silently erase its symbols. Failed symbols keep their previous state.
+  const freshState = bucket ? await loadState(bucket) : {};
   const nextState = {
+    ...freshState,
     version: 3,
     updatedAt: generatedAt,
     lastRunDay: day,
-    users: nextUserState,
+    users: { ...(freshState.users || {}), ...nextUserState },
     symbols: {
-      // Failed symbols keep their previous state so nothing is lost.
       ...symbolState,
+      ...(freshState.symbols || {}),
       ...nextSymbolStateEntries(symbolResults, generatedAt),
     },
   };

@@ -44,7 +44,6 @@ export default function StockContextPanel({
   chartData,
   position,
   positionsLoading,
-  supplementalDataReady,
   activeTab,
   onTabChange,
   panelWidth,
@@ -123,13 +122,8 @@ export default function StockContextPanel({
             >
               <AnalystPanel
                 symbol={selectedSymbol}
-                quarterly={quarterlyFundamentalsData}
-                annual={annualFundamentalsData}
-                earnings={earnings}
-                news={news}
                 position={position}
                 positionsLoading={positionsLoading}
-                supplementalDataReady={supplementalDataReady}
                 compact
               />
             </LoadingPanel>

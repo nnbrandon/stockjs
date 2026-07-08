@@ -1,14 +1,12 @@
 import { createContext, useContext, useMemo } from "react";
 
-import useFinbert from "../../hooks/useFinbert";
 import usePortfolioCommittee from "../../hooks/usePortfolioCommittee";
 
-// Owns the portfolio AI Committee run lifecycle — the FinBERT Web Worker and the
-// committee state — at a level that survives in-app navigation. The committee
-// panel only mounts on the home view, so if it owned this state directly, the
-// worker would be torn down (and a long "deep review" stalled) the instant the
-// user opened a ticker. Mounting this provider above the view switch lets a
-// review keep running in the background while the user moves around the app.
+// Owns the portfolio AI Committee state at a level that survives in-app
+// navigation. Analysis happens server-side (single source of truth — the
+// same stored run feeds the daily email); the panel only mounts on the home
+// view, so if it owned this state directly a pending server run would be
+// dropped the instant the user opened a ticker.
 const PortfolioCommitteeContext = createContext(null);
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -23,13 +21,9 @@ export function usePortfolioCommitteeContext() {
 }
 
 export function PortfolioCommitteeProvider({ positions, children }) {
-  const finbert = useFinbert();
   const committee = usePortfolioCommittee(positions);
 
-  const value = useMemo(
-    () => ({ finbert, ...committee }),
-    [finbert, committee],
-  );
+  const value = useMemo(() => ({ ...committee }), [committee]);
 
   return (
     <PortfolioCommitteeContext.Provider value={value}>

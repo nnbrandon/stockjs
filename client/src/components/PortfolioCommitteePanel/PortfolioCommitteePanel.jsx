@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import PsychologyIcon from "@mui/icons-material/Psychology";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import AiCommitteeHelpButton from "../AiCommitteeHelp/AiCommitteeHelpButton";
@@ -54,57 +53,21 @@ function actionClass(action) {
   return styles.actionHold;
 }
 
-function progressLabel(progress, finbert) {
-  if (progress.phase === "load") {
-    return progress.detail || "Loading cached data for all holdings…";
-  }
-
-  if (progress.phase === "news") {
-    if (finbert?.status === "loading") {
-      return `Loading FinBERT model… ${Math.round((finbert.modelProgress || 0) * 100)}%`;
-    }
-    if (finbert?.status === "scoring") {
-      const { done, total } = finbert.scoreProgress || {};
-      if (total > 0) {
-        return `Scoring articles with FinBERT (${done}/${total})`;
-      }
-    }
-    return progress.detail || "Scoring news articles with FinBERT…";
-  }
-
-  return (
-    <>
-      Analyzing {progress.done + 1} of {progress.total}
-      {progress.symbol && (
-        <>
-          {" "}
-          — <span className={styles.progressSymbol}>{progress.symbol}</span>
-        </>
-      )}
-    </>
-  );
+function progressLabel(progress) {
+  return progress.detail || "Analyzing on the server…";
 }
 
-function RunButtons({ count, disabled, onQuick, onDeep }) {
+function RunButtons({ count, disabled, onRun }) {
   return (
     <div className={styles.runActions}>
       <button
         type="button"
         className={styles.runBtn}
-        onClick={onQuick}
+        onClick={onRun}
         disabled={disabled}
       >
         <AutoAwesomeIcon fontSize="small" />
-        Quick review ({count})
-      </button>
-      <button
-        type="button"
-        className={`${styles.runBtn} ${styles.runBtnDeep}`}
-        onClick={onDeep}
-        disabled={disabled}
-      >
-        <PsychologyIcon fontSize="small" />
-        Deep review ({count})
+        Run committee ({count})
       </button>
     </div>
   );
@@ -309,15 +272,14 @@ export default function PortfolioCommitteePanel({
   const [collapsed, setCollapsed] = useState(false);
   const [actionFilter, setActionFilter] = useState(FILTERS.ALL);
   const {
-    finbert,
     status,
     results,
     progress,
-    reviewMode,
     health,
     run,
     reset,
     count,
+    configured,
   } = usePortfolioCommitteeContext();
 
   const runDisabled = positionsLoading || count === 0 || status === "running";
@@ -338,14 +300,9 @@ export default function PortfolioCommitteePanel({
     return results.filter((item) => getItemFilterKey(item) === actionFilter);
   }, [results, actionFilter]);
 
-  const handleRunQuick = () => {
+  const handleRun = () => {
     setActionFilter(FILTERS.ALL);
-    run({ deep: false });
-  };
-
-  const handleRunDeep = () => {
-    setActionFilter(FILTERS.ALL);
-    run({ deep: true, finbert });
+    run();
   };
 
   const handleReset = () => {
@@ -400,21 +357,27 @@ export default function PortfolioCommitteePanel({
         {status === "idle" && (
           <div className={styles.intro}>
             <p className={styles.introText}>
-              Run an on-device review of every portfolio holding — price trend,
-              company finances, and news — with a buy/hold/sell call for each
-              position.
+              Review every portfolio holding — price trend, company finances,
+              and news — with a buy/hold/sell call for each position. Analysis
+              runs on the server, so this panel and your daily email always
+              show the same verdicts.
             </p>
-            <RunButtons
-              count={count}
-              disabled={runDisabled}
-              onQuick={handleRunQuick}
-              onDeep={handleRunDeep}
-            />
+            {configured ? (
+              <RunButtons
+                count={count}
+                disabled={runDisabled}
+                onRun={handleRun}
+              />
+            ) : (
+              <p className={styles.introText}>
+                Set up the email report first (sidebar → Sync email report) —
+                the committee runs on the server against your synced
+                portfolio.
+              </p>
+            )}
             <p className={styles.introText}>
-              Quick review uses already-scored news from cache. Deep review
-              batches article crawling and FinBERT scoring across all holdings
-              (one model load, one scoring pass), then runs the committee per
-              ticker — much slower, but more complete.
+              Results refresh automatically every morning; run it manually
+              anytime after importing new holdings.
             </p>
           </div>
         )}
@@ -422,19 +385,10 @@ export default function PortfolioCommitteePanel({
         {status === "running" && (
           <div className={styles.progress}>
             <CircularProgress size={28} />
-            <p className={styles.progressText}>
-              {progressLabel(progress, finbert)}
+            <p className={styles.progressText}>{progressLabel(progress)}</p>
+            <p className={styles.progressSub}>
+              {progress.total} holding{progress.total === 1 ? "" : "s"}
             </p>
-            {progress.phase === "committee" && (
-              <p className={styles.progressSub}>
-                Holding {progress.done + 1} of {progress.total}
-              </p>
-            )}
-            {progress.phase === "news" && progress.articlesTotal > 0 && (
-              <p className={styles.progressSub}>
-                Batched across {progress.total} holdings
-              </p>
-            )}
           </div>
         )}
 
@@ -446,21 +400,16 @@ export default function PortfolioCommitteePanel({
             <RunButtons
               count={count}
               disabled={runDisabled}
-              onQuick={handleRunQuick}
-              onDeep={handleRunDeep}
+              onRun={handleRun}
             />
           </div>
         )}
 
         {status === "done" && (
           <>
-            {reviewMode && (
-              <p className={styles.reviewMode}>
-                {reviewMode === "deep"
-                  ? "Deep review — news scored with FinBERT"
-                  : "Quick review — used cached news scores"}
-              </p>
-            )}
+            <p className={styles.reviewMode}>
+              Server review — same run as your daily email
+            </p>
 
             <PortfolioHealthCard health={health} />
 
@@ -539,18 +488,10 @@ export default function PortfolioCommitteePanel({
               <button
                 type="button"
                 className={styles.secondaryBtn}
-                onClick={handleRunQuick}
+                onClick={handleRun}
                 disabled={runDisabled}
               >
-                Re-run quick
-              </button>
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                onClick={handleRunDeep}
-                disabled={runDisabled}
-              >
-                Re-run deep
+                Re-run analysis
               </button>
             </div>
 

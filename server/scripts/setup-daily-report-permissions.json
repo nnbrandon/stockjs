@@ -46,6 +46,7 @@
       "Action": [
         "lambda:GetFunctionConfiguration",
         "lambda:UpdateFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
         "lambda:InvokeFunction"
       ],
       "Resource": "arn:aws:lambda:*:<ACCOUNT_ID>:function:stockjs-api"

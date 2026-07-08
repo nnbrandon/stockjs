@@ -9,34 +9,19 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import PsychologyIcon from "@mui/icons-material/Psychology";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CircularProgress from "@mui/material/CircularProgress";
 
-import {
-  COMMITTEE_ENGINE_VERSION,
-  runAnalystCommittee,
-} from "@stockjs/committee-engine/analyst/index.js";
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
-import {
-  getPreviousSnapshot,
-  getScoreSeries,
-  getTierChange,
-} from "@stockjs/committee-engine/analyst/verdictHistory.js";
+import { getScoreSeries } from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import { computePositionMetrics } from "../../utils/computePositionMetrics";
 import { getGuardrail } from "@stockjs/committee-engine/guardrails.js";
 import PositionHolding from "../PositionHolding/PositionHolding";
 import TickerSparkline from "../SparklineChart/SparklineChart";
-import {
-  getAnalysis,
-  getCommitteeHistory,
-  getStockDataByDateRange,
-  saveCommitteeSnapshot,
-} from "../../db";
+import { getStockDataByDateRange } from "../../db";
 import calculateRange from "../../utils/calculateRange";
 import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
 import { useRefreshSignal } from "../../hooks/useRefreshSignal";
-import useNewsIntelligence from "../../hooks/useNewsIntelligence";
-import useFinbert from "../../hooks/useFinbert";
+import useServerCommittee from "../../hooks/useServerCommittee";
 import styles from "./AnalystPanel.module.css";
 
 const AGENT_ICONS = {
@@ -298,260 +283,121 @@ function AgentCard({ agent }) {
   );
 }
 
-function StepIcon({ status }) {
-  if (status === "running")
-    return (
-      <CircularProgress
-        size={14}
-        thickness={6}
-        className={styles.stepSpinner}
-      />
-    );
-  if (status === "done")
-    return (
-      <CheckCircleIcon className={styles.stepDone} sx={{ fontSize: 15 }} />
-    );
-  return <span className={styles.stepPending} />;
-}
+// The server's news read on this symbol: mood line + the most-moving
+// headlines from the FinBERT-scored archive (scored server-side; the same
+// scores the daily email uses).
+function ServerNewsIntelligence({ latest, articles }) {
+  const links = [
+    latest?.topPositive
+      ? { label: "Most upbeat", ...latest.topPositive }
+      : null,
+    latest?.topNegative
+      ? { label: "Most negative", ...latest.topNegative }
+      : null,
+  ].filter(Boolean);
 
-function FinbertStatus({ finbert }) {
-  const { status, modelProgress, scoreProgress, error } = finbert;
-
-  // "done" is covered by the per-run result line; "idle" shows nothing.
-  if (status === "idle" || status === "done") return null;
-
-  let text;
-  if (status === "loading")
-    text = `Loading FinBERT model… ${Math.round(modelProgress * 100)}% (one-time download, then cached)`;
-  else if (status === "scoring")
-    text = `Scoring articles… ${scoreProgress.done}/${scoreProgress.total}`;
-  else if (status === "error")
-    text = `FinBERT unavailable (${error || "load failed"}). Using lexicon scores instead.`;
-
-  const busy = status === "loading" || status === "scoring";
-  return (
-    <p className={status === "error" ? styles.naError : styles.naResult}>
-      {busy && (
-        <CircularProgress
-          size={12}
-          thickness={6}
-          className={styles.stepSpinner}
-          sx={{ mr: 0.75, verticalAlign: "middle" }}
-        />
-      )}
-      {text}
-    </p>
-  );
-}
-
-function NewsIntelligence({ symbol, news, finbert }) {
-  const { run, status, steps, stats, count, pending } = useNewsIntelligence({
-    symbol,
-    news,
-    finbert,
-  });
-
-  const totalArticles = news?.length || 0;
-  const running =
-    status === "running" ||
-    finbert.status === "loading" ||
-    finbert.status === "scoring";
-  const allCached = count > 0 && pending === 0;
-
-  const buttonLabel = running
-    ? "Analyzing…"
-    : allCached
-      ? "Re-analyze"
-      : `Analyze ${pending || count} with FinBERT`;
+  if (!latest?.newsMood && !links.length && !articles?.length) return null;
 
   return (
     <div className={styles.newsAgent}>
       <div className={styles.naHead}>
         <div className={styles.naTitle}>
           <PsychologyIcon sx={{ fontSize: 16 }} />
-          News intelligence agent
+          News intelligence
         </div>
-        <button
-          type="button"
-          className={styles.naButton}
-          onClick={() => run(allCached)}
-          disabled={running || !symbol || count === 0}
-        >
-          <AutoAwesomeIcon sx={{ fontSize: 15, mr: 0.5 }} />
-          {buttonLabel}
-        </button>
       </div>
-
-      <p className={styles.naCoverage}>
-        {totalArticles === 0
-          ? "No cached articles."
-          : allCached
-            ? `All ${count} article${count === 1 ? "" : "s"} already scored by FinBERT (cached). Re-analyze to refresh.`
-            : `Crawls each article's full text and scores it with FinBERT (on-device neural model). Analyzing ${count} of ${totalArticles} cached article${totalArticles === 1 ? "" : "s"}${totalArticles > 20 ? " (the last 30 days)" : ""}.`}
-      </p>
-
-      <FinbertStatus finbert={finbert} />
-
-      {steps.length > 0 && (
-        <ol className={styles.stepList}>
-          {steps.map((step) => (
-            <li key={step.id} className={styles.step}>
-              <StepIcon status={step.status} />
-              <div className={styles.stepBody}>
-                <span className={styles.stepLabel}>{step.label}</span>
-                {step.detail && (
-                  <span className={styles.stepDetail}>{step.detail}</span>
-                )}
-              </div>
-              {step.progress && step.status === "running" && (
-                <span className={styles.stepProgress}>
-                  {step.progress.done}/{step.progress.total}
-                </span>
-              )}
+      {latest?.newsMood && <p className={styles.naCoverage}>{latest.newsMood}</p>}
+      {links.length > 0 && (
+        <ul className={styles.findingList}>
+          {links.map((l) => (
+            <li key={l.label} className={`${styles.finding} ${styles.neutral}`}>
+              <span className={styles.findingDot} />
+              {l.label}:{" "}
+              <a
+                href={l.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.findingLink}
+              >
+                {l.title}
+              </a>
             </li>
           ))}
-        </ol>
+        </ul>
       )}
-
-      {status === "done" && stats && finbert.status !== "loading" && (
-        <p className={styles.naResult}>
-          {stats.scored === 0
-            ? `Using cached FinBERT scores (${stats.cached ?? count} article${(stats.cached ?? count) === 1 ? "" : "s"}). No re-run needed.`
-            : `${
-                stats.requested > 0
-                  ? `Crawled ${stats.fetched}/${stats.requested} new article${stats.requested === 1 ? "" : "s"}${stats.failed > 0 ? ` · ${stats.failed} blocked/paywalled` : ""}. `
-                  : ""
-              }Scored ${stats.scored} with FinBERT${stats.cached ? ` (${stats.cached} cached)` : ""}. Committee re-scored.`}
-        </p>
-      )}
-      {status === "error" && (
-        <p className={styles.naError}>
-          Couldn&apos;t reach the extraction service. Try again.
-        </p>
-      )}
+      <p className={styles.naResult}>
+        Articles are crawled and scored with FinBERT on the server — the same
+        scores behind your daily email.
+      </p>
     </div>
   );
 }
 
+function fmtGeneratedAt(iso) {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return null;
+  }
+}
+
 export default function AnalystPanel({
   symbol,
-  quarterly,
-  annual,
-  earnings,
-  news,
   position,
   positionsLoading = false,
-  supplementalDataReady = false,
   compact = false,
 }) {
-  const finbert = useFinbert();
+  // Verdicts come from the server (single source of truth — the same stored
+  // run that feeds the daily email and the portfolio panel).
+  const committee = useServerCommittee(symbol);
 
-  // The committee always evaluates a fixed 1-year window, independent of the
-  // chart's selected range — so the verdict is consistent no matter what range
-  // the user is viewing. Loaded straight from IndexedDB (whatever is cached).
+  // Candles stay a local concern: the position card's P/L math and the local
+  // fund fast-path read whatever the chart already cached in IndexedDB.
   const [yearCandles, setYearCandles] = useState([]);
-  const [yearCandlesReady, setYearCandlesReady] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [analysis, setAnalysis] = useState(null);
   const loadedSymbolRef = useRef(null);
   const refreshVersion = useRefreshSignal(symbol);
   useEffect(() => {
     if (!symbol) {
       loadedSymbolRef.current = null;
       setYearCandles([]);
-      setHistory([]);
-      setAnalysis(null);
-      setYearCandlesReady(false);
       return undefined;
     }
     let active = true;
-    // Only drop to the loading spinner when the symbol actually changes. The
-    // live market poll bumps refreshVersion every minute to trigger a silent
-    // re-read of fresh candles — flipping ready off for those made the whole
-    // panel flash a spinner each interval.
     if (loadedSymbolRef.current !== symbol) {
       loadedSymbolRef.current = symbol;
-      setYearCandlesReady(false);
     }
     const { startDate, endDate } = calculateRange(365);
-    Promise.all([
-      getStockDataByDateRange(symbol, startDate, endDate),
-      getCommitteeHistory(symbol),
-      getAnalysis(symbol),
-    ])
-      .then(([rows, historyRows, analysisRow]) => {
-        if (!active) return;
-        setYearCandles(rows || []);
-        setHistory(historyRows || []);
-        setAnalysis(analysisRow ?? null);
+    getStockDataByDateRange(symbol, startDate, endDate)
+      .then((rows) => {
+        if (active) setYearCandles(rows || []);
       })
       .catch(() => {
-        if (!active) return;
-        setYearCandles([]);
-        setHistory([]);
-        setAnalysis(null);
-      })
-      .finally(() => {
-        if (active) setYearCandlesReady(true);
+        if (active) setYearCandles([]);
       });
     return () => {
       active = false;
     };
   }, [symbol, refreshVersion]);
 
-  const committeeInputsReady =
-    yearCandlesReady && supplementalDataReady && !positionsLoading;
+  const latest = committee.row?.latest ?? null;
+  const report = latest?.report ?? null;
+  const tierChange = latest?.tierChange ?? null;
 
-  // Funds/ETFs/indexes have no company financials, so the committee can't
-  // produce a meaningful verdict — skip it (see isFundSymbol).
-  const isFund = useMemo(() => isFundSymbol(yearCandles), [yearCandles]);
-
-  // Merge any FinBERT per-article scores into the news so the committee
-  // re-scores on neural sentiment instead of the lexicon fallback.
-  const mergedNews = useMemo(() => {
-    const scores = finbert.scores;
-    if (!news?.length || !Object.keys(scores).length) return news;
-    return news.map((n) => (scores[n.id] ? { ...n, model: scores[n.id] } : n));
-  }, [news, finbert.scores]);
-
-  const report = useMemo(
-    () =>
-      runAnalystCommittee({
-        symbol,
-        chartData: yearCandles,
-        quarterly,
-        annual,
-        earnings,
-        news: mergedNews,
-        history,
-        analysis,
-      }),
-    [
-      symbol,
-      yearCandles,
-      quarterly,
-      annual,
-      earnings,
-      mergedNews,
-      history,
-      analysis,
-    ],
+  // Fund detection: trust the server verdict when we have one; otherwise the
+  // local candles give an instant answer without a server round-trip.
+  const isFund = useMemo(
+    () => (latest ? Boolean(latest.isFund) : isFundSymbol(yearCandles)),
+    [latest, yearCandles],
   );
 
-  // Thesis tracking: one snapshot per symbol per day (same-day re-runs
-  // overwrite), written after render so it never blocks the report.
-  useEffect(() => {
-    if (symbol && report) {
-      saveCommitteeSnapshot(symbol, report, COMMITTEE_ENGINE_VERSION);
-    }
-  }, [symbol, report]);
-
-  const previousSnapshot = useMemo(() => getPreviousSnapshot(history), [history]);
-  const tierChange = useMemo(
-    () => getTierChange(report, previousSnapshot),
-    [report, previousSnapshot],
+  const scoreSeries = useMemo(
+    () => getScoreSeries(committee.row?.history ?? []),
+    [committee.row],
   );
-  const scoreSeries = useMemo(() => getScoreSeries(history), [history]);
 
   const positionMetrics = useMemo(
     () =>
@@ -560,17 +406,10 @@ export default function AnalystPanel({
   );
 
   const guardrail = useMemo(
-    () => (positionMetrics ? getGuardrail(report, positionMetrics) : null),
+    () =>
+      report && positionMetrics ? getGuardrail(report, positionMetrics) : null,
     [report, positionMetrics],
   );
-
-  if (!committeeInputsReady) {
-    return (
-      <div className={styles.loading}>
-        <CircularProgress size={24} />
-      </div>
-    );
-  }
 
   if (isFund) {
     return (
@@ -582,10 +421,47 @@ export default function AnalystPanel({
     );
   }
 
-  if (!report) {
+  if (committee.status === "unconfigured") {
     return (
       <div className={styles.empty}>
-        Not enough cached data to run the committee yet.
+        The AI Committee runs on the server so this panel, the portfolio
+        review, and your daily email always agree. Set up the email report
+        first (sidebar → Sync email report), then come back here.
+      </div>
+    );
+  }
+
+  if (committee.status === "loading" || positionsLoading) {
+    return (
+      <div className={styles.loading}>
+        <CircularProgress size={24} />
+      </div>
+    );
+  }
+
+  if (committee.status === "running") {
+    return (
+      <div className={styles.loading}>
+        <CircularProgress size={24} />
+        <p className={styles.empty}>
+          Analyzing {symbol} on the server — first run can take a minute…
+        </p>
+      </div>
+    );
+  }
+
+  if (committee.status === "norun" || committee.status === "error" || !report) {
+    return (
+      <div className={styles.empty}>
+        {committee.status === "error" ? (
+          <p>Committee run failed: {committee.error}</p>
+        ) : (
+          <p>No stored verdict for {symbol} yet.</p>
+        )}
+        <button type="button" className={styles.naButton} onClick={committee.run}>
+          <AutoAwesomeIcon sx={{ fontSize: 15, mr: 0.5 }} />
+          Run committee on server
+        </button>
       </div>
     );
   }
@@ -696,8 +572,8 @@ export default function AnalystPanel({
         </div>
       )}
 
-      {/* News enrichment agent */}
-      <NewsIntelligence symbol={symbol} news={news} finbert={finbert} />
+      {/* Server news read (FinBERT-scored archive) */}
+      <ServerNewsIntelligence latest={latest} articles={committee.row?.articles} />
 
       {/* Committee transcript */}
       <div className={styles.committee}>
@@ -707,8 +583,24 @@ export default function AnalystPanel({
         ))}
       </div>
 
+      <div className={styles.naHead}>
+        <p className={styles.naResult}>
+          {fmtGeneratedAt(latest?.generatedAt)
+            ? `Analyzed ${fmtGeneratedAt(latest.generatedAt)} — same run as your daily email.`
+            : "Same run as your daily email."}
+        </p>
+        <button
+          type="button"
+          className={styles.naButton}
+          onClick={committee.run}
+        >
+          <AutoAwesomeIcon sx={{ fontSize: 15, mr: 0.5 }} />
+          Re-run
+        </button>
+      </div>
+
       <p className={styles.disclaimer}>
-        This is an automated summary worked out on your device from saved price,
+        This is an automated summary computed on the server from price,
         company-financial, and news data — it&apos;s for learning, not
         investment advice.
       </p>

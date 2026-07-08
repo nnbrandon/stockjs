@@ -189,6 +189,45 @@ class LambdaService {
     }
   }
 
+  // Last stored committee run for this email's portfolio (pure read; the
+  // server is the single source of truth for verdicts).
+  async fetchCommitteeResults(token, email) {
+    try {
+      const response = await fetch(`${this.API_URL}?action=committeeResults`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, email }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: data.error || "Could not load results" };
+      }
+      return data;
+    } catch (err) {
+      return { ok: false, error: err?.message || "Could not load results" };
+    }
+  }
+
+  // Run the committee on the server NOW (persisted — the daily email renders
+  // from the same stored run). Slow on a cold container (~1 min): the Lambda
+  // may download the FinBERT model before scoring.
+  async runCommitteeServer(token, email, symbols) {
+    try {
+      const response = await fetch(`${this.API_URL}?action=runCommittee`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, email, ...(symbols ? { symbols } : {}) }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: data.error || "Committee run failed" };
+      }
+      return data;
+    } catch (err) {
+      return { ok: false, error: err?.message || "Committee run failed" };
+    }
+  }
+
   // Unsubscribe: delete this email's portfolio from S3 so the daily report
   // stops covering it. Same credentials as syncPortfolio; re-syncing later
   // turns the report back on.
@@ -238,12 +277,15 @@ class LambdaService {
   // Authenticated with the SYNC_TOKEN from setup-daily-report.sh; the email
   // address is the identity the portfolio is stored under (and where the
   // daily report is sent).
-  async syncPortfolio(token, email, positions) {
+  async syncPortfolio(token, email, positions, symbols) {
     try {
       const response = await fetch(`${this.API_URL}?action=portfolioSync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, email, positions }),
+        // `symbols` carries the browser's per-symbol evidence (scored news
+        // archive + committee history) so the emailed verdicts are judged
+        // from the same data the UI shows.
+        body: JSON.stringify({ token, email, positions, symbols }),
       });
       const data = await response.json();
       if (!response.ok) {

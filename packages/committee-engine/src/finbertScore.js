@@ -20,6 +20,18 @@ export function prepareFinbertText(text) {
 }
 
 /**
+ * Headline + best available body text, composed the same way everywhere.
+ * The title carries the framing FinBERT keys on; the body (or summary as
+ * fallback) supplies the substance within the model's char budget.
+ */
+export function composeArticleText(title, body) {
+  return [title, body]
+    .map((s) => (s || "").trim())
+    .filter(Boolean)
+    .join(". ");
+}
+
+/**
  * Map FinBERT's {positive, negative, neutral} probabilities to a single
  * signed score in [-1, 1] plus a confidence (the winning probability).
  * Input: the pipeline's per-input prediction array (top_k: 3).

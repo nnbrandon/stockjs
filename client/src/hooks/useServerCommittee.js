@@ -1,0 +1,108 @@
+import { useCallback, useEffect, useState } from "react";
+
+import LambdaService from "../LambdaService";
+import {
+  getReportSyncEmail,
+  getReportSyncToken,
+  isReportSyncConfigured,
+} from "../utils/reportPortfolioSync";
+
+// One symbol's view of the server-side committee (single source of truth).
+// Held symbols come from the last stored run (fast read, shared with the
+// portfolio panel and the daily email); any symbol — held or browsed — can
+// be (re)analyzed on demand via action=runCommittee.
+
+/** Session cache: symbol → server row. Cleared on page refresh. */
+let rowCache = new Map();
+let cachedEmail = null;
+let resultsFetched = false;
+
+function cacheRows(email, rows) {
+  if (cachedEmail !== email) {
+    rowCache = new Map();
+    cachedEmail = email;
+  }
+  for (const row of rows ?? []) {
+    if (row?.symbol) rowCache.set(row.symbol, row);
+  }
+}
+
+/**
+ * Statuses: "unconfigured" (sync not set up), "loading" (reading stored
+ * results), "norun" (no stored verdict for this symbol — offer a run),
+ * "running" (server analyzing), "done", "error".
+ */
+export default function useServerCommittee(symbol) {
+  const configured = isReportSyncConfigured();
+  const [status, setStatus] = useState(configured ? "loading" : "unconfigured");
+  const [row, setRow] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!symbol) return undefined;
+    if (!configured) {
+      setStatus("unconfigured");
+      setRow(null);
+      return undefined;
+    }
+
+    const email = getReportSyncEmail();
+    if (cachedEmail === email && rowCache.has(symbol)) {
+      const cached = rowCache.get(symbol);
+      setRow(cached);
+      setStatus(cached.latest ? "done" : "norun");
+      return undefined;
+    }
+    if (resultsFetched && cachedEmail === email) {
+      // Stored results already loaded this session; this symbol isn't held.
+      setRow(null);
+      setStatus("norun");
+      return undefined;
+    }
+
+    let active = true;
+    (async () => {
+      setStatus("loading");
+      const data = await LambdaService.fetchCommitteeResults(
+        getReportSyncToken(),
+        email,
+      );
+      if (!active) return;
+      if (data.ok) {
+        resultsFetched = true;
+        cacheRows(email, data.results);
+      }
+      const found = data.ok
+        ? (data.results ?? []).find((r) => r.symbol === symbol)
+        : null;
+      setRow(found ?? null);
+      setStatus(found?.latest ? "done" : "norun");
+    })();
+    return () => {
+      active = false;
+    };
+  }, [symbol, configured]);
+
+  const run = useCallback(async () => {
+    if (!symbol || !configured) return;
+    setStatus("running");
+    setError("");
+    const email = getReportSyncEmail();
+    const data = await LambdaService.runCommitteeServer(
+      getReportSyncToken(),
+      email,
+      [symbol],
+    );
+    if (!data.ok) {
+      setError(data.error || "Committee run failed");
+      setStatus("error");
+      return;
+    }
+    cacheRows(email, data.results);
+    const found = (data.results ?? []).find((r) => r.symbol === symbol);
+    setRow(found ?? null);
+    setStatus(found?.latest ? "done" : "error");
+  }, [symbol, configured]);
+
+  return { status, row, error, run, configured };
+}

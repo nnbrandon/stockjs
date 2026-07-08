@@ -86,7 +86,118 @@ async function loadTokenHash(bucket, email) {
   }
 }
 
+/**
+ * Shared credential check for every token-authenticated action (sync,
+ * remove, committee reads/runs): a valid email plus either that email's own
+ * token (from action=requestToken) or the master SYNC_TOKEN.
+ * Returns { email } on success or { error: [status, message] }.
+ */
+export async function authenticateSync(body, bucket) {
+  const email = normalizeEmail(body?.email);
+  if (!email) return { error: [400, "A valid email address is required"] };
+
+  const perEmailHash = await loadTokenHash(bucket, email);
+  const authorized =
+    tokenMatchesHash(body?.token, perEmailHash) ||
+    tokenMatches(body?.token, process.env.SYNC_TOKEN || "");
+  if (!authorized) return { error: [403, "Invalid sync token"] };
+
+  return { email };
+}
+
 const finiteOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+
+// Caps for the browser's synced evidence (scored articles + verdict history).
+const MAX_SYNC_ARTICLES = 150;
+const MAX_SYNC_HISTORY = 60;
+
+const cleanStr = (v, max = 600) =>
+  typeof v === "string" && v ? v.slice(0, max) : undefined;
+
+/** Whitelist one synced article; FinBERT scores ride along in `model`. */
+function sanitizeArticle(raw) {
+  const id =
+    typeof raw?.id === "string" || typeof raw?.id === "number" ? raw.id : null;
+  const title = cleanStr(raw?.title);
+  const date = cleanStr(raw?.date, 40);
+  if (id == null || !title || !date) return null;
+
+  const article = {
+    id,
+    title,
+    publisher: cleanStr(raw.publisher, 120),
+    link: cleanStr(raw.link, 1000),
+    date,
+  };
+  const summary = cleanStr(raw.summary, 2000);
+  if (summary) article.summary = summary;
+
+  const sentiment = Number(raw?.model?.sentiment);
+  if (Number.isFinite(sentiment)) {
+    article.model = {
+      sentiment,
+      ...(Number.isFinite(Number(raw.model.confidence))
+        ? { confidence: Number(raw.model.confidence) }
+        : {}),
+      ...(cleanStr(raw.model.label, 20)
+        ? { label: cleanStr(raw.model.label, 20) }
+        : {}),
+    };
+    const modelVersion = cleanStr(raw.modelVersion, 40);
+    if (modelVersion) article.modelVersion = modelVersion;
+  }
+  return article;
+}
+
+/** Whitelist one committee-history row (same shape the report itself saves). */
+function sanitizeHistoryRow(raw, symbol) {
+  const day = cleanStr(raw?.day, 10);
+  const composite = Number(raw?.composite);
+  const tier = cleanStr(raw?.tier, 20);
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  if (!Number.isFinite(composite) || !tier) return null;
+
+  return {
+    symbol,
+    day,
+    engineVersion: Number.isFinite(Number(raw.engineVersion))
+      ? Number(raw.engineVersion)
+      : (cleanStr(raw.engineVersion, 20) ?? null),
+    composite,
+    tier,
+    action: cleanStr(raw.action, 200) ?? null,
+    conviction: cleanStr(raw.conviction, 40) ?? null,
+    technical: finiteOrNull(raw.technical),
+    fundamental: finiteOrNull(raw.fundamental),
+    sentiment: finiteOrNull(raw.sentiment),
+    exitSignals: raw.exitSignals ?? null,
+    generatedAt: cleanStr(raw.generatedAt, 40) ?? null,
+  };
+}
+
+/**
+ * The browser's per-symbol evidence: scored news archive + verdict history.
+ * Only symbols present in the synced positions are kept; everything else is
+ * dropped so a hostile payload can't stuff the state object.
+ */
+function sanitizeSymbolEvidence(raw, validSymbols) {
+  if (!raw || typeof raw !== "object") return null;
+  const out = {};
+  for (const symbol of validSymbols) {
+    const entry = raw[symbol];
+    if (!entry || typeof entry !== "object") continue;
+    const articles = (Array.isArray(entry.articles) ? entry.articles : [])
+      .slice(0, MAX_SYNC_ARTICLES)
+      .map(sanitizeArticle)
+      .filter(Boolean);
+    const history = (Array.isArray(entry.history) ? entry.history : [])
+      .slice(-MAX_SYNC_HISTORY)
+      .map((r) => sanitizeHistoryRow(r, symbol))
+      .filter(Boolean);
+    if (articles.length || history.length) out[symbol] = { articles, history };
+  }
+  return Object.keys(out).length ? out : null;
+}
 
 /** Keep only the fields the report needs; drop anything malformed. */
 function sanitizePositions(raw) {
@@ -140,7 +251,6 @@ export async function ensureEmailVerification(email) {
 }
 
 export async function syncPortfolio(body, corsOrigin) {
-  const globalToken = process.env.SYNC_TOKEN || "";
   const bucket = process.env.REPORT_STATE_BUCKET || "";
   if (!bucket) {
     return errorResponse(
@@ -150,26 +260,21 @@ export async function syncPortfolio(body, corsOrigin) {
     );
   }
 
-  const email = normalizeEmail(body?.email);
-  if (!email) {
-    return errorResponse(400, "A valid email address is required", corsOrigin);
-  }
-
-  // Two accepted credentials: the per-email token this address requested via
-  // action=requestToken (only unlocks its own portfolio), or the global
-  // SYNC_TOKEN printed by setup-daily-report.sh (admin fallback).
-  const perEmailHash = await loadTokenHash(bucket, email);
-  const authorized =
-    tokenMatchesHash(body?.token, perEmailHash) ||
-    tokenMatches(body?.token, globalToken);
-  if (!authorized) {
-    return errorResponse(403, "Invalid sync token", corsOrigin);
-  }
+  const auth = await authenticateSync(body, bucket);
+  if (auth.error) return errorResponse(...auth.error, corsOrigin);
+  const { email } = auth;
 
   const positions = sanitizePositions(body?.positions);
   if (!positions || !positions.length) {
     return errorResponse(400, "No valid positions in request", corsOrigin);
   }
+
+  // The browser's evidence (scored articles + history) keeps the emailed
+  // verdicts consistent with what the UI computed from the same data.
+  const symbols = sanitizeSymbolEvidence(
+    body?.symbols,
+    positions.map((p) => p.symbol),
+  );
 
   const payload = {
     version: 2,
@@ -177,6 +282,7 @@ export async function syncPortfolio(body, corsOrigin) {
     updatedAt: new Date().toISOString(),
     source: "client",
     positions,
+    ...(symbols ? { symbols } : {}),
   };
 
   try {
@@ -216,7 +322,6 @@ export async function syncPortfolio(body, corsOrigin) {
  * Re-syncing later turns the report back on.
  */
 export async function removePortfolio(body, corsOrigin) {
-  const globalToken = process.env.SYNC_TOKEN || "";
   const bucket = process.env.REPORT_STATE_BUCKET || "";
   if (!bucket) {
     return errorResponse(
@@ -226,18 +331,9 @@ export async function removePortfolio(body, corsOrigin) {
     );
   }
 
-  const email = normalizeEmail(body?.email);
-  if (!email) {
-    return errorResponse(400, "A valid email address is required", corsOrigin);
-  }
-
-  const perEmailHash = await loadTokenHash(bucket, email);
-  const authorized =
-    tokenMatchesHash(body?.token, perEmailHash) ||
-    tokenMatches(body?.token, globalToken);
-  if (!authorized) {
-    return errorResponse(403, "Invalid sync token", corsOrigin);
-  }
+  const auth = await authenticateSync(body, bucket);
+  if (auth.error) return errorResponse(...auth.error, corsOrigin);
+  const { email } = auth;
 
   const keys = [portfolioKeyForEmail(email)];
   // The report falls back to the legacy single-user portfolio.json for

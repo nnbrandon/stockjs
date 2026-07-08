@@ -97,14 +97,7 @@ function StockTabs({
             loading={isLoading}
             isEmpty={!hasChartData && !hasQuarterly && !(news && news.length)}
           >
-            <AnalystPanel
-              symbol={selectedSymbol}
-              quarterly={quarterlyFundamentalsData}
-              annual={annualFundamentalsData}
-              earnings={earnings}
-              news={news}
-              position={position}
-            />
+            <AnalystPanel symbol={selectedSymbol} position={position} />
           </LoadingPanel>
         )}
       </Box>

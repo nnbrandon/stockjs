@@ -362,7 +362,6 @@ function App() {
                 chartData={symbolData.chartData}
                 position={selectedPosition}
                 positionsLoading={positionsLoading}
-                supplementalDataReady={symbolData.isSupplementalDataReady}
                 activeTab={contextTab}
                 onTabChange={setContextTab}
                 panelWidth={panelWidth}

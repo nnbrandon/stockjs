@@ -9,6 +9,7 @@
 
 import {
   FINBERT_MODEL_ID,
+  composeArticleText,
   prepareFinbertText,
   toSignedScore,
 } from "@stockjs/committee-engine/finbertScore.js";
@@ -85,14 +86,13 @@ export async function scoreTexts(items = []) {
 
 /**
  * Crawl full text for articles (bounded concurrency, per-article timeout is
- * built into extractArticle) and return id → text. Articles that fail to
- * crawl fall back to `title + ". " + summary` — same degradation the browser
- * pipeline uses for paywalls.
+ * built into extractArticle) and return id → text. The scored text is always
+ * `title + body` (composeArticleText); crawl failures degrade to
+ * `title + summary` — same as the browser pipeline does for paywalls.
  */
 export async function crawlArticleTexts(articles = []) {
   const texts = new Map();
-  const fallback = (a) =>
-    [a.title, a.summary].filter(Boolean).join(". ").trim();
+  const fallback = (a) => composeArticleText(a.title, a.summary);
 
   const withLinks = articles.filter((a) => a.link);
   for (const a of articles) {
@@ -106,7 +106,9 @@ export async function crawlArticleTexts(articles = []) {
       const res = await extractArticle(article.link);
       texts.set(
         article.id,
-        res.ok && res.text ? res.text : fallback(article),
+        res.ok && res.text
+          ? composeArticleText(article.title, res.text)
+          : fallback(article),
       );
     }
   };

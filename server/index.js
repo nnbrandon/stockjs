@@ -9,6 +9,7 @@ import { fetchSymbolSearch } from "./handlers/search.js";
 import { fetchTrending } from "./handlers/trending.js";
 import { removePortfolio, syncPortfolio } from "./handlers/portfolioSync.js";
 import { requestSyncToken } from "./handlers/requestToken.js";
+import { getCommitteeResults, runCommittee } from "./handlers/committee.js";
 import {
   corsPreflightResponse,
   errorResponse,
@@ -28,6 +29,8 @@ const VALID_ACTIONS = [
   "portfolioSync",
   "requestToken",
   "removePortfolio",
+  "committeeResults",
+  "runCommittee",
 ];
 
 // Lambda Function URLs deliver POST bodies as a (sometimes base64-encoded)
@@ -89,6 +92,11 @@ export const handler = async (event) => {
         return await requestSyncToken(parseBody(event), corsOrigin);
       case "removePortfolio":
         return await removePortfolio(parseBody(event), corsOrigin);
+      case "committeeResults":
+        return await getCommitteeResults(parseBody(event), corsOrigin);
+      case "runCommittee":
+        // Heavy: lazily pulls in FinBERT + the engine inside the handler.
+        return await runCommittee(parseBody(event), corsOrigin);
       case "trending":
         return await fetchTrending(corsOrigin);
       case "search":

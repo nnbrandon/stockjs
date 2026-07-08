@@ -17,7 +17,7 @@
       "Action": [
         "s3:CreateBucket",
         "s3:ListBucket",
-        "s3:PutPublicAccessBlock"
+        "s3:PutBucketPublicAccessBlock"
       ],
       "Resource": "arn:aws:s3:::stockjs-report-state-*"
     },

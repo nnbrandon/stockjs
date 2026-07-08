@@ -60,10 +60,18 @@ echo "==> Account: $ACCOUNT_ID | Region: $REGION | Function: $FUNCTION_NAME"
 echo "==> Report email: $REPORT_EMAIL | State bucket: $BUCKET"
 
 # ── 1. SES identity ───────────────────────────────────────────────────────
-VERIFY_STATUS="$(aws ses get-identity-verification-attributes \
+# A failed status check must ABORT, not read as "unverified": credentials
+# that can't read SES state can't verify identities either, and treating the
+# failure as None sends the script into a doomed VerifyEmailIdentity call.
+if ! VERIFY_STATUS="$(aws ses get-identity-verification-attributes \
   --identities "$REPORT_EMAIL" --region "$REGION" \
   --query "VerificationAttributes.\"$REPORT_EMAIL\".VerificationStatus" \
-  --output text 2>/dev/null || echo "None")"
+  --output text)"; then
+  echo "ERROR: these credentials cannot read SES state (ses:GetIdentityVerificationAttributes)."
+  echo "       Run from an admin CloudShell session, or grant the CI user the"
+  echo "       permissions in server/scripts/setup-daily-report-permissions.json."
+  exit 1
+fi
 
 if [[ "$VERIFY_STATUS" == "Success" ]]; then
   echo "==> SES: $REPORT_EMAIL already verified"

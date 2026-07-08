@@ -64,8 +64,21 @@ const TOKEN_KEY = "stockjsReportSyncToken";
 const EMAIL_KEY = "stockjsReportSyncEmail";
 const LAST_SYNC_KEY = "stockjsReportSyncAt";
 
+// Dev-only credentials from client/.env.local (gitignored) so local dev
+// works without pasting credentials into every browser profile. They take
+// precedence over localStorage in dev — the env file is explicit config,
+// while localStorage may hold a stale token from an earlier session. The
+// server still validates the token on every call; production builds never
+// set these vars, so this whole block is inert there.
+const DEV_TOKEN = import.meta.env.DEV
+  ? import.meta.env.VITE_REPORT_SYNC_TOKEN || ""
+  : "";
+const DEV_EMAIL = import.meta.env.DEV
+  ? import.meta.env.VITE_REPORT_SYNC_EMAIL || ""
+  : "";
+
 export function getReportSyncToken() {
-  return localStorage.getItem(TOKEN_KEY) || "";
+  return DEV_TOKEN || localStorage.getItem(TOKEN_KEY) || "";
 }
 
 export function setReportSyncToken(token) {
@@ -77,7 +90,7 @@ export function setReportSyncToken(token) {
 // The email is the identity on the server: the portfolio is stored under it
 // and the daily report is sent to it.
 export function getReportSyncEmail() {
-  return localStorage.getItem(EMAIL_KEY) || "";
+  return DEV_EMAIL || localStorage.getItem(EMAIL_KEY) || "";
 }
 
 export function setReportSyncEmail(email) {

@@ -142,10 +142,17 @@ aws iam put-role-policy \
 echo "==> Lambda: timeout ${TIMEOUT}s, memory ${MEMORY}MB, handler $HANDLER"
 
 # update-function-configuration REPLACES the whole env map — merge with
-# whatever is already set so unrelated vars survive.
-EXISTING_ENV="$(aws lambda get-function-configuration \
+# whatever is already set so unrelated vars survive. A failed read must ABORT
+# rather than fall back to empty: proceeding would silently rotate SYNC_TOKEN
+# (invalidating what users pasted into the app) and drop unrelated vars.
+if ! EXISTING_ENV="$(aws lambda get-function-configuration \
   --function-name "$FUNCTION_NAME" --region "$REGION" \
-  --query 'Environment.Variables' --output json 2>/dev/null || echo 'null')"
+  --query 'Environment.Variables' --output json)"; then
+  echo "ERROR: could not read the function's current env vars — refusing to"
+  echo "       continue (a blind write would rotate SYNC_TOKEN and drop vars)."
+  exit 1
+fi
+# An unset env map serializes as 'null' — that's a legitimate first run.
 
 # Shared secret for the browser's portfolio sync (action=portfolioSync).
 # Generated once and kept across re-runs; override with SYNC_TOKEN=... env.

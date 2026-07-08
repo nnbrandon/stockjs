@@ -1,11 +1,15 @@
 // Production points at the AWS Lambda Function URL, injected at build time via
 // the VITE_LAMBDA_URL env var (set as a GitHub Actions repository variable).
-// Dev always talks to the local server (npm run dev in /server).
+// Dev talks to the local server (npm run dev in /server) — unless
+// VITE_LAMBDA_URL is set in client/.env.local, which points dev at the
+// deployed Lambda instead. The committee/sync actions need the S3 state and
+// SES access that only the deployed function has, so local work on those
+// features requires the override.
 const LAMBDA_URL = import.meta.env.VITE_LAMBDA_URL || "";
 const LOCAL_URL = "http://localhost:3001";
 
 class LambdaService {
-  API_URL = import.meta.env.DEV ? LOCAL_URL : LAMBDA_URL;
+  API_URL = import.meta.env.DEV && !LAMBDA_URL ? LOCAL_URL : LAMBDA_URL;
 
   async fetchHistoricalData(symbol, start, end) {
     let data = [];

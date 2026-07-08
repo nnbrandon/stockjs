@@ -52,15 +52,15 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
             </p>
             <div className={styles.pillars}>
               <div className={styles.pillar}>
-                <span className={styles.pillarWeight}>40%</span>
-                <span className={styles.pillarLabel}>Price trend</span>
-              </div>
-              <div className={styles.pillar}>
-                <span className={styles.pillarWeight}>35%</span>
+                <span className={styles.pillarWeight}>45%</span>
                 <span className={styles.pillarLabel}>Company finances</span>
               </div>
               <div className={styles.pillar}>
-                <span className={styles.pillarWeight}>25%</span>
+                <span className={styles.pillarWeight}>35%</span>
+                <span className={styles.pillarLabel}>Price trend</span>
+              </div>
+              <div className={styles.pillar}>
+                <span className={styles.pillarWeight}>20%</span>
                 <span className={styles.pillarLabel}>News mood</span>
               </div>
             </div>
@@ -68,10 +68,14 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               Price trend covers momentum, moving averages, RSI, and volatility.
               Company finances covers revenue, earnings, margins, and valuation,
               plus financial strength (free cash flow, debt load, return on
-              equity) and expectations — whether analysts are raising or
-              cutting their forecasts, and forward valuation. Analyst price
-              targets are shown for context but never scored. News mood comes
-              from article sentiment (see below).
+              equity) and expectations — whether analysts are raising or cutting
+              their forecasts, and forward valuation. Analyst price targets are
+              shown for context but never scored. News mood comes from article
+              sentiment (see below). The weighting is built for long-term
+              investing — the business counts more than the chart — and a strong
+              business trading well below its 52-week high gets a small
+              &ldquo;quality on sale&rdquo; boost instead of being punished for
+              the dip.
             </p>
           </section>
 
@@ -90,9 +94,9 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
                 eroding margins, earnings misses, negative news)
               </li>
               <li>
-                Devil&apos;s Advocate — flags contradictions between the
-                signals (which pull the score toward neutral) and data gaps
-                (which only lower confidence)
+                Devil&apos;s Advocate — flags contradictions between the signals
+                (which pull the score toward neutral) and data gaps (which only
+                lower confidence)
               </li>
               <li>
                 Portfolio Manager — final call plus a game plan: entry, exit,
@@ -101,8 +105,8 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               </li>
             </ul>
             <p style={{ marginTop: 10 }}>
-              The committee thinks like a long-term position investor, not a
-              day trader: trends are judged on 50- and 200-day averages, an
+              The committee thinks like a long-term position investor, not a day
+              trader: trends are judged on 50- and 200-day averages, an
               &ldquo;oversold&rdquo; stock in a downtrend is treated as a
               warning rather than a bargain, and fundamentals like margin
               erosion matter as much as price.
@@ -127,9 +131,9 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
             <h3 className={styles.sectionTitle}>News &amp; FinBERT scoring</h3>
             <p>
               News sentiment is scored exclusively by FinBERT — an on-device
-              neural model that classifies each article as positive, negative, or
-              neutral. Articles without a FinBERT score do not contribute to the
-              news pillar until they are analyzed.
+              neural model that classifies each article as positive, negative,
+              or neutral. Articles without a FinBERT score do not contribute to
+              the news pillar until they are analyzed.
             </p>
             <p>
               On a single symbol, use the <em>News intelligence agent</em> on
@@ -145,11 +149,11 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
             <h3 className={styles.sectionTitle}>Buy / hold / sell</h3>
             <p>
               The composite score maps to five tiers: Strong Buy (78+), Buy
-              (64–77), Hold (45–63), Reduce (33–44, consider trimming), and
-              Sell (below 33, consider exiting). Whether you already hold the
-              stock changes the explanation (e.g. &ldquo;consider adding&rdquo;
-              vs. &ldquo;consider starting a position&rdquo;) but does not
-              change the score itself.
+              (64–77), Hold (45–63), Reduce (33–44, consider trimming), and Sell
+              (below 33, consider exiting). Whether you already hold the stock
+              changes the explanation (e.g. &ldquo;consider adding&rdquo; vs.
+              &ldquo;consider starting a position&rdquo;) but does not change
+              the score itself.
             </p>
             <p>
               On a Sell or Reduce, the Portfolio Manager explains why (which

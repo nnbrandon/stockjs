@@ -6,6 +6,56 @@ const MOMENTUM_LOOKBACK_DAYS = 21;
 const MOMENTUM_THRESHOLD = 12; // score points
 const MOMENTUM_NUDGE = 4;
 
+// "Quality on sale": a business whose finances still score well while the
+// stock trades far below its 52-week high. For a long-term investor that
+// pattern is often a discount, not decay — the weak price trend drags the
+// composite down exactly when the entry gets attractive.
+const DISCOUNT_MIN_FUNDAMENTAL = 62; // finances must genuinely be strong
+const DISCOUNT_MIN_OFF_HIGH_PCT = 25; // meaningfully below the 52w high
+const DISCOUNT_MIN_SENTIMENT = 40; // news can be mixed, not catastrophic
+const DISCOUNT_MAX_TECHNICAL = 55; // only when the trend is what's dragging
+const DISCOUNT_NUDGE = 5;
+
+/**
+ * Detect the discount setup. Deliberately conservative: it needs strong
+ * fundamentals, a real markdown from the high, news that isn't screaming
+ * "something broke", and a weak trend as the thing holding the score back.
+ * A collapsing business fails the fundamental/sentiment gates — this is not
+ * a falling-knife pass, and the exit line still applies.
+ */
+function discountCheck(candles = [], pillars) {
+  const { technical, fundamental, sentiment } = pillars;
+  if (!Number.isFinite(fundamental) || fundamental < DISCOUNT_MIN_FUNDAMENTAL)
+    return null;
+  if (!Number.isFinite(technical) || technical >= DISCOUNT_MAX_TECHNICAL)
+    return null;
+  if (Number.isFinite(sentiment) && sentiment < DISCOUNT_MIN_SENTIMENT)
+    return null;
+
+  // Distance below the 52-week high, from the same 252-candle window the
+  // technical pillar uses. Thin history can't establish a "high" to be
+  // discounted from.
+  const slice = candles.slice(-252);
+  if (slice.length < 120) return null;
+  const highs = slice.map((c) => Number(c.high)).filter(Number.isFinite);
+  const price = Number(slice.at(-1)?.close);
+  if (!highs.length || !Number.isFinite(price)) return null;
+  const high52 = Math.max(...highs);
+  if (!(high52 > 0)) return null;
+
+  const offHighPct = ((high52 - price) / high52) * 100;
+  if (offHighPct < DISCOUNT_MIN_OFF_HIGH_PCT) return null;
+
+  return { offHighPct, fundamental };
+}
+
+function discountFinding(discount) {
+  return bull(
+    `On sale, not broken: the finances score ${discount.fundamental.toFixed(0)}/100 while the stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high with news holding up — the weak trend looks more like a discount on a healthy business than decay. (Discounts can keep discounting: the exit line still applies.)`,
+    2,
+  );
+}
+
 // Compare today's raw composite with the committee's own stored score from
 // ~3+ weeks ago. A sliding score is itself a signal — deterioration in the
 // evidence, not just in the price. Only trusts snapshots from the same
@@ -295,10 +345,12 @@ export function runPortfolioManager({
     fundamental: dataScout.fundamentalScore,
     sentiment: sentiment.score,
   };
+  // Long-term weighting: the business gets the biggest vote, the trend
+  // second, month-scale news mood least. (v2 was 40/35/25 trend-first.)
   const pillars = [
-    [pillarScores.technical, 0.4],
-    [pillarScores.fundamental, 0.35],
-    [pillarScores.sentiment, 0.25],
+    [pillarScores.technical, 0.35],
+    [pillarScores.fundamental, 0.45],
+    [pillarScores.sentiment, 0.2],
   ].filter(([v]) => Number.isFinite(v));
 
   const wsum = pillars.reduce((s, [, w]) => s + w, 0);
@@ -317,6 +369,13 @@ export function runPortfolioManager({
   // Thesis tracking: nudge for the trajectory of our own past scores.
   const momentum = scoreMomentum(history, composite);
   if (momentum) composite = clamp(composite + momentum.nudge, 0, 100);
+
+  // Quality-on-sale: strong finances marked down by a weak trend get a
+  // modest lift — enough to tip a borderline Hold toward Buy (or a
+  // borderline Reduce back to Hold), never enough to manufacture a
+  // Strong Buy out of a middling score.
+  const discount = discountCheck(candles, pillarScores);
+  if (discount) composite = clamp(composite + DISCOUNT_NUDGE, 0, 100);
 
   let action;
   let tier;
@@ -391,6 +450,7 @@ export function runPortfolioManager({
     summary: buildThesis(tier, composite, convictionLabel, pillarScores),
     findings: [
       ...(momentum ? [momentumFinding(momentum, composite)] : []),
+      ...(discount ? [discountFinding(discount)] : []),
       ...(chaseCapped
         ? [
             neutral(

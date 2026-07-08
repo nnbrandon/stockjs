@@ -126,7 +126,6 @@ export async function runDailyReport() {
   // portfolios and REPORT_SYMBOLS.
   const senderEmail = process.env.REPORT_EMAIL || "";
   const dryRun = process.env.REPORT_DRY_RUN === "1";
-  const alwaysSend = process.env.REPORT_ALWAYS_SEND === "1";
 
   const users = await loadReportUsers(bucket, senderEmail);
   if (!users.length) {
@@ -169,10 +168,9 @@ export async function runDailyReport() {
     await analyzeSymbols(uniqueHoldings, state);
   const resultBySymbol = new Map(symbolResults.map((r) => [r.symbol, r]));
 
-  // ── Per user: health, send decision, email ──────────────────────────────
-  const flagKey = (f) => `${f.kind}:${[...(f.symbols || [])].sort().join(",")}`;
-  const heartbeat = day.endsWith("-01");
-
+  // ── Per user: health + email (sent every day — user preference; tier
+  // changes and health flags are highlighted in the email rather than
+  // gating whether it goes out) ───────────────────────────────────────────
   const nextUserState = {};
   const summaries = [];
   let sendsAttempted = 0;
@@ -182,24 +180,7 @@ export async function runDailyReport() {
     const userKey = user.email || "default";
     const { results, health } = computeUserView(user.holdings, resultBySymbol);
 
-    // Decide whether to send (exception-based).
-    const anyNonHold = results.some(
-      (r) => r.report && r.report.verdict.tier !== "Hold",
-    );
-    const anyTierChange = results.some((r) => r.tierChange);
-
     const warnFlags = (health?.flags ?? []).filter((f) => f.severity === "warn");
-    const previousFlagKeys = new Set(
-      (userState[userKey]?.lastHealthFlags ?? []).map(flagKey),
-    );
-    const anyNewWarnFlag = warnFlags.some(
-      (f) => !previousFlagKeys.has(flagKey(f)),
-    );
-
-    const actionable = anyNonHold || anyTierChange || anyNewWarnFlag;
-    const shouldSend = actionable || heartbeat || alwaysSend;
-
-    // Health is stored for the UI regardless of whether an email goes out.
     const baseUserState = {
       lastSendDay: userState[userKey]?.lastSendDay ?? null,
       lastHealthFlags: warnFlags.map((f) => ({
@@ -209,12 +190,6 @@ export async function runDailyReport() {
       health,
       healthGeneratedAt: generatedAt,
     };
-
-    if (!shouldSend) {
-      nextUserState[userKey] = baseUserState;
-      summaries.push(`${userKey}: skipped (all Hold, no changes)`);
-      continue;
-    }
 
     const spanDays = Math.min(
       ...results.filter((r) => !r.error && !r.isFund).map((r) =>
@@ -229,7 +204,6 @@ export async function runDailyReport() {
       articlesScored,
       sentimentPartial,
       archiveSpanDays: Number.isFinite(spanDays) ? spanDays : null,
-      heartbeatOnly: heartbeat && !actionable,
     };
 
     const { subject, html, text } = renderReportEmail(results, health, meta);

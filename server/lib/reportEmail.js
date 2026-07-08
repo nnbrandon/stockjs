@@ -47,10 +47,6 @@ function subjectLine(results, meta) {
   const sells = rated.filter((r) => r.report.verdict.action === "SELL").length;
   const changes = results.filter((r) => r.tierChange).length;
 
-  if (meta.heartbeatOnly) {
-    return `Portfolio committee — monthly check-in, all quiet — ${shortDate(meta.day)}`;
-  }
-
   const counts = [
     buys ? `${buys} Buy` : null,
     holds ? `${holds} Hold` : null,
@@ -242,13 +238,41 @@ function holdingText(r) {
   return lines;
 }
 
+// Listing order: actionable verdicts first (best buys, then sells by
+// urgency), Hold after them, and the unrated rows (no-data, funds, fetch
+// errors) at the bottom. Ties break on composite, strongest score first.
+const TIER_ORDER = {
+  "Strong Buy": 0,
+  Buy: 1,
+  Sell: 2,
+  Reduce: 3,
+  Hold: 4,
+};
+
+function listingRank(r) {
+  if (r.error) return 7;
+  if (!r.report) return r.isFund ? 6 : 5;
+  return TIER_ORDER[r.report.verdict.tier] ?? 5;
+}
+
+function sortForListing(results) {
+  return [...results].sort((a, b) => {
+    const rank = listingRank(a) - listingRank(b);
+    if (rank !== 0) return rank;
+    const ca = a.report?.verdict?.composite ?? -1;
+    const cb = b.report?.verdict?.composite ?? -1;
+    return cb - ca;
+  });
+}
+
 /**
  * @param {Array} results per-symbol report results (see dailyReport.js)
  * @param {object|null} health analyzePortfolioHealth output
  * @param {object} meta {day, engineVersion, articlesScored, sentimentPartial,
- *                       archiveSpanDays, heartbeatOnly, failures}
+ *                       archiveSpanDays, failures}
  */
-export function renderReportEmail(results, health, meta) {
+export function renderReportEmail(unsorted, health, meta) {
+  const results = sortForListing(unsorted);
   const subject = subjectLine(results, meta);
   const changes = results.filter((r) => r.tierChange);
   const failures = results.filter((r) => r.error);
@@ -256,12 +280,6 @@ export function renderReportEmail(results, health, meta) {
 
   // ── HTML ────────────────────────────────────────────────────────────────
   const sections = [];
-
-  if (meta.heartbeatOnly) {
-    sections.push(
-      `<p style="font-size:14px;color:#24292f;">Monthly check-in: nothing actionable — every holding is rated Hold and nothing changed. This email exists so silence on other days can be trusted to mean “all quiet”, not “the pipeline died”.</p>`,
-    );
-  }
 
   if (changes.length) {
     const items = changes
@@ -329,9 +347,6 @@ export function renderReportEmail(results, health, meta) {
 
   // ── Plain text ──────────────────────────────────────────────────────────
   const textLines = [`AI COMMITTEE — DAILY PORTFOLIO DIGEST (${meta.day})`, ""];
-  if (meta.heartbeatOnly) {
-    textLines.push("Monthly check-in: all quiet — nothing actionable.", "");
-  }
   if (changes.length) {
     textLines.push("TIER CHANGES");
     for (const r of changes) textLines.push(`  ${describeTierChange(r)}`);

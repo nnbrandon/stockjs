@@ -243,8 +243,11 @@ if skipping: S3 PUT state anyway (history must still accrue on quiet days)
 return {statusCode: 200, body: "sent"|"skipped: all Hold"} for CloudWatch
 ```
 
-**Exception-based sending (user requirement: no email when nothing is
-actionable).** Send when ANY of:
+**Exception-based sending — SUPERSEDED 2026-07-08: the user now wants the
+digest every day**, with tier changes and health flags highlighted inside it
+rather than gating delivery (the listing also sorts actionable verdicts
+first, Hold last). The original design, kept for the record — send when ANY
+of:
 
 1. Any holding's tier is not "Hold" (Strong Buy, Buy, Reduce, or Sell);
 2. Any holding's tier changed vs. its last snapshot (same engineVersion) —

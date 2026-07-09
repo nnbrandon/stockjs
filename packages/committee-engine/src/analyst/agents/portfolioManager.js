@@ -710,6 +710,168 @@ function buildThesis(tier, composite, convictionLabel, pillars) {
   return `${tier} — overall score ${composite.toFixed(0)}/100 with ${convictionLabel.toLowerCase()} confidence${driver}.`;
 }
 
+// ── Narrative synthesis ("the chair's verdict") ────────────────────────────
+// One short reasoned paragraph that reads the way an analyst writes: lead with
+// the dominant driver, concede the strongest opposing signal, then resolve to
+// the action with language calibrated to conviction. A pure function of the
+// same structured inputs the bullets use — it can never state a number the
+// engine didn't compute, so it stays deterministic and hallucination-proof.
+
+const PILLAR_LABELS = {
+  technical: "the price trend",
+  fundamental: "the company's finances",
+  sentiment: "the news mood",
+};
+
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+// Deterministic index into a phrase bank, seeded by the numeric inputs so the
+// same verdict always reads the same while different stocks vary. Not for
+// security — just to break the "every row is worded identically" template tell.
+const pick = (bank, seed) => bank[Math.abs(Math.round(seed)) % bank.length];
+
+// A pillar's state in words, graded off distance from neutral (50). "finances"
+// is plural, so its verbs agree separately from the singular trend/mood labels.
+function describePillar(key, val) {
+  const label = PILLAR_LABELS[key];
+  const plural = key === "fundamental";
+  const look = plural ? "look" : "looks";
+  const be = plural ? "are" : "is";
+  const score = `${val.toFixed(0)}/100`;
+  if (val >= 65) return { key, val, text: `${label} ${look} strong (${score})` };
+  if (val >= 55) return { key, val, text: `${label} ${be} holding up (${score})` };
+  if (val > 45) return { key, val, text: `${label} ${be} mixed (${score})` };
+  if (val > 35) return { key, val, text: `${label} ${be} soft (${score})` };
+  return { key, val, text: `${label} ${look} weak (${score})` };
+}
+
+// The action, hedged to conviction — appropriate hedging is what reads as
+// judgment rather than a canned label.
+function resolutionSentence(action, tier, convictionLabel, seed) {
+  const low = convictionLabel === "Low";
+  const high = convictionLabel === "High";
+  if (action === "BUY") {
+    if (high)
+      return pick(
+        [
+          "On balance the committee would buy.",
+          "The weight of evidence lands on buy.",
+        ],
+        seed,
+      );
+    if (low) return "It edges toward a buy, but it's a close call.";
+    return "The committee leans buy.";
+  }
+  if (action === "SELL") {
+    const verb = tier === "Reduce" ? "trim" : "exit";
+    if (high)
+      return `The weight of evidence is firmly negative — the committee would ${verb}.`;
+    if (low)
+      return `It leans toward ${verb === "exit" ? "selling" : "trimming"}, though the call is close.`;
+    return `The committee would ${verb} rather than add to it.`;
+  }
+  if (low)
+    return "There's no edge either way — close to a coin-flip, so the committee neither adds nor trims.";
+  return "There's no clear edge, so the committee would neither add money nor pull it out.";
+}
+
+// Closes looking ahead, the way an analyst names the level that would change
+// the call.
+function triggerClause(action, plan) {
+  if (!plan) return null;
+  if (action === "HOLD" && Number.isFinite(plan.upgradePrice))
+    return `A close back above its 50-day average (about ${fmtPrice(plan.upgradePrice)}) would tip it toward a buy.`;
+  if (action === "SELL" && Number.isFinite(plan.reclaimPrice))
+    return `We'd revisit if it reclaims its 50-day average (about ${fmtPrice(plan.reclaimPrice)}).`;
+  if (
+    action === "BUY" &&
+    plan.kind === "entry" &&
+    Number.isFinite(plan.stopPrice)
+  )
+    return `Below ${fmtPrice(plan.stopPrice)} the thesis is wrong — that's the line to respect.`;
+  return null;
+}
+
+export function buildNarrative({
+  tier,
+  action,
+  composite,
+  convictionLabel,
+  pillars,
+  discount,
+  fireSale,
+  plan,
+}) {
+  const scored = Object.entries(pillars)
+    .filter(([, v]) => Number.isFinite(v))
+    .map(([k, v]) => describePillar(k, v));
+
+  // Nothing scored — fall back to the plain thesis line.
+  if (!scored.length)
+    return buildThesis(tier, composite, convictionLabel, pillars);
+
+  // Stable per verdict, varied across stocks.
+  const seed = scored.reduce((s, p) => s + p.val, 0) + composite;
+
+  // Dominant driver = the pillar furthest from neutral; strongest opposing
+  // signal = the next-furthest on the other side of 50. That "but/and"
+  // connective is the part that reads as reasoning rather than a list.
+  const byMagnitude = [...scored].sort(
+    (a, b) => Math.abs(b.val - 50) - Math.abs(a.val - 50),
+  );
+  const lead = byMagnitude[0];
+  const leadPos = lead.val >= 50;
+  const opposing = byMagnitude
+    .slice(1)
+    .find((p) => p.val >= 50 !== leadPos && Math.abs(p.val - 50) >= 5);
+  const reinforcing = opposing
+    ? null
+    : byMagnitude.slice(1).find((p) => Math.abs(p.val - 50) >= 5);
+
+  const sentences = [];
+  const off = fireSale?.offHighPct ?? discount?.offHighPct;
+
+  if (Number.isFinite(off) && (discount || fireSale)) {
+    // Distinctive "quality on sale" framing when the setup is present.
+    sentences.push(
+      `The finances here are strong while the stock trades ${off.toFixed(0)}% below its 52-week high — priced low on a healthy business, not a broken one.`,
+    );
+    if (opposing)
+      sentences.push(
+        `The catch is ${opposing.text}: ${pick(["the market hasn't turned yet", "that's what's kept the score in check", "the discount can still deepen before it recovers"], seed)}.`,
+      );
+  } else if (Math.abs(lead.val - 50) < 5) {
+    // Everything hugs neutral — say so plainly instead of forcing a contrast.
+    sentences.push(
+      pick(
+        [
+          "Trend, finances, and news are all close to neutral, with nothing pushing hard in either direction.",
+          "None of the signals — trend, finances, or news — leans far from the middle right now.",
+        ],
+        seed,
+      ),
+    );
+  } else if (opposing) {
+    const but = pick(["but", "yet", "while"], seed);
+    sentences.push(
+      `${cap(lead.text)}, ${but} ${opposing.text} — ${pick(["the two pull against each other", "so the picture is genuinely mixed", "which keeps this from being a clean call"], seed)}.`,
+    );
+  } else if (reinforcing) {
+    sentences.push(
+      `${cap(lead.text)}, and ${reinforcing.text} — the signals agree more than they conflict.`,
+    );
+  } else {
+    sentences.push(`${cap(lead.text)}.`);
+  }
+
+  sentences.push(resolutionSentence(action, tier, convictionLabel, seed));
+
+  const trigger = triggerClause(action, plan);
+  if (trigger) sentences.push(trigger);
+
+  return sentences.join(" ");
+}
+
 // Synthesizes everything into a single verdict and an action plan.
 export function runPortfolioManager({
   dataScout,
@@ -850,6 +1012,19 @@ export function runPortfolioManager({
     risk,
     plan,
     summary: buildThesis(tier, composite, convictionLabel, pillarScores),
+    // The chair's verdict: a synthesized paragraph (lead → concession →
+    // resolution) that reads like an analyst wrote it. `summary` is kept as the
+    // terse one-liner for compact surfaces / backward compatibility.
+    narrative: buildNarrative({
+      tier,
+      action,
+      composite,
+      convictionLabel,
+      pillars: pillarScores,
+      discount,
+      fireSale,
+      plan,
+    }),
     findings: [
       ...(momentum ? [momentumFinding(momentum, composite)] : []),
       ...(discount && !fireSale ? [discountFinding(discount)] : []),

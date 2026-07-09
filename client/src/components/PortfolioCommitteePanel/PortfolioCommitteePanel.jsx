@@ -15,6 +15,7 @@ import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
 import { getTierChange } from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
+import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
 import styles from "./PortfolioCommitteePanel.module.css";
 
 // Chevron collapse/expand toggles — square ghost icon buttons.
@@ -331,6 +332,15 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
 
       <div className={styles.cardBody}>
         <p className={styles.context}>{portfolioManager?.narrative || context}</p>
+
+        <p className={styles.whatToDo}>
+          <strong>What to do:</strong>{" "}
+          {whatToDo({
+            action: verdict.action,
+            tier: verdict.tier,
+            plan: portfolioManager?.plan,
+          })}
+        </p>
 
         {verdict.fireSale &&
           (verdict.fireSale.reasons?.length ||

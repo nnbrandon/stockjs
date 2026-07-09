@@ -5,6 +5,7 @@
 
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
 import { describePortfolioHealth } from "@stockjs/committee-engine/portfolioHealth.js";
+import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
 
 const TIER_COLORS = {
   "Strong Buy": "#1a7f37",
@@ -35,6 +36,10 @@ const symbolLink = (appUrl, symbol, inner) =>
   `<a href="${escapeHtml(stockUrl(appUrl, symbol))}" style="color:#0969da;text-decoration:none;">${inner}</a>`;
 
 const fmtScore = (v) => (Number.isFinite(v) ? v.toFixed(0) : "—");
+const fmtPrice = (n) =>
+  Number.isFinite(n)
+    ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    : null;
 
 function shortDate(day) {
   const d = new Date(`${day}T12:00:00Z`);
@@ -56,18 +61,6 @@ function fireSaleBadge(fireSale) {
     ? ` · ${escapeHtml(fireSale.confidenceLabel)}`
     : "";
   return `<span style="display:inline-block;padding:1px 10px;border-radius:12px;background:#fff1e5;border:1px solid #e8590c;color:#bc4c00;font-size:12px;font-weight:700;">🔥 FIRE SALE${label}</span>`;
-}
-
-function fireSaleHead(fireSale) {
-  return `Fire sale${fireSale.confidenceLabel ? ` — ${fireSale.confidenceLabel.toLowerCase()} confidence` : ""}: priced low on a healthy business, with room to bounce back.`;
-}
-
-// Reasons first, cautions after — one flat list for both HTML and text.
-function fireSaleItems(fireSale) {
-  return [
-    ...(fireSale.reasons ?? []),
-    ...(fireSale.cautions ?? []).map((c) => `Keep in mind: ${c}`),
-  ];
 }
 
 function describeTierChange(r) {
@@ -161,6 +154,30 @@ function newsMoodBlock(r) {
   return parts;
 }
 
+// The single plainest "next step" line for a holding (shared with the app).
+function doThisLine(r) {
+  const v = r.report.verdict;
+  const plan = r.report.agents?.find((a) => a.key === "portfolioManager")?.plan;
+  return whatToDo({ action: v.action, tier: v.tier, plan });
+}
+
+// One plain news line: the mood plus the single most relevant headline.
+function plainNewsLine(r) {
+  const parts = newsMoodBlock(r);
+  if (!parts.length) return "";
+  const mood = parts.find((p) => p.text)?.text;
+  const headline = parts.find((p) => p.title);
+  let out = mood ? escapeHtml(mood) : "";
+  if (headline) {
+    const title = escapeHtml(headline.title);
+    const linked = headline.link
+      ? `<a href="${escapeHtml(headline.link)}" style="color:#0969da;">${title}</a>`
+      : `“${title}”`;
+    out += `${out ? " — " : ""}${linked}`;
+  }
+  return out;
+}
+
 function holdingHtml(r, appUrl) {
   const cells = [];
 
@@ -184,90 +201,45 @@ function holdingHtml(r, appUrl) {
   const v = r.report.verdict;
   const pm = r.report.agents?.find((a) => a.key === "portfolioManager");
 
+  const labeled = (label, text) =>
+    `<div style="font-size:13px;color:#24292f;margin-bottom:4px;"><strong>${label}:</strong> ${text}</div>`;
+
+  // Header — symbol, plain tier, score kept up front.
   cells.push(
     `<div style="margin-bottom:6px;">
       ${symbolLink(appUrl, r.symbol, `<strong style="font-size:16px;">${escapeHtml(r.symbol)}</strong>`)}
       &nbsp;${tierBadge(v.tier)}${v.fireSale ? `&nbsp;${fireSaleBadge(v.fireSale)}` : ""}
-      <span style="color:#57606a;font-size:13px;">&nbsp;score ${fmtScore(v.composite)}/100 · ${escapeHtml(v.convictionLabel)} confidence</span>
+      <span style="color:#57606a;font-size:13px;">&nbsp;${fmtScore(v.composite)}/100 · ${escapeHtml(v.convictionLabel.toLowerCase())} confidence</span>
     </div>`,
   );
 
-  if (v.fireSale) {
-    const items = fireSaleItems(v.fireSale)
-      .map((item) => `<li>${escapeHtml(item)}</li>`)
-      .join("");
-    cells.push(
-      `<div style="font-size:12px;color:#bc4c00;background:#fff8f3;border:1px solid #ffd8a8;border-radius:6px;padding:8px 12px;margin-bottom:6px;">
-        <div style="font-weight:700;">🔥 ${escapeHtml(fireSaleHead(v.fireSale))}</div>
-        ${items ? `<ul style="margin:4px 0 0 18px;padding:0;">${items}</ul>` : ""}
-      </div>`,
-    );
-  }
-
   if (r.tierChange) {
-    const color = r.tierChange.direction === "upgrade" ? "#1a7f37" : "#cf222e";
+    const up = r.tierChange.direction === "upgrade";
     cells.push(
-      `<div style="color:${color};font-size:13px;font-weight:600;margin-bottom:6px;">${escapeHtml(describeTierChange(r))} (was ${fmtScore(r.tierChange.fromComposite)} on ${escapeHtml(r.tierChange.fromDay)})</div>`,
+      `<div style="color:${up ? "#1a7f37" : "#cf222e"};font-size:12px;font-weight:600;margin-bottom:6px;">${up ? "↑" : "↓"} ${escapeHtml(describeTierChange(r))}</div>`,
     );
   }
 
-  const chairVerdict = pm?.narrative || pm?.summary;
-  if (chairVerdict) {
+  // The one-sentence answer.
+  const answer = pm?.narrative || pm?.summary;
+  if (answer)
     cells.push(
-      `<div style="font-size:13px;color:#24292f;margin-bottom:6px;">${escapeHtml(chairVerdict)}</div>`,
+      `<div style="font-size:14px;color:#24292f;margin-bottom:8px;">${escapeHtml(answer)}</div>`,
     );
-  }
 
-  const mood = newsMoodBlock(r);
-  if (mood.length) {
-    const moodHtml = mood
-      .map((m) => {
-        if (m.text) return escapeHtml(m.text);
-        const title = escapeHtml(m.title);
-        const linked = m.link
-          ? `<a href="${escapeHtml(m.link)}" style="color:#0969da;">${title}</a>`
-          : `“${title}”`;
-        return `${escapeHtml(m.prefix)}${linked}`;
-      })
-      .join("<br/>");
-    cells.push(
-      `<div style="font-size:12px;color:#57606a;margin-bottom:6px;">${moodHtml}</div>`,
-    );
-  }
+  cells.push(labeled("What to do", escapeHtml(doThisLine(r))));
 
+  // Why — sells only (the specifics behind a sell-your-money call).
   const sell = sellDetails(r.report);
-  if (sell) {
-    const reasonItems = sell.reasons
-      .map((reason) => `<li>${escapeHtml(reason)}</li>`)
-      .join("");
-    const trim =
-      sell.trimPct != null
-        ? `<div style="font-weight:600;margin-top:4px;">${
-            sell.fullExit
-              ? "Suggested action: exit the position."
-              : `Suggested action: trim about ${sell.trimPct}% of the position and reassess the rest.`
-          }</div>`
-        : "";
-    cells.push(
-      `<div style="font-size:12px;color:#82071e;background:#fff1f0;border-radius:6px;padding:8px 12px;">
-        <div style="font-weight:700;">Why the committee would sell:</div>
-        <ul style="margin:4px 0 0 18px;padding:0;">${reasonItems}</ul>${trim}
-      </div>`,
-    );
-  }
+  if (sell?.reasons?.length)
+    cells.push(labeled("Why", escapeHtml(sell.reasons.slice(0, 3).join("; "))));
 
   const horizon = holdingHorizon(r);
-  if (horizon) {
-    const items = horizon.lines
-      .map((line) => `<li>${escapeHtml(line)}</li>`)
-      .join("");
-    cells.push(
-      `<div style="font-size:12px;color:#24292f;background:#f6f8fa;border:1px solid #d8dee4;border-radius:6px;padding:8px 12px;margin-top:6px;">
-        <div style="font-weight:700;">⏳ ${escapeHtml(horizon.headline)}</div>
-        <ul style="margin:4px 0 0 18px;padding:0;">${items}</ul>
-      </div>`,
-    );
-  }
+  if (horizon?.lines?.length)
+    cells.push(labeled("Timing", escapeHtml(horizon.lines.join(" "))));
+
+  const news = plainNewsLine(r);
+  if (news) cells.push(labeled("News", news));
 
   return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">${cells.join("")}</td></tr>`;
 }
@@ -290,44 +262,28 @@ function holdingText(r, appUrl) {
   const v = r.report.verdict;
   const pm = r.report.agents?.find((a) => a.key === "portfolioManager");
   lines.push(
-    `${r.symbol}: ${v.tier}${v.fireSale ? " · 🔥 FIRE SALE" : ""} — score ${fmtScore(v.composite)}/100 (${v.convictionLabel} confidence)`,
+    `${r.symbol}: ${v.tier}${v.fireSale ? " · 🔥 FIRE SALE" : ""} — ${fmtScore(v.composite)}/100 (${v.convictionLabel.toLowerCase()} confidence)`,
   );
   link();
-  if (v.fireSale) {
-    lines.push(`  ${fireSaleHead(v.fireSale)}`);
-    for (const item of fireSaleItems(v.fireSale)) lines.push(`   - ${item}`);
-  }
-  if (r.tierChange) {
-    lines.push(`  ${describeTierChange(r)}`);
-  }
-  if (pm?.narrative || pm?.summary)
-    lines.push(`  ${pm.narrative || pm.summary}`);
-  if (r.newsMood) lines.push(`  ${r.newsMood}`);
-  if (r.topPositive?.title)
+  if (r.tierChange)
     lines.push(
-      `  Most upbeat: ${r.topPositive.title} ${r.topPositive.link || ""}`,
+      `  ${r.tierChange.direction === "upgrade" ? "↑" : "↓"} ${describeTierChange(r)}`,
     );
-  if (r.topNegative?.title)
-    lines.push(
-      `  Most negative: ${r.topNegative.title} ${r.topNegative.link || ""}`,
-    );
+  const answer = pm?.narrative || pm?.summary;
+  if (answer) lines.push(`  ${answer}`);
+  lines.push(`  What to do: ${doThisLine(r)}`);
   const sell = sellDetails(r.report);
-  if (sell) {
-    lines.push("  Why the committee would sell:");
-    for (const reason of sell.reasons) lines.push(`   - ${reason}`);
-    if (sell.trimPct != null) {
-      lines.push(
-        sell.fullExit
-          ? "  Suggested action: exit the position."
-          : `  Suggested action: trim about ${sell.trimPct}% and reassess.`,
-      );
-    }
-  }
+  if (sell?.reasons?.length)
+    lines.push(`  Why: ${sell.reasons.slice(0, 3).join("; ")}`);
   const horizon = holdingHorizon(r);
-  if (horizon) {
-    lines.push(`  ${horizon.headline}`);
-    for (const line of horizon.lines) lines.push(`   - ${line}`);
-  }
+  if (horizon?.lines?.length) lines.push(`  Timing: ${horizon.lines.join(" ")}`);
+  const parts = newsMoodBlock(r);
+  const moodP = parts.find((p) => p.text)?.text;
+  const headP = parts.find((p) => p.title);
+  const newsBits = [];
+  if (moodP) newsBits.push(moodP);
+  if (headP) newsBits.push(`“${headP.title}”${headP.link ? ` ${headP.link}` : ""}`);
+  if (newsBits.length) lines.push(`  News: ${newsBits.join(" — ")}`);
   return lines;
 }
 

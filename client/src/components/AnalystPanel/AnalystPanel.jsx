@@ -18,6 +18,7 @@ import { getScoreSeries } from "@stockjs/committee-engine/analyst/verdictHistory
 import { computePositionMetrics } from "../../utils/computePositionMetrics";
 import { getGuardrail } from "@stockjs/committee-engine/guardrails.js";
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
+import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
 import PositionHolding from "../PositionHolding/PositionHolding";
 import TickerSparkline from "../SparklineChart/SparklineChart";
 import { getStockDataByDateRange } from "../../db";
@@ -592,6 +593,17 @@ export default function AnalystPanel({
 
       {!compact && portfolioManager?.narrative && (
         <p className={styles.verdictNarrative}>{portfolioManager.narrative}</p>
+      )}
+
+      {!compact && portfolioManager && (
+        <p className={styles.whatToDo}>
+          <strong>What to do:</strong>{" "}
+          {whatToDo({
+            action: verdict.action,
+            tier: verdict.tier,
+            plan: portfolioManager.plan,
+          })}
+        </p>
       )}
 
       {position && (

@@ -14,53 +14,53 @@ function buildExitChecklist(metrics = {}, sentimentScore) {
   add(
     Number.isFinite(m.price) && Number.isFinite(m.sma200),
     m.price < m.sma200,
-    "The long-term price trend is broken (trading below its 200-day average)",
+    "Its long-term price trend has broken down",
   );
   add(
     Number.isFinite(m.mom60),
     m.mom60 < -10,
-    "Momentum has turned firmly negative (down more than 10% over 3 months)",
+    "It's dropped more than 10% in the last three months",
   );
   add(
     Number.isFinite(m.drawdown),
     m.drawdown < -25,
-    "In a deep decline — down more than 25% from its recent high",
+    "It's down more than 25% from its recent high",
   );
   add(
     Number.isFinite(m.revenueGrowthYoY) || Number.isFinite(m.netIncomeGrowthYoY),
     m.revenueGrowthYoY < 0 || m.netIncomeGrowthYoY < -15,
-    "The business is going backwards — shrinking sales or sharply lower profit",
+    "The business is shrinking — falling sales or profit",
   );
   add(
     Number.isFinite(m.netMarginChange),
     m.netMarginChange <= -3,
-    "Profitability is eroding compared to a year ago",
+    "Its profit margins are shrinking",
   );
   add(
     Number.isFinite(m.fcfMargin),
     m.fcfMargin < 0,
-    "The company is burning cash rather than generating it",
+    "It's burning cash instead of making it",
   );
   add(
     Number.isFinite(m.debtToEquity),
     m.debtToEquity > 2,
-    "Carrying a heavy debt load relative to what shareholders own",
+    "It's carrying a lot of debt",
   );
   add(
     Number.isFinite(m.earningsBeatRate) || Number.isFinite(m.lastEpsSurprise),
     m.earningsBeatRate < 50 || m.lastEpsSurprise < -5,
-    "Falling short of Wall Street's profit expectations",
+    "It keeps missing profit expectations",
   );
   add(
     Number.isFinite(m.revisionsUp30d) && Number.isFinite(m.revisionsDown30d),
     m.revisionsUp30d + m.revisionsDown30d >= 3 &&
       m.revisionsDown30d > 2 * m.revisionsUp30d,
-    "Wall Street is cutting its forecasts for this company",
+    "Analysts are cutting their forecasts",
   );
   add(
     Number.isFinite(sentimentScore),
     sentimentScore <= 40,
-    "The news around the company has turned negative",
+    "The news has turned negative",
   );
 
   return checks;

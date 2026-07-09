@@ -31,7 +31,6 @@ export function getExitTimingAdvice({
 } = {}) {
   if (action !== "SELL") return null;
 
-  const verb = tier === "Reduce" ? "trimming" : "selling";
   const act = tier === "Reduce" ? "trim" : "exit";
 
   const rev = metrics.revenueGrowthYoY;
@@ -59,42 +58,33 @@ export function getExitTimingAdvice({
     rev > 5 &&
     (!Number.isFinite(marginChange) || marginChange >= 0);
 
-  const factStr = facts.length
-    ? facts.join(" and ")
-    : Number.isFinite(fundamentalScore)
-      ? `its financials score only ${fundamentalScore.toFixed(0)}/100`
-      : "its financials haven't been strong";
-
   const lines = [];
 
-  // ── Held a while (roughly a year or more) ───────────────────────────────
+  // Held a while (roughly a year or more).
   if (weakFinancials) {
     lines.push(
-      `If you've held this for around a year or more, the company hasn't earned more patience — ${factStr}, so bouncing back may be unlikely. We'd suggest ${verb} rather than waiting for a recovery.`,
+      `Held it a year or more? Don't wait for a rebound — the business hasn't earned it. Best to ${act}.`,
     );
   } else if (improving) {
     lines.push(
-      `If you've held this for around a year or more, the business itself has held up (revenue up ${rev.toFixed(0)}% over the past year) — the weakness looks more in the price than the fundamentals, so a partial ${act} may beat a full exit while the trend sorts out.`,
+      `Held it a year or more? The business is actually holding up (sales up ${rev.toFixed(0)}%), so a partial ${act} may beat selling it all.`,
     );
   } else {
     lines.push(
-      `If you've held this for around a year or more, it hasn't made real progress in that time and the trend is against it — little reason to keep waiting, so ${verb} is reasonable.`,
+      `Held it a year or more? It hasn't made progress and the trend's against it — not much reason to wait, so ${act}.`,
     );
   }
 
-  // ── Held recently (a short while) ───────────────────────────────────────
+  // Held recently (a short while).
   if (weakFinancials) {
     lines.push(
-      `If you've only held it a short while, it's already turned against you and the weak financials back that up — the reason you bought it may not hold, so cut it rather than averaging down.`,
+      `Just bought? It's already turned against you and the numbers agree — cut it, don't buy more.`,
     );
   } else {
     lines.push(
-      `If you've only held it a short while, the drop looks more like price weakness than a broken business — decide on a clear level where you'd ${act}, rather than reacting to short-term moves.`,
+      `Just bought? This looks more like a price dip than a broken business — pick a level to ${act} at instead of reacting to every move.`,
     );
   }
 
-  return {
-    headline: "Is it worth holding on for a bounce-back?",
-    lines,
-  };
+  return { headline: "How long have you held it?", lines };
 }

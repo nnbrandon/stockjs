@@ -738,12 +738,11 @@ function describePillar(key, val) {
   const plural = key === "fundamental";
   const look = plural ? "look" : "looks";
   const be = plural ? "are" : "is";
-  const score = `${val.toFixed(0)}/100`;
-  if (val >= 65) return { key, val, text: `${label} ${look} strong (${score})` };
-  if (val >= 55) return { key, val, text: `${label} ${be} holding up (${score})` };
-  if (val > 45) return { key, val, text: `${label} ${be} mixed (${score})` };
-  if (val > 35) return { key, val, text: `${label} ${be} soft (${score})` };
-  return { key, val, text: `${label} ${look} weak (${score})` };
+  if (val >= 65) return { key, val, text: `${label} ${look} strong` };
+  if (val >= 55) return { key, val, text: `${label} ${be} holding up` };
+  if (val > 45) return { key, val, text: `${label} ${be} mixed` };
+  if (val > 35) return { key, val, text: `${label} ${be} soft` };
+  return { key, val, text: `${label} ${look} weak` };
 }
 
 // The action, hedged to conviction — appropriate hedging is what reads as
@@ -776,23 +775,6 @@ function resolutionSentence(action, tier, convictionLabel, seed) {
   return "There's no clear edge, so the committee would neither add money nor pull it out.";
 }
 
-// Closes looking ahead, the way an analyst names the level that would change
-// the call. BUY/HOLD each name their own level; SELL/REDUCE deliberately does
-// NOT — the exit-timing block (exitTimingAdvice.js) owns all "when / at what
-// level" guidance on a sell, so the two never restate the same point.
-function triggerClause(action, plan) {
-  if (!plan) return null;
-  if (action === "HOLD" && Number.isFinite(plan.upgradePrice))
-    return `A close back above its 50-day average (about ${fmtPrice(plan.upgradePrice)}) would tip it toward a buy.`;
-  if (
-    action === "BUY" &&
-    plan.kind === "entry" &&
-    Number.isFinite(plan.stopPrice)
-  )
-    return `Below ${fmtPrice(plan.stopPrice)} the thesis is wrong — that's the line to respect.`;
-  return null;
-}
-
 export function buildNarrative({
   tier,
   action,
@@ -801,7 +783,6 @@ export function buildNarrative({
   pillars,
   discount,
   fireSale,
-  plan,
   devil,
 }) {
   const scored = Object.entries(pillars)
@@ -879,9 +860,6 @@ export function buildNarrative({
   }
 
   sentences.push(resolutionSentence(action, tier, convictionLabel, seed));
-
-  const trigger = triggerClause(action, plan);
-  if (trigger) sentences.push(trigger);
 
   return sentences.join(" ");
 }

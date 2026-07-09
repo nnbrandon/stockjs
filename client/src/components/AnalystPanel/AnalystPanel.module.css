@@ -165,6 +165,17 @@
   color: var(--palette-text-primary);
 }
 
+/* The single "what to do" line — the concrete next step, made to stand out. */
+.whatToDo {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--palette-text-primary);
+  background: var(--palette-action-hover);
+  border-radius: 8px;
+}
+
 /* ───────────────────────── Pillars ───────────────────────── */
 .pillars {
   display: grid;

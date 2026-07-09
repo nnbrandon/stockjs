@@ -14,6 +14,7 @@ import ResizableSidebar from "../ResizableSidebar/ResizableSidebar";
 import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
 import { getTierChange } from "@stockjs/committee-engine/analyst/verdictHistory.js";
+import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
 import styles from "./PortfolioCommitteePanel.module.css";
 
 // Chevron collapse/expand toggles — square ghost icon buttons.
@@ -264,6 +265,14 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
       ? report.agents?.find((a) => a.key === "portfolioManager")?.plan
       : null;
   const quantity = item.position?.quantity;
+  // Exit timing baked into every SELL/REDUCE, reasoned from the company's
+  // financial trajectory over the past year.
+  const horizonAdvice = getExitTimingAdvice({
+    action: verdict.action,
+    tier: verdict.tier,
+    fundamentalScore: pillars?.fundamental,
+    metrics: report.metrics,
+  });
   const sellSizing =
     exitPlan?.kind === "exit" &&
     Number.isFinite(exitPlan.trimPct) &&
@@ -360,6 +369,17 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
                     : ""
                 }.`}
           </p>
+        )}
+
+        {horizonAdvice && (
+          <div className={styles.horizonAdvice}>
+            <p className={styles.horizonHeadline}>{horizonAdvice.headline}</p>
+            {horizonAdvice.lines.map((line) => (
+              <p key={line} className={styles.horizonLine}>
+                {line}
+              </p>
+            ))}
+          </div>
         )}
 
         {newsMood && <p className={styles.newsMood}>{newsMood}</p>}

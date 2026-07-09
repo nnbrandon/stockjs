@@ -17,6 +17,7 @@ import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictCont
 import { getScoreSeries } from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import { computePositionMetrics } from "../../utils/computePositionMetrics";
 import { getGuardrail } from "@stockjs/committee-engine/guardrails.js";
+import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
 import PositionHolding from "../PositionHolding/PositionHolding";
 import TickerSparkline from "../SparklineChart/SparklineChart";
 import { getStockDataByDateRange } from "../../db";
@@ -47,6 +48,31 @@ function actionClass(action) {
   if (action === "BUY") return styles.buy;
   if (action === "SELL") return styles.sell;
   return styles.hold;
+}
+
+// Exit timing baked into every held SELL/REDUCE: it addresses both the
+// held-a-while and held-recently cases automatically, reasoned from how the
+// company's financials have done over the past year. Only rendered on SELL
+// verdicts (see call site).
+function ExitTiming({ verdict, pillars, metrics }) {
+  const advice = getExitTimingAdvice({
+    action: verdict.action,
+    tier: verdict.tier,
+    fundamentalScore: pillars?.fundamental,
+    metrics,
+  });
+  if (!advice) return null;
+
+  return (
+    <div className={styles.horizon} role="note">
+      <p className={styles.horizonHeadline}>{advice.headline}</p>
+      {advice.lines.map((line) => (
+        <p key={line} className={styles.horizonLine}>
+          {line}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 function PillarBar({ label, score }) {
@@ -277,7 +303,7 @@ function AgentCard({ agent }) {
         </div>
         <span className={styles.agentChip}>{chip}</span>
       </div>
-      <p className={styles.agentSummary}>{agent.summary}</p>
+      <p className={styles.agentSummary}>{agent.narrative || agent.summary}</p>
       {agent.findings?.length > 0 && (
         <ul className={styles.findingList}>
           {agent.findings.map((f, i) => (
@@ -577,6 +603,14 @@ export default function AnalystPanel({
           <WarningAmberIcon className={styles.guardrailIcon} />
           <span>{guardrail.text}</span>
         </div>
+      )}
+
+      {position && verdict.action === "SELL" && (
+        <ExitTiming
+          verdict={verdict}
+          pillars={pillars}
+          metrics={report.metrics}
+        />
       )}
 
       <GamePlan

@@ -776,13 +776,13 @@ function resolutionSentence(action, tier, convictionLabel, seed) {
 }
 
 // Closes looking ahead, the way an analyst names the level that would change
-// the call.
+// the call. BUY/HOLD each name their own level; SELL/REDUCE deliberately does
+// NOT — the exit-timing block (exitTimingAdvice.js) owns all "when / at what
+// level" guidance on a sell, so the two never restate the same point.
 function triggerClause(action, plan) {
   if (!plan) return null;
   if (action === "HOLD" && Number.isFinite(plan.upgradePrice))
     return `A close back above its 50-day average (about ${fmtPrice(plan.upgradePrice)}) would tip it toward a buy.`;
-  if (action === "SELL" && Number.isFinite(plan.reclaimPrice))
-    return `We'd revisit if it reclaims its 50-day average (about ${fmtPrice(plan.reclaimPrice)}).`;
   if (
     action === "BUY" &&
     plan.kind === "entry" &&

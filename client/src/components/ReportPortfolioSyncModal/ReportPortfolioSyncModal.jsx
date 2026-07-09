@@ -77,9 +77,11 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
     }
 
     setIsBusy(true);
-    setReportSyncToken(trimmedToken);
-    setReportSyncEmail(trimmedEmail);
     try {
+      // Inside the try so a storage exception (e.g. iOS private mode) can't
+      // skip the finally and wedge the button in its busy state.
+      setReportSyncToken(trimmedToken);
+      setReportSyncEmail(trimmedEmail);
       const result = await syncReportPortfolio();
       if (!result.ok) {
         setError(
@@ -170,6 +172,15 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
     }
   }
 
+  // Submit via a real <form> so iOS Safari fires the action reliably: tapping
+  // a plain button while an input is focused there often just dismisses the
+  // keyboard and swallows the first tap, whereas a form submit (button or the
+  // keyboard "Go" key) always goes through.
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!isBusy) handleSaveAndSync();
+  }
+
   const lastSyncLabel = formatSyncTime(lastSync);
 
   return (
@@ -210,92 +221,96 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
           which symbols your email covers.
         </p>
 
-        <div className={addTickerStyles.field}>
-          <TextField
-            fullWidth
-            type="email"
-            autoComplete="email"
-            placeholder="Email the report goes to"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError("");
-              setStatus("");
-            }}
-            disabled={isBusy}
-            sx={inputSx}
-          />
-        </div>
+        <form onSubmit={handleSubmit}>
+          <div className={addTickerStyles.field}>
+            <TextField
+              fullWidth
+              type="email"
+              autoComplete="email"
+              placeholder="Email the report goes to"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+                setStatus("");
+              }}
+              disabled={isBusy}
+              sx={inputSx}
+            />
+          </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <Button
-            variant="outlined"
-            onClick={handleRequestToken}
-            disabled={isBusy || !email.trim()}
-            startIcon={<EmailOutlinedIcon fontSize="small" />}
-          >
-            Email me a sync token
-          </Button>
-        </div>
+          <div style={{ marginBottom: 12 }}>
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={handleRequestToken}
+              disabled={isBusy || !email.trim()}
+              startIcon={<EmailOutlinedIcon fontSize="small" />}
+            >
+              Email me a sync token
+            </Button>
+          </div>
 
-        <div className={addTickerStyles.field}>
-          <TextField
-            fullWidth
-            type="password"
-            autoComplete="off"
-            placeholder="Sync token (from the email)"
-            value={token}
-            onChange={(e) => {
-              setToken(e.target.value);
-              setError("");
-              setStatus("");
-            }}
-            disabled={isBusy}
-            sx={inputSx}
-          />
-        </div>
+          <div className={addTickerStyles.field}>
+            <TextField
+              fullWidth
+              type="password"
+              autoComplete="off"
+              placeholder="Sync token (from the email)"
+              value={token}
+              onChange={(e) => {
+                setToken(e.target.value);
+                setError("");
+                setStatus("");
+              }}
+              disabled={isBusy}
+              sx={inputSx}
+            />
+          </div>
 
-        {lastSyncLabel && (
-          <p className={addTickerStyles.subtitle}>
-            Last synced: {lastSyncLabel}
-          </p>
-        )}
+          {lastSyncLabel && (
+            <p className={addTickerStyles.subtitle}>
+              Last synced: {lastSyncLabel}
+            </p>
+          )}
 
-        {status && (
-          <p className={addTickerStyles.subtitle} role="status">
-            {status}
-          </p>
-        )}
+          {status && (
+            <p className={addTickerStyles.subtitle} role="status">
+              {status}
+            </p>
+          )}
 
-        <div className={addTickerStyles.errorText} role="alert">
-          {error}
-        </div>
+          <div className={addTickerStyles.errorText} role="alert">
+            {error}
+          </div>
 
-        <div className={addTickerStyles.footer}>
-          <Button
-            variant="outlined"
-            onClick={handleStopReport}
-            disabled={isBusy || !token.trim() || !email.trim()}
-            title="Remove your holdings from the server so the daily email stops"
-          >
-            Stop report
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSaveAndSync}
-            disabled={isBusy || positionCount === 0}
-            startIcon={
-              isBusy ? (
-                <CircularProgress size={12} color="inherit" thickness={5} />
-              ) : (
-                <EmailOutlinedIcon fontSize="small" />
-              )
-            }
-          >
-            {isBusy ? "Syncing…" : "Save & sync now"}
-          </Button>
-        </div>
+          <div className={addTickerStyles.footer}>
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={handleStopReport}
+              disabled={isBusy || !token.trim() || !email.trim()}
+              title="Remove your holdings from the server so the daily email stops"
+            >
+              Stop report
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={isBusy || positionCount === 0}
+              startIcon={
+                isBusy ? (
+                  <CircularProgress size={12} color="inherit" thickness={5} />
+                ) : (
+                  <EmailOutlinedIcon fontSize="small" />
+                )
+              }
+            >
+              {isBusy ? "Syncing…" : "Save & sync now"}
+            </Button>
+          </div>
+        </form>
       </div>
     </Modal>
   );

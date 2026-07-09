@@ -3,6 +3,8 @@
 // layout + inline CSS because email clients ignore stylesheets; a plain-text
 // alternative is built alongside.
 
+import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
+
 const TIER_COLORS = {
   "Strong Buy": "#1a7f37",
   Buy: "#2da44e",
@@ -125,6 +127,19 @@ function sellDetails(report) {
   };
 }
 
+// Exit timing baked into every SELL/REDUCE, reasoned from the company's
+// financial trajectory over the past year.
+function holdingHorizon(r) {
+  const v = r.report?.verdict;
+  if (!v || v.action !== "SELL") return null;
+  return getExitTimingAdvice({
+    action: v.action,
+    tier: v.tier,
+    fundamentalScore: r.report.pillars?.fundamental,
+    metrics: r.report.metrics,
+  });
+}
+
 function newsMoodBlock(r) {
   const parts = [];
   if (r.newsMood) parts.push({ text: r.newsMood });
@@ -195,9 +210,10 @@ function holdingHtml(r, appUrl) {
     );
   }
 
-  if (pm?.summary) {
+  const chairVerdict = pm?.narrative || pm?.summary;
+  if (chairVerdict) {
     cells.push(
-      `<div style="font-size:13px;color:#24292f;margin-bottom:6px;">${escapeHtml(pm.summary)}</div>`,
+      `<div style="font-size:13px;color:#24292f;margin-bottom:6px;">${escapeHtml(chairVerdict)}</div>`,
     );
   }
 
@@ -239,6 +255,19 @@ function holdingHtml(r, appUrl) {
     );
   }
 
+  const horizon = holdingHorizon(r);
+  if (horizon) {
+    const items = horizon.lines
+      .map((line) => `<li>${escapeHtml(line)}</li>`)
+      .join("");
+    cells.push(
+      `<div style="font-size:12px;color:#24292f;background:#f6f8fa;border:1px solid #d8dee4;border-radius:6px;padding:8px 12px;margin-top:6px;">
+        <div style="font-weight:700;">⏳ ${escapeHtml(horizon.headline)}</div>
+        <ul style="margin:4px 0 0 18px;padding:0;">${items}</ul>
+      </div>`,
+    );
+  }
+
   return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">${cells.join("")}</td></tr>`;
 }
 
@@ -270,7 +299,8 @@ function holdingText(r, appUrl) {
   if (r.tierChange) {
     lines.push(`  ${describeTierChange(r)}`);
   }
-  if (pm?.summary) lines.push(`  ${pm.summary}`);
+  if (pm?.narrative || pm?.summary)
+    lines.push(`  ${pm.narrative || pm.summary}`);
   if (r.newsMood) lines.push(`  ${r.newsMood}`);
   if (r.topPositive?.title)
     lines.push(
@@ -291,6 +321,11 @@ function holdingText(r, appUrl) {
           : `  Suggested action: trim about ${sell.trimPct}% and reassess.`,
       );
     }
+  }
+  const horizon = holdingHorizon(r);
+  if (horizon) {
+    lines.push(`  ${horizon.headline}`);
+    for (const line of horizon.lines) lines.push(`   - ${line}`);
   }
   return lines;
 }

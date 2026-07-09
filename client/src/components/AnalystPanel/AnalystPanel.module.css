@@ -684,3 +684,26 @@
   flex-shrink: 0;
   margin-top: 1px;
 }
+
+/* Tax-aware exit timing, baked into held SELL/REDUCE verdicts. */
+.horizon {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  background: var(--palette-bg-paper);
+}
+.horizonHeadline {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--palette-text-primary);
+}
+.horizonLine {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--palette-text-secondary);
+}

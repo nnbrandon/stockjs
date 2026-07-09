@@ -140,12 +140,12 @@ export function describePortfolioHealth(health) {
   if (Number.isFinite(ws)) {
     const lean =
       ws >= 62
-        ? "leans constructive"
+        ? "is in good shape overall"
         : ws >= 48
-          ? "sits balanced"
-          : "leans defensive";
+          ? "is a mixed bag"
+          : "is looking weak overall";
     parts.push(
-      `Weighted by position size, the committee scores your portfolio ${ws.toFixed(0)}/100 — it ${lean}.`,
+      `Counting your bigger positions more, the committee gives your portfolio ${ws.toFixed(0)} out of 100 — it ${lean}.`,
     );
   }
 

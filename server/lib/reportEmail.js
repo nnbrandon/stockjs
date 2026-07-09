@@ -368,10 +368,22 @@ function sortForListing(results) {
 // Empty until at least one horizon has enough graded verdicts.
 function trackRecordLines(tr) {
   if (!tr) return [];
-  const fmtPct = (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+  // Plain-English versions of the numbers — the email is for a human, the raw
+  // percentages/correlations live in the calibration log for tuning.
+  const avgMove = (v) =>
+    Math.abs(v) < 0.5 ? "flat" : `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`;
+  const rhoWord = (r) => {
+    if (r == null) return null;
+    if (r <= -0.1) return "backwards (misleading)";
+    if (r < 0.1) return "no help";
+    if (r < 0.25) return "a little";
+    if (r < 0.5) return "helpful";
+    return "a strong guide";
+  };
   const lines = [];
   for (const h of tr.horizons) {
     if (!h.enough) continue;
+    // How each group of past calls actually moved.
     const bits = [];
     for (const [action, label] of [
       ["BUY", "Buy"],
@@ -379,17 +391,41 @@ function trackRecordLines(tr) {
       ["SELL", "Sell"],
     ]) {
       const p = h.per[action];
-      if (p.n) bits.push(`${label} ${fmtPct(p.meanReturn)} (${p.n})`);
+      if (p.n)
+        bits.push(
+          `${label} ${avgMove(p.meanReturn)} (${p.n} stock${p.n === 1 ? "" : "s"})`,
+        );
     }
     if (!bits.length) continue;
-    let line = `Over ~${h.horizon} days: ${bits.join(" · ")}.`;
+    let line = `Its calls from ~${h.horizon} days ago: ${bits.join(", ")}.`;
     if (Number.isFinite(h.spread)) {
       line +=
         h.spread >= 0
-          ? ` Buy-rated beat Sell-rated by ${h.spread.toFixed(1)} pts.`
-          : ` Sell-rated beat Buy-rated by ${Math.abs(h.spread).toFixed(1)} pts — worth a look.`;
+          ? ` The stocks it rated Buy did about ${h.spread.toFixed(0)}% better than the ones it rated Sell — a good sign it's calling direction right.`
+          : ` The stocks it rated Sell actually did about ${Math.abs(h.spread).toFixed(0)}% better than its Buys — worth watching.`;
     }
     lines.push(line);
+
+    // Which of the three signals actually predicted those moves, in words.
+    const pv = h.predictive;
+    const pvParts = [];
+    for (const [pillar, label] of [
+      ["fundamental", "finances"],
+      ["technical", "trend"],
+      ["sentiment", "news"],
+    ]) {
+      const word = rhoWord(pv?.[pillar]?.rho);
+      if (word) pvParts.push(`${label} was ${word}`);
+    }
+    if (pvParts.length) {
+      const n = Math.max(
+        0,
+        ...["technical", "fundamental", "sentiment"].map((p) => pv[p]?.n || 0),
+      );
+      lines.push(
+        `Of the three signals, which actually predicted those moves: ${pvParts.join(", ")} (based on ${n} past calls).`,
+      );
+    }
   }
   return lines;
 }
@@ -441,7 +477,7 @@ export function renderReportEmail(unsorted, health, meta) {
       .join("");
     sections.push(
       `<h2 style="font-size:15px;margin:18px 0 6px;">Committee track record</h2>
-       <p style="font-size:12px;color:#57606a;margin:0 0 6px;">How past verdicts have done since they were made — the committee grading itself against each name's price move (not your actual entries). Small samples; read as a sanity check, not a scorecard.</p>
+       <p style="font-size:12px;color:#57606a;margin:0 0 6px;">A report card on the committee's own past calls — how the stocks it rated have actually moved since, so you can see if it's any good. (Based on each stock's price change, not your specific buys. Small samples, so treat it as a gut-check, not gospel.)</p>
        <ul style="margin:0 0 0 18px;padding:0;font-size:13px;color:#24292f;">${items}</ul>`,
     );
   }

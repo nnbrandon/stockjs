@@ -183,6 +183,16 @@ export async function runDailyReport() {
       resultBySymbol,
     );
 
+    // Calibration log (#3): per-pillar predictive value — the evidence for
+    // whether the 35/45/20 pillar weights still earn their keep.
+    for (const h of trackRecord?.horizons ?? []) {
+      const parts = ["fundamental", "technical", "sentiment"]
+        .filter((p) => Number.isFinite(h.predictive?.[p]?.rho))
+        .map((p) => `${p} ρ=${h.predictive[p].rho.toFixed(2)} (n=${h.predictive[p].n})`);
+      if (parts.length)
+        console.log(`predictive value [${userKey}] ~${h.horizon}d: ${parts.join(", ")}`);
+    }
+
     const warnFlags = (health?.flags ?? []).filter((f) => f.severity === "warn");
     const baseUserState = {
       lastSendDay: userState[userKey]?.lastSendDay ?? null,

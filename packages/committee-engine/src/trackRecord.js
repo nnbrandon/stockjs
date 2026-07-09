@@ -11,8 +11,52 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Don't report a horizon graded on fewer than this many verdicts — a personal
 // portfolio is a small sample and a handful of names would be pure noise.
 const MIN_GRADED = 3;
+// A correlation on fewer than this many verdicts is noise — hide ρ until
+// there's enough to be worth reading (still small statistically; n is shown).
+const MIN_PREDICTIVE = 8;
 
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+
+// Average-rank Spearman correlation: rank each series (ties share the mean
+// rank), then Pearson-correlate the ranks. Robust to outliers and monotonic
+// (not just linear) relationships — the right tool for "did higher scores go
+// with higher returns" on a small, noisy sample.
+function averageRanks(xs) {
+  const order = xs.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]);
+  const ranks = new Array(xs.length);
+  for (let i = 0; i < order.length; ) {
+    let j = i;
+    while (j + 1 < order.length && order[j + 1][0] === order[i][0]) j++;
+    const avg = (i + j) / 2 + 1; // mean of the 1-based ranks i+1..j+1
+    for (let k = i; k <= j; k++) ranks[order[k][1]] = avg;
+    i = j + 1;
+  }
+  return ranks;
+}
+
+function pearson(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return null;
+  const mx = mean(xs);
+  const my = mean(ys);
+  let num = 0;
+  let dx = 0;
+  let dy = 0;
+  for (let i = 0; i < n; i++) {
+    const a = xs[i] - mx;
+    const b = ys[i] - my;
+    num += a * b;
+    dx += a * a;
+    dy += b * b;
+  }
+  const den = Math.sqrt(dx * dy);
+  return den > 0 ? num / den : null;
+}
+
+function spearman(xs, ys) {
+  if (xs.length !== ys.length || xs.length < 2) return null;
+  return pearson(averageRanks(xs), averageRanks(ys));
+}
 
 /**
  * @param {Array} items  [{ symbol, currentPrice, history:[{day, price, action}] }]
@@ -31,6 +75,7 @@ export function computeTrackRecord(
     const lo = nowMs - horizon * 1.4 * DAY_MS;
     const hi = nowMs - horizon * 0.6 * DAY_MS;
 
+    const samples = []; // { technical, fundamental, sentiment, ret } per graded verdict
     for (const it of items) {
       const cur = it.currentPrice;
       if (!Number.isFinite(cur) || cur <= 0) continue;
@@ -49,7 +94,17 @@ export function computeTrackRecord(
           best = r;
         }
       }
-      if (best) byAction[best.action].push((cur / best.price - 1) * 100);
+      if (best) {
+        const ret = (cur / best.price - 1) * 100;
+        byAction[best.action].push(ret);
+        // Keep the pillar scores alongside the return for predictive value.
+        samples.push({
+          technical: best.technical,
+          fundamental: best.fundamental,
+          sentiment: best.sentiment,
+          ret,
+        });
+      }
     }
 
     const per = {};
@@ -67,7 +122,28 @@ export function computeTrackRecord(
       per.BUY.meanReturn != null && per.SELL.meanReturn != null
         ? per.BUY.meanReturn - per.SELL.meanReturn
         : null;
-    return { horizon, per, spread, graded, enough: graded >= MIN_GRADED };
+
+    // Per-pillar predictive value: did each pillar's score rank-track the
+    // realized return? ρ ∈ [-1, +1]; null until there's enough to be worth it.
+    // This is the honest evidence for whether the 35/45/20 weights are right.
+    const predictive = {};
+    for (const pillar of ["technical", "fundamental", "sentiment"]) {
+      const pairs = samples.filter(
+        (s) => Number.isFinite(s[pillar]) && Number.isFinite(s.ret),
+      );
+      predictive[pillar] = {
+        n: pairs.length,
+        rho:
+          pairs.length >= MIN_PREDICTIVE
+            ? spearman(
+                pairs.map((s) => s[pillar]),
+                pairs.map((s) => s.ret),
+              )
+            : null,
+      };
+    }
+
+    return { horizon, per, spread, graded, enough: graded >= MIN_GRADED, predictive };
   });
 
   return { horizons: out, gradedTotal: out.reduce((s, h) => s + h.graded, 0) };

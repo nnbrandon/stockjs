@@ -18,6 +18,7 @@ import {
 } from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import { mergeEarningsIntoQuarterly } from "@stockjs/committee-engine/mergeEarningsIntoQuarterly.js";
 import { analyzePortfolioHealth } from "@stockjs/committee-engine/portfolioHealth.js";
+import { computeTrackRecord } from "@stockjs/committee-engine/trackRecord.js";
 import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
 import {
   hasFinbertScore,
@@ -276,6 +277,9 @@ export async function analyzeSymbols(uniqueHoldings, state) {
       day,
       engineVersion: COMMITTEE_ENGINE_VERSION,
       composite: report.verdict.composite,
+      // Price at verdict time — the anchor for outcome tracking (#2): a later
+      // run compares this against the then-current price to grade the call.
+      price: report.metrics?.price ?? null,
       tier: report.verdict.tier,
       action: report.verdict.action,
       conviction: report.verdict.conviction,
@@ -311,7 +315,33 @@ export async function analyzeSymbols(uniqueHoldings, state) {
     };
   });
 
+  logScoreDistribution(symbolResults);
   return { symbolResults, articlesScored, sentimentPartial, day, generatedAt };
+}
+
+// Calibration observability (#3): dump the run's score distributions to the
+// logs (CloudWatch) so the tier thresholds, pillar weights, and sentiment
+// band can be tuned against the real spread instead of priors.
+function logScoreDistribution(symbolResults) {
+  const rated = symbolResults.filter((r) => r.report?.verdict);
+  if (!rated.length) return;
+  const stat = (vals) => {
+    const s = vals.filter(Number.isFinite).sort((a, b) => a - b);
+    if (!s.length) return "n/a";
+    const med = s[Math.floor(s.length / 2)];
+    const mean = s.reduce((a, b) => a + b, 0) / s.length;
+    return `min ${s[0].toFixed(0)} · med ${med.toFixed(0)} · mean ${mean.toFixed(0)} · max ${s.at(-1).toFixed(0)} (n=${s.length})`;
+  };
+  const col = (f) => rated.map(f);
+  console.log(
+    [
+      `committee score distribution (${rated.length} rated):`,
+      `  composite:   ${stat(col((r) => r.report.verdict.composite))}`,
+      `  technical:   ${stat(col((r) => r.report.pillars?.technical))}`,
+      `  fundamental: ${stat(col((r) => r.report.pillars?.fundamental))}`,
+      `  sentiment:   ${stat(col((r) => r.report.pillars?.sentiment))}`,
+    ].join("\n"),
+  );
 }
 
 /**
@@ -387,5 +417,17 @@ export function computeUserView(holdings, resultBySymbol) {
       }),
   );
 
-  return { results, health };
+  // Outcome tracking (#2): grade past verdicts (price-stamped in history) by
+  // their return to the current price. Empty until history ages ~30+ days.
+  const trackRecord = computeTrackRecord(
+    results
+      .filter((r) => !r.error)
+      .map((r) => ({
+        symbol: r.symbol,
+        currentPrice: Number(r.candles?.at(-1)?.close),
+        history: r.history ?? [],
+      })),
+  );
+
+  return { results, health, trackRecord };
 }

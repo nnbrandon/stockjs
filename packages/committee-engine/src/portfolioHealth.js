@@ -126,3 +126,50 @@ export function analyzePortfolioHealth(items = []) {
     flags,
   };
 }
+
+// A portfolio-level "chair's read": the health facts synthesized into a short
+// paragraph — overall lean, then the single biggest risk, then a close. It
+// *references* the flags (which render in full below it) rather than repeating
+// their text, the same prose-lead / structured-detail split the per-stock
+// narrative uses. Returns null when there's nothing to say.
+export function describePortfolioHealth(health) {
+  if (!health) return null;
+  const parts = [];
+
+  const ws = health.weightedScore;
+  if (Number.isFinite(ws)) {
+    const lean =
+      ws >= 62
+        ? "leans constructive"
+        : ws >= 48
+          ? "sits balanced"
+          : "leans defensive";
+    parts.push(
+      `Weighted by position size, the committee scores your portfolio ${ws.toFixed(0)}/100 — it ${lean}.`,
+    );
+  }
+
+  // Biggest risk: prefer a hard (warn) flag; else a heavy tilt into sell-rated
+  // names. Named, not quoted, so the detail bullets don't read as an echo.
+  const warn = (health.flags || []).find((f) => f.severity === "warn");
+  if (warn) {
+    const who = warn.symbols?.join(" and ") || "one position";
+    const risk =
+      warn.kind === "concentration"
+        ? `${who} is an outsized share of the account`
+        : warn.kind === "weakLarge"
+          ? `${who} is a large position the committee would sell`
+          : `${who} needs a closer look`;
+    parts.push(`The main thing to watch: ${risk} (detail below).`);
+  } else if (health.pctInSellRated > 15) {
+    parts.push(
+      `About ${health.pctInSellRated.toFixed(0)}% of your value sits in names the committee would sell.`,
+    );
+  } else {
+    parts.push(
+      "No single position or weak-thesis holding stands out as an outsized risk right now.",
+    );
+  }
+
+  return parts.join(" ");
+}

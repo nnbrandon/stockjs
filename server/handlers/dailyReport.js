@@ -178,7 +178,10 @@ export async function runDailyReport() {
 
   for (const user of users) {
     const userKey = user.email || "default";
-    const { results, health } = computeUserView(user.holdings, resultBySymbol);
+    const { results, health, trackRecord } = computeUserView(
+      user.holdings,
+      resultBySymbol,
+    );
 
     const warnFlags = (health?.flags ?? []).filter((f) => f.severity === "warn");
     const baseUserState = {
@@ -204,6 +207,8 @@ export async function runDailyReport() {
       articlesScored,
       sentimentPartial,
       archiveSpanDays: Number.isFinite(spanDays) ? spanDays : null,
+      // Committee track record (#2) — grades of past verdicts vs current price.
+      trackRecord,
       // Base URL for the email's deep links (defaults to the GH Pages site in
       // reportEmail.js if unset). Override with APP_URL for a custom domain.
       appUrl: process.env.APP_URL || undefined,

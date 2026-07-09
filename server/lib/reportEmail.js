@@ -4,6 +4,7 @@
 // alternative is built alongside.
 
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
+import { describePortfolioHealth } from "@stockjs/committee-engine/portfolioHealth.js";
 
 const TIER_COLORS = {
   "Strong Buy": "#1a7f37",
@@ -363,6 +364,36 @@ function sortForListing(results) {
  * @param {object} meta {day, engineVersion, articlesScored, sentimentPartial,
  *                       archiveSpanDays, failures}
  */
+// Committee track record (#2): plain lines from computeTrackRecord output.
+// Empty until at least one horizon has enough graded verdicts.
+function trackRecordLines(tr) {
+  if (!tr) return [];
+  const fmtPct = (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+  const lines = [];
+  for (const h of tr.horizons) {
+    if (!h.enough) continue;
+    const bits = [];
+    for (const [action, label] of [
+      ["BUY", "Buy"],
+      ["HOLD", "Hold"],
+      ["SELL", "Sell"],
+    ]) {
+      const p = h.per[action];
+      if (p.n) bits.push(`${label} ${fmtPct(p.meanReturn)} (${p.n})`);
+    }
+    if (!bits.length) continue;
+    let line = `Over ~${h.horizon} days: ${bits.join(" · ")}.`;
+    if (Number.isFinite(h.spread)) {
+      line +=
+        h.spread >= 0
+          ? ` Buy-rated beat Sell-rated by ${h.spread.toFixed(1)} pts.`
+          : ` Sell-rated beat Buy-rated by ${Math.abs(h.spread).toFixed(1)} pts — worth a look.`;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
 export function renderReportEmail(unsorted, health, meta) {
   const results = sortForListing(unsorted);
   const appUrl = meta.appUrl || DEFAULT_APP_URL;
@@ -387,12 +418,31 @@ export function renderReportEmail(unsorted, health, meta) {
     );
   }
 
-  if (hLines.length) {
+  const healthNarrative = describePortfolioHealth(health);
+  if (hLines.length || healthNarrative) {
+    const lead = healthNarrative
+      ? `<p style="font-size:13px;color:#24292f;margin:0 0 8px;">${escapeHtml(healthNarrative)}</p>`
+      : "";
     const items = hLines
       .map((l) => `<li style="margin-bottom:4px;">${escapeHtml(l)}</li>`)
       .join("");
+    const list = items
+      ? `<ul style="margin:0 0 0 18px;padding:0;font-size:13px;color:#24292f;">${items}</ul>`
+      : "";
     sections.push(
-      `<h2 style="font-size:15px;margin:18px 0 6px;">Portfolio health</h2><ul style="margin:0 0 0 18px;padding:0;font-size:13px;color:#24292f;">${items}</ul>`,
+      `<h2 style="font-size:15px;margin:18px 0 6px;">Portfolio health</h2>${lead}${list}`,
+    );
+  }
+
+  const trLines = trackRecordLines(meta.trackRecord);
+  if (trLines.length) {
+    const items = trLines
+      .map((l) => `<li style="margin-bottom:4px;">${escapeHtml(l)}</li>`)
+      .join("");
+    sections.push(
+      `<h2 style="font-size:15px;margin:18px 0 6px;">Committee track record</h2>
+       <p style="font-size:12px;color:#57606a;margin:0 0 6px;">How past verdicts have done since they were made — the committee grading itself against each name's price move (not your actual entries). Small samples; read as a sanity check, not a scorecard.</p>
+       <ul style="margin:0 0 0 18px;padding:0;font-size:13px;color:#24292f;">${items}</ul>`,
     );
   }
 
@@ -447,8 +497,9 @@ export function renderReportEmail(unsorted, health, meta) {
     for (const r of changes) textLines.push(`  ${describeTierChange(r)}`);
     textLines.push("");
   }
-  if (hLines.length) {
+  if (hLines.length || healthNarrative) {
     textLines.push("PORTFOLIO HEALTH");
+    if (healthNarrative) textLines.push(`  ${healthNarrative}`);
     for (const l of hLines) textLines.push(`  ${l}`);
     textLines.push("");
   }
@@ -457,6 +508,11 @@ export function renderReportEmail(unsorted, health, meta) {
       `${failures.length} symbol(s) failed to fetch today: ${failures.map((r) => r.symbol).join(", ")}`,
       "",
     );
+  }
+  if (trLines.length) {
+    textLines.push("COMMITTEE TRACK RECORD");
+    for (const l of trLines) textLines.push(`  ${l}`);
+    textLines.push("");
   }
   textLines.push("YOUR HOLDINGS");
   for (const r of results) {

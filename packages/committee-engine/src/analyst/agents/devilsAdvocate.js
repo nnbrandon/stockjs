@@ -36,8 +36,12 @@ export function runDevilsAdvocate({
 
   let contradictionPenalty = 0;
   let dataQualityPenalty = 0;
+  // Genuine "the signals disagree" points, kept separate from data-quality
+  // caveats so the narrative can surface the sharpest one as its concession.
+  const contradictionList = [];
   const contradiction = (text, p) => {
     caveats.push(text);
+    contradictionList.push({ text, weight: p });
     contradictionPenalty += p;
   };
   const dataGap = (text, p) => {
@@ -134,6 +138,11 @@ export function runDevilsAdvocate({
     confidencePenalty,
     contradictionPenalty,
     dataQualityPenalty,
+    // Strongest-first, for the narrative's concession slot.
+    contradictions: contradictionList
+      .slice()
+      .sort((a, b) => b.weight - a.weight)
+      .map((c) => c.text),
     stance:
       caveats.length >= 3
         ? "Many concerns"

@@ -724,6 +724,7 @@ const PILLAR_LABELS = {
 };
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const lowerFirst = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 // Deterministic index into a phrase bank, seeded by the numeric inputs so the
 // same verdict always reads the same while different stocks vary. Not for
@@ -801,6 +802,7 @@ export function buildNarrative({
   discount,
   fireSale,
   plan,
+  devil,
 }) {
   const scored = Object.entries(pillars)
     .filter(([, v]) => Number.isFinite(v))
@@ -830,16 +832,28 @@ export function buildNarrative({
 
   const sentences = [];
   const off = fireSale?.offHighPct ?? discount?.offHighPct;
+  // The devil's sharpest contradiction is a better concession than a pillar
+  // score — it names the actual tension ("healthy business, falling price")
+  // rather than just noting a weak number.
+  const contradiction = devil?.contradictions?.[0] ?? null;
 
   if (Number.isFinite(off) && (discount || fireSale)) {
     // Distinctive "quality on sale" framing when the setup is present.
     sentences.push(
       `The finances here are strong while the stock trades ${off.toFixed(0)}% below its 52-week high — priced low on a healthy business, not a broken one.`,
     );
-    if (opposing)
+    if (contradiction) {
+      sentences.push(`The catch: ${lowerFirst(contradiction)}`);
+    } else if (opposing) {
       sentences.push(
         `The catch is ${opposing.text}: ${pick(["the market hasn't turned yet", "that's what's kept the score in check", "the discount can still deepen before it recovers"], seed)}.`,
       );
+    }
+  } else if (contradiction) {
+    // Open with the tension the devil's advocate flagged — it's a self-contained
+    // "X but Y" statement, so it leads on its own without a pillar-score
+    // preamble that would only restate half of it.
+    sentences.push(contradiction);
   } else if (Math.abs(lead.val - 50) < 5) {
     // Everything hugs neutral — say so plainly instead of forcing a contrast.
     sentences.push(
@@ -1024,6 +1038,7 @@ export function runPortfolioManager({
       discount,
       fireSale,
       plan,
+      devil,
     }),
     findings: [
       ...(momentum ? [momentumFinding(momentum, composite)] : []),

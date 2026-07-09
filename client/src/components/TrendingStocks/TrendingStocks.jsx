@@ -1,11 +1,48 @@
 import { useRef } from "react";
 import Button from "@mui/material/Button";
+import CardActionArea from "@mui/material/CardActionArea";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import useTrendingStocks from "../../hooks/useTrendingStocks";
 import { formatDollars } from "../../utils/computePositionMetrics";
 import styles from "./TrendingStocks.module.css";
+
+// Trending strip cell — clickable, divider on the right edge.
+const tileSx = {
+  position: "relative",
+  flexShrink: 0,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "stretch",
+  gap: "2px",
+  minWidth: 128,
+  maxWidth: 160,
+  padding: "10px 14px",
+  borderRight: "1px solid var(--palette-divider)",
+  textAlign: "left",
+  "&:hover": { backgroundColor: "var(--palette-bg-hover)" },
+};
+
+// Trending grid card — bordered, elevated paper.
+const cardSx = {
+  position: "relative",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "stretch",
+  gap: "2px",
+  padding: "14px 14px 12px",
+  borderRadius: "var(--shape-radius)",
+  border: "1px solid var(--palette-divider)",
+  backgroundColor: "var(--palette-bg-paper)",
+  textAlign: "left",
+  transition:
+    "background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    borderColor: "var(--palette-divider-strong)",
+  },
+};
 
 const retryBtnSx = {
   mt: "10px",
@@ -31,9 +68,8 @@ function TickerTile({ stock, onSelect }) {
   const sign = isUp ? "+" : "−";
 
   return (
-    <button
-      type="button"
-      className={styles.tile}
+    <CardActionArea
+      sx={tileSx}
       onClick={() => onSelect(stock.symbol)}
       aria-label={`View ${stock.symbol}${stock.name ? `, ${stock.name}` : ""}`}
     >
@@ -47,7 +83,7 @@ function TickerTile({ stock, onSelect }) {
           {Math.abs(stock.changePercent).toFixed(2)}%
         </div>
       )}
-    </button>
+    </CardActionArea>
   );
 }
 
@@ -95,9 +131,8 @@ function TrendingCard({ stock, onSelect }) {
   const hasChange = Number.isFinite(stock.changePercent);
 
   return (
-    <button
-      type="button"
-      className={styles.card}
+    <CardActionArea
+      sx={cardSx}
       onClick={() => onSelect(stock.symbol)}
       aria-label={`View ${stock.symbol}`}
     >
@@ -118,7 +153,7 @@ function TrendingCard({ stock, onSelect }) {
           <span />
         )}
       </div>
-    </button>
+    </CardActionArea>
   );
 }
 

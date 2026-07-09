@@ -1,9 +1,38 @@
 import { useMemo } from "react";
+import CardActionArea from "@mui/material/CardActionArea";
 import styles from "./NavItem.module.css";
 import useSymbolChartData from "../../hooks/useSymbolChartData";
 import TickerSparkline from "../SparklineChart/SparklineChart";
 import calculateRange from "../../utils/calculateRange";
 import prepareSparklineData from "../../utils/prepareSparklineData";
+
+// Watchlist ticker card — selected state adds an elevated bg + left accent bar.
+const tickerCardSx = (selected) => ({
+  position: "relative",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "stretch",
+  gap: "2px",
+  padding: "12px 10px",
+  borderRadius: "var(--shape-radius)",
+  textAlign: "left",
+  color: "inherit",
+  "&:hover": { backgroundColor: "var(--palette-hover-overlay)" },
+  ...(selected && {
+    backgroundColor: "var(--palette-bg-elevated)",
+    "&:hover": { backgroundColor: "var(--palette-bg-elevated)" },
+    "&::before": {
+      content: '""',
+      position: "absolute",
+      left: 0,
+      top: 14,
+      bottom: 14,
+      width: 2,
+      backgroundColor: "var(--palette-text-primary)",
+      borderRadius: "0 2px 2px 0",
+    },
+  }),
+});
 
 export default function NavItem({
   symbol,
@@ -23,9 +52,8 @@ export default function NavItem({
   const sign = isUp ? "+" : "−";
 
   return (
-    <button
-      type="button"
-      className={`${styles.tickerCard} ${isSelected ? styles.selected : ""}`}
+    <CardActionArea
+      sx={tickerCardSx(isSelected)}
       onClick={() => onClickSymbol(symbol)}
       aria-pressed={isSelected}
     >
@@ -51,6 +79,6 @@ export default function NavItem({
         isUp={isUp}
         isLoading={showSparklineLoading}
       />
-    </button>
+    </CardActionArea>
   );
 }

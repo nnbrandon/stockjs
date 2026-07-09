@@ -8,8 +8,68 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import Tooltip from "@mui/material/Tooltip";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 
 import styles from "./Navbar.module.css";
+
+// Circular ghost header icon buttons (theme toggle, close).
+const iconBtnSx = {
+  width: 32,
+  height: 32,
+  color: "var(--palette-text-secondary)",
+  "&:hover": {
+    backgroundColor: "var(--palette-hover-overlay)",
+    color: "var(--palette-text-primary)",
+  },
+};
+
+// "Home" nav item — active state adds elevated bg + left accent bar.
+const homeBtnSx = (active) => ({
+  width: "100%",
+  justifyContent: "flex-start",
+  gap: "10px",
+  padding: "10px 12px",
+  borderRadius: "var(--shape-radius)",
+  fontSize: 13,
+  fontWeight: 500,
+  position: "relative",
+  color: "var(--palette-text-secondary)",
+  "&:hover": {
+    backgroundColor: "var(--palette-hover-overlay)",
+    color: "var(--palette-text-primary)",
+  },
+  ...(active && {
+    backgroundColor: "var(--palette-bg-elevated)",
+    color: "var(--palette-text-primary)",
+    "&:hover": { backgroundColor: "var(--palette-bg-elevated)" },
+    "&::before": {
+      content: '""',
+      position: "absolute",
+      left: 0,
+      top: 10,
+      bottom: 10,
+      width: 2,
+      backgroundColor: "var(--palette-text-primary)",
+      borderRadius: "0 2px 2px 0",
+    },
+  }),
+});
+
+// Full-width elevated outlined footer action buttons.
+const btnOutlinedSx = {
+  width: "100%",
+  padding: "8px 16px",
+  fontSize: 13,
+  backgroundColor: "var(--palette-bg-elevated)",
+  border: "1px solid var(--palette-divider)",
+  color: "var(--palette-text-primary)",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    borderColor: "var(--palette-divider-strong)",
+  },
+  "&.Mui-disabled": { opacity: 0.5 },
+};
 import getMarketSession, {
   marketSessionLabel,
 } from "../../utils/marketSession";
@@ -67,11 +127,13 @@ function Navbar({
           stockjs
         </button>
         <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.iconBtn}
+          <IconButton
+            sx={iconBtnSx}
             onClick={toggleTheme}
             title={
+              mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+            aria-label={
               mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
             }
           >
@@ -80,28 +142,23 @@ function Navbar({
             ) : (
               <DarkModeIcon fontSize="small" />
             )}
-          </button>
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={onCloseNav}
-            title="Close sidebar"
-          >
+          </IconButton>
+          <IconButton sx={iconBtnSx} onClick={onCloseNav} title="Close sidebar" aria-label="Close sidebar">
             <CloseIcon fontSize="small" />
-          </button>
+          </IconButton>
         </div>
       </div>
 
       <div className={styles.homeNav}>
-        <button
-          type="button"
-          className={`${styles.homeBtn} ${!selectedSymbol ? styles.homeBtnActive : ""}`}
+        <Button
+          variant="text"
+          sx={homeBtnSx(!selectedSymbol)}
           onClick={onClickHome}
           aria-current={!selectedSymbol ? "page" : undefined}
+          startIcon={<HomeIcon fontSize="small" />}
         >
-          <HomeIcon fontSize="small" />
           Home
-        </button>
+        </Button>
       </div>
 
       <div className={styles.searchWrap}>
@@ -137,38 +194,38 @@ function Navbar({
       <div className={styles.footer}>
         <Tooltip title={refreshTooltip} disableHoverListener={!refreshTooltip}>
           <span>
-            <button
-              type="button"
-              className={styles.btnOutlined}
+            <Button
+              variant="outlined"
+              sx={btnOutlinedSx}
               onClick={onRefreshAllTickers}
               disabled={refreshDisabled}
+              startIcon={<RefreshIcon fontSize="small" />}
             >
-              <RefreshIcon fontSize="small" />
               {isRefreshingAll ? "Refreshing…" : "Refresh all"}
-            </button>
+            </Button>
           </span>
         </Tooltip>
 
         <Tooltip title={FIDELITY_IMPORT_TOOLTIP}>
-          <button
-            type="button"
-            className={styles.btnOutlined}
+          <Button
+            variant="outlined"
+            sx={btnOutlinedSx}
             onClick={onClickImportPortfolioModal}
+            startIcon={<UploadFileIcon fontSize="small" />}
           >
-            <UploadFileIcon fontSize="small" />
             Import Fidelity portfolio
-          </button>
+          </Button>
         </Tooltip>
 
         <Tooltip title="Push your imported holdings to the daily email report">
-          <button
-            type="button"
-            className={styles.btnOutlined}
+          <Button
+            variant="outlined"
+            sx={btnOutlinedSx}
             onClick={onClickReportSyncModal}
+            startIcon={<EmailOutlinedIcon fontSize="small" />}
           >
-            <EmailOutlinedIcon fontSize="small" />
             Sync email report
-          </button>
+          </Button>
         </Tooltip>
 
         <div className={styles.footerMeta}>

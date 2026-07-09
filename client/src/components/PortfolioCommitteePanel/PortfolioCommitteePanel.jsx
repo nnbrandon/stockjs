@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -65,6 +67,57 @@ const secondaryBtnSx = {
     color: "var(--palette-text-primary)",
   },
 };
+
+// Filter chips (ToggleButtonGroup) — standalone mono chips, not a connected bar.
+const chipGroupSx = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "8px",
+  mb: "14px",
+  "& .MuiToggleButtonGroup-grouped": {
+    margin: 0,
+    border: "1px solid var(--palette-divider)",
+    borderRadius: "var(--shape-radius-sm)",
+  },
+};
+
+const CHIP_TONES = {
+  buy: {
+    color: "var(--palette-success)",
+    borderColor:
+      "color-mix(in srgb, var(--palette-success) 35%, var(--palette-divider))",
+  },
+  sell: {
+    color: "var(--palette-error)",
+    borderColor:
+      "color-mix(in srgb, var(--palette-error) 35%, var(--palette-divider))",
+  },
+};
+
+function chipSx(tone) {
+  const toneStyle = tone ? CHIP_TONES[tone] : {};
+  return {
+    fontFamily: "var(--font-mono)",
+    fontSize: 11,
+    lineHeight: 1.2,
+    padding: "4px 8px",
+    textTransform: "none",
+    color: "var(--palette-text-secondary)",
+    backgroundColor: "var(--palette-bg-elevated)",
+    ...toneStyle,
+    "&:hover": {
+      backgroundColor: "var(--palette-bg-hover)",
+      color: toneStyle.color || "var(--palette-text-primary)",
+    },
+    "&.Mui-selected": {
+      backgroundColor: "var(--palette-bg-hover)",
+      color: toneStyle.color || "var(--palette-text-primary)",
+      borderColor: "var(--palette-divider-strong)",
+      boxShadow: "inset 0 0 0 1px var(--palette-divider-strong)",
+      "&:hover": { backgroundColor: "var(--palette-bg-hover)" },
+    },
+  };
+}
 
 // Full-width muted button ("Clear results").
 const clearBtnSx = {
@@ -371,14 +424,6 @@ export default function PortfolioCommitteePanel({
     reset();
   };
 
-  const filterChipClass = (filter, tone) => {
-    const classes = [styles.summaryChip];
-    if (tone === "buy") classes.push(styles.summaryChipBuy);
-    if (tone === "sell") classes.push(styles.summaryChipSell);
-    if (actionFilter === filter) classes.push(styles.summaryChipActive);
-    return classes.join(" ");
-  };
-
   return (
     <ResizableSidebar
       width={panelWidth}
@@ -474,76 +519,36 @@ export default function PortfolioCommitteePanel({
 
             <PortfolioHealthCard health={health} />
 
-            <div className={styles.summary}>
-              <button
-                type="button"
-                className={filterChipClass(FILTERS.ALL)}
-                onClick={() => setActionFilter(FILTERS.ALL)}
-                aria-pressed={actionFilter === FILTERS.ALL}
-              >
-                All {results.length}
-              </button>
-              {summary.BUY > 0 && (
-                <button
-                  type="button"
-                  className={filterChipClass(FILTERS.BUY, "buy")}
-                  onClick={() => setActionFilter(FILTERS.BUY)}
-                  aria-pressed={actionFilter === FILTERS.BUY}
-                >
-                  {summary.BUY} Buy
-                </button>
-              )}
-              {summary.HOLD > 0 && (
-                <button
-                  type="button"
-                  className={filterChipClass(FILTERS.HOLD)}
-                  onClick={() => setActionFilter(FILTERS.HOLD)}
-                  aria-pressed={actionFilter === FILTERS.HOLD}
-                >
-                  {summary.HOLD} Hold
-                </button>
-              )}
-              {summary.SELL > 0 && (
-                <button
-                  type="button"
-                  className={filterChipClass(FILTERS.SELL, "sell")}
-                  onClick={() => setActionFilter(FILTERS.SELL)}
-                  aria-pressed={actionFilter === FILTERS.SELL}
-                >
-                  {summary.SELL} Sell
-                </button>
-              )}
-              {summary.CHANGED > 0 && (
-                <button
-                  type="button"
-                  className={filterChipClass(FILTERS.CHANGED)}
-                  onClick={() => setActionFilter(FILTERS.CHANGED)}
-                  aria-pressed={actionFilter === FILTERS.CHANGED}
-                >
-                  {summary.CHANGED} Changed
-                </button>
-              )}
-              {summary.FUND > 0 && (
-                <button
-                  type="button"
-                  className={filterChipClass(FILTERS.FUND)}
-                  onClick={() => setActionFilter(FILTERS.FUND)}
-                  aria-pressed={actionFilter === FILTERS.FUND}
-                >
-                  {summary.FUND} Fund{summary.FUND === 1 ? "" : "s"}
-                </button>
-              )}
-              {summary.NA > 0 && (
-                <button
-                  type="button"
-                  className={filterChipClass(FILTERS.NA)}
-                  onClick={() => setActionFilter(FILTERS.NA)}
-                  aria-pressed={actionFilter === FILTERS.NA}
-                >
-                  {summary.NA} No data
-                </button>
-              )}
-            </div>
+            <ToggleButtonGroup
+              exclusive
+              value={actionFilter}
+              onChange={(_, next) => {
+                if (next !== null) setActionFilter(next);
+              }}
+              sx={chipGroupSx}
+              aria-label="Filter holdings by verdict"
+            >
+              {[
+                { key: FILTERS.ALL, label: `All ${results.length}`, tone: null },
+                { key: FILTERS.BUY, label: `${summary.BUY} Buy`, tone: "buy", show: summary.BUY > 0 },
+                { key: FILTERS.HOLD, label: `${summary.HOLD} Hold`, show: summary.HOLD > 0 },
+                { key: FILTERS.SELL, label: `${summary.SELL} Sell`, tone: "sell", show: summary.SELL > 0 },
+                { key: FILTERS.CHANGED, label: `${summary.CHANGED} Changed`, show: summary.CHANGED > 0 },
+                { key: FILTERS.FUND, label: `${summary.FUND} Fund${summary.FUND === 1 ? "" : "s"}`, show: summary.FUND > 0 },
+                { key: FILTERS.NA, label: `${summary.NA} No data`, show: summary.NA > 0 },
+              ]
+                .filter((chip) => chip.key === FILTERS.ALL || chip.show)
+                .map((chip) => (
+                  <ToggleButton
+                    key={chip.key}
+                    value={chip.key}
+                    disableRipple
+                    sx={chipSx(chip.tone)}
+                  >
+                    {chip.label}
+                  </ToggleButton>
+                ))}
+            </ToggleButtonGroup>
 
             <div className={styles.actions}>
               <Button

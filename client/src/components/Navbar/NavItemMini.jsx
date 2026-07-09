@@ -1,9 +1,38 @@
 import { useMemo } from "react";
 import Tooltip from "@mui/material/Tooltip";
+import CardActionArea from "@mui/material/CardActionArea";
 import styles from "./NavItemMini.module.css";
 import useSymbolChartData from "../../hooks/useSymbolChartData";
 import calculateRange from "../../utils/calculateRange";
 import prepareSparklineData from "../../utils/prepareSparklineData";
+
+// Collapsed watchlist ticker card — selected adds elevated bg + left accent bar.
+const tickerCardSx = (selected) => ({
+  position: "relative",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "stretch",
+  gap: "1px",
+  padding: "7px",
+  borderRadius: "var(--shape-radius)",
+  textAlign: "left",
+  color: "inherit",
+  "&:hover": { backgroundColor: "var(--palette-hover-overlay)" },
+  ...(selected && {
+    backgroundColor: "var(--palette-bg-elevated)",
+    "&:hover": { backgroundColor: "var(--palette-bg-elevated)" },
+    "&::before": {
+      content: '""',
+      position: "absolute",
+      left: 0,
+      top: 8,
+      bottom: 8,
+      width: 2,
+      backgroundColor: "var(--palette-text-primary)",
+      borderRadius: "0 2px 2px 0",
+    },
+  }),
+});
 
 export default function NavItemMini({
   symbol,
@@ -27,9 +56,8 @@ export default function NavItemMini({
       enterDelay={300}
       disableHoverListener={!name}
     >
-      <button
-        type="button"
-        className={`${styles.tickerCard} ${isSelected ? styles.selected : ""}`}
+      <CardActionArea
+        sx={tickerCardSx(isSelected)}
         onClick={() => onClickSymbol(symbol)}
         aria-pressed={isSelected}
         aria-label={name ? `${symbol} — ${name}` : symbol}
@@ -48,7 +76,7 @@ export default function NavItemMini({
             </div>
           </div>
         )}
-      </button>
+      </CardActionArea>
     </Tooltip>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import useResizeObserver from "../../hooks/useResizeObserver";
 import Tooltip from "@mui/material/Tooltip";
+import ToggleButton from "@mui/material/ToggleButton";
 import { createChart, CHART_MARGIN } from "./d3/Chart";
 import { useMode } from "../ModeProvider";
 import EarningsChartPopover from "./EarningsChartPopover";
@@ -9,6 +10,31 @@ import {
   BEARISH_ENGULFING_DESCRIPTION,
 } from "../../utils/patternRecognizer";
 import styles from "./CandlestickChart.module.css";
+
+// Pill-shaped marker toggles in the chart legend (multi-select).
+const legendItemSx = {
+  gap: "7px",
+  padding: "5px 10px 5px 7px",
+  borderRadius: "999px",
+  border: "1px solid var(--palette-divider)",
+  color: "var(--palette-text-secondary)",
+  fontFamily: "inherit",
+  fontSize: 12,
+  textTransform: "none",
+  lineHeight: 1,
+  opacity: 0.55,
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    color: "var(--palette-text-primary)",
+  },
+  "&.Mui-selected": {
+    opacity: 1,
+    backgroundColor: "var(--palette-bg-elevated)",
+    borderColor: "var(--palette-divider-strong)",
+    color: "var(--palette-text-primary)",
+    "&:hover": { backgroundColor: "var(--palette-bg-elevated)" },
+  },
+};
 
 const DEFAULT_MARKER_VISIBILITY = {
   earnings: true,
@@ -178,15 +204,16 @@ export default function CandlestickChart({ chartData, earnings = [] }) {
           const { key, label, tooltip, ...badgeProps } = item;
           const active = markerVisibility[key];
           const button = (
-            <button
-              type="button"
-              className={`${styles.legendItem} ${active ? styles.legendItemActive : ""}`}
-              onClick={() => toggleMarker(key)}
-              aria-pressed={active}
+            <ToggleButton
+              value={key}
+              selected={active}
+              onChange={() => toggleMarker(key)}
+              disableRipple
+              sx={legendItemSx}
             >
               <LegendBadge {...badgeProps} />
               <span className={styles.legendLabel}>{label}</span>
-            </button>
+            </ToggleButton>
           );
 
           if (!tooltip) return <span key={key}>{button}</span>;

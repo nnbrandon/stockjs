@@ -28,6 +28,11 @@ export function runAnalystCommittee(input = {}) {
   const earnings = Array.isArray(input.earnings) ? input.earnings : [];
   const news = Array.isArray(input.news) ? input.news : [];
   const history = Array.isArray(input.history) ? input.history : [];
+  // Optional benchmark (e.g. SPY) candles, used to tell a company-specific
+  // discount from a market-wide drawdown when grading a fire sale (#5).
+  const benchmarkCandles = Array.isArray(input.benchmarkCandles)
+    ? input.benchmarkCandles
+    : [];
   const analysis =
     input.analysis && typeof input.analysis === "object"
       ? input.analysis
@@ -68,7 +73,9 @@ export function runAnalystCommittee(input = {}) {
     devil,
     bear,
     candles: chartData,
+    quarterly,
     history,
+    benchmarkCandles,
   });
 
   const verdict = {

@@ -1,6 +1,8 @@
 import { atr, clamp } from "../indicators";
 import { COMMITTEE_ENGINE_VERSION } from "../version";
-import { bear, bull, neutral } from "./helpers";
+import { bear, bull, neutral, sortByDateDesc } from "./helpers";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const MOMENTUM_LOOKBACK_DAYS = 21;
 const MOMENTUM_THRESHOLD = 12; // score points
@@ -16,6 +18,219 @@ const DISCOUNT_MIN_SENTIMENT = 40; // news can be mixed, not catastrophic
 const DISCOUNT_MAX_TECHNICAL = 55; // only when the trend is what's dragging
 const DISCOUNT_NUDGE = 5;
 
+// Fire-sale confidence tuning.
+const FIRESALE_STALE_WEEKS = 13; // a full quarter still flagged, no recovery…
+const FIRESALE_STALE_MIN_DAYS = FIRESALE_STALE_WEEKS * 7;
+const BENCH_MARKET_WIDE_OFF_HIGH = 15; // benchmark itself this far down = market-wide
+const BENCH_NEAR_HIGH_OFF = 8; // benchmark within this of its high = idiosyncratic drop
+
+const median = (xs) => {
+  const s = xs.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!s.length) return null;
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+};
+
+// Distance below the trailing 52-week high, as a positive percent. Shared by
+// the stock's discount check and the benchmark's own drawdown (#5). Thin
+// history can't establish a "high" to be discounted from.
+function offHighPct(candles = []) {
+  const slice = candles.slice(-252);
+  if (slice.length < 120) return null;
+  const highs = slice.map((c) => Number(c.high)).filter(Number.isFinite);
+  const price = Number(slice.at(-1)?.close);
+  if (!highs.length || !Number.isFinite(price)) return null;
+  const high = Math.max(...highs);
+  if (!(high > 0)) return null;
+  return ((high - price) / high) * 100;
+}
+
+// (#1) The stock's trailing P/E at each past quarter, using the TTM EPS known
+// as of that quarter and the closing price nearest that date. Lets us ask
+// "cheap versus its OWN history", not only "down from its high" — a stock can
+// fall 30% and still be dear if it was wildly overvalued at the peak. Bounded
+// to quarters whose date falls inside the candle window (older ones have no
+// price to match), so with a short candle history it simply returns null and
+// the caller falls back to a growth-relative read.
+function historicalPESeries(candles = [], quarterly = []) {
+  const times = candles
+    .map((c) => new Date(c.date).getTime())
+    .filter(Number.isFinite);
+  if (!times.length) return null;
+  const minT = Math.min(...times);
+  const maxT = Math.max(...times);
+
+  const epsOf = (r) => Number(r.dilutedEPS ?? r.epsActual);
+  const rows = sortByDateDesc(quarterly).filter((r) =>
+    Number.isFinite(epsOf(r)),
+  );
+  if (rows.length < 4) return null;
+
+  const closeNear = (dateStr) => {
+    const target = new Date(dateStr).getTime();
+    if (
+      !Number.isFinite(target) ||
+      target < minT - 10 * DAY_MS ||
+      target > maxT + 10 * DAY_MS
+    )
+      return null;
+    let best = null;
+    let bestDiff = Infinity;
+    for (const c of candles) {
+      const t = new Date(c.date).getTime();
+      if (!Number.isFinite(t)) continue;
+      const diff = Math.abs(t - target);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = Number(c.close);
+      }
+    }
+    return bestDiff <= 20 * DAY_MS && Number.isFinite(best) ? best : null;
+  };
+
+  const series = [];
+  for (let j = 0; j + 4 <= rows.length; j++) {
+    const ttm = rows.slice(j, j + 4).reduce((s, r) => s + epsOf(r), 0);
+    if (!(ttm > 0)) continue;
+    const price = closeNear(rows[j].date);
+    if (!Number.isFinite(price)) continue;
+    series.push(price / ttm);
+  }
+  return series.length >= 3 ? series : null;
+}
+
+// (#1) Classify how the current valuation compares to what's normal for this
+// stock. Prefers its own P/E history; falls back to growth-relative (PEG) or
+// forward-vs-trailing when the candle window is too short for a real history.
+// Returns null when there's nothing to judge on — the caller must not block a
+// flag just because valuation is unknown.
+function valuationRead(candles, quarterly, metrics) {
+  const current = metrics.trailingPE;
+  const series = historicalPESeries(candles, quarterly);
+  if (series && Number.isFinite(current) && current > 0) {
+    const typical = median(series);
+    if (typical > 0) {
+      const cheapPct = ((typical - current) / typical) * 100;
+      return {
+        basis: "own-history",
+        current,
+        typical,
+        cheapPct,
+        verdict: cheapPct >= 10 ? "cheap" : cheapPct <= -15 ? "rich" : "fair",
+      };
+    }
+  }
+  if (Number.isFinite(metrics.peg)) {
+    return {
+      basis: "growth",
+      peg: metrics.peg,
+      verdict:
+        metrics.peg <= 1.2 ? "cheap" : metrics.peg >= 2.5 ? "rich" : "fair",
+    };
+  }
+  if (
+    Number.isFinite(metrics.forwardPE) &&
+    Number.isFinite(current) &&
+    current > 0
+  ) {
+    return {
+      basis: "forward",
+      forwardPE: metrics.forwardPE,
+      trailingPE: current,
+      verdict:
+        metrics.forwardPE < current * 0.85
+          ? "cheap"
+          : metrics.forwardPE > current * 1.15
+            ? "rich"
+            : "fair",
+    };
+  }
+  return null;
+}
+
+function valuationReason(v) {
+  const cheap = v.verdict === "cheap";
+  if (v.basis === "own-history")
+    return cheap
+      ? `It's genuinely cheap, not just down: around ${v.current.toFixed(0)}× earnings versus its own typical ${v.typical.toFixed(0)}× — about ${Math.abs(v.cheapPct).toFixed(0)}% below its usual valuation.`
+      : `Valued roughly in line with its own history (around ${v.current.toFixed(0)}× earnings vs. a typical ${v.typical.toFixed(0)}×) — the markdown isn't unwinding an overvaluation.`;
+  if (v.basis === "growth")
+    return cheap
+      ? `Cheap for its growth (PEG ${v.peg.toFixed(1)}) — the markdown isn't just unwinding an overvaluation.`
+      : `Fairly priced for its growth (PEG ${v.peg.toFixed(1)}) — not a bargain on that basis, but not expensive either.`;
+  if (v.basis === "forward")
+    return cheap
+      ? `Priced more cheaply against next year's expected profits (forward P/E ${v.forwardPE.toFixed(0)} vs. ${v.trailingPE.toFixed(0)} trailing).`
+      : `Forward valuation is roughly in line with trailing (forward P/E ${v.forwardPE.toFixed(0)} vs. ${v.trailingPE.toFixed(0)}) — no strong valuation signal either way.`;
+  return "Valuation looks reasonable.";
+}
+
+// (#2) Which way the business is heading, from the year-over-year figures the
+// scout already computed. A cheap price on shrinking fundamentals is the
+// classic value trap — this is what separates "on sale" from "on the way
+// down". Seasonally aware (YoY, not sequential).
+function fundamentalTrajectory(metrics) {
+  const rev = metrics.revenueGrowthYoY;
+  const ni = metrics.netIncomeGrowthYoY;
+  const marginChange = metrics.netMarginChange;
+  if (![rev, ni, marginChange].some(Number.isFinite))
+    return { state: "unknown" };
+
+  const shrinking = Number.isFinite(rev) && rev < 0;
+  const marginEroding = Number.isFinite(marginChange) && marginChange <= -3;
+  const profitFalling = Number.isFinite(ni) && ni <= -15;
+  if (shrinking || marginEroding || profitFalling) {
+    const bits = [];
+    if (shrinking)
+      bits.push(`revenue is down ${Math.abs(rev).toFixed(0)}% year over year`);
+    if (marginEroding)
+      bits.push(
+        `margins are ${Math.abs(marginChange).toFixed(0)} points thinner than a year ago`,
+      );
+    if (profitFalling && !shrinking)
+      bits.push(`profit is down ${Math.abs(ni).toFixed(0)}% year over year`);
+    return { state: "deteriorating", note: bits.join(", ") };
+  }
+
+  const growing = Number.isFinite(rev) && rev > 5;
+  const marginOk = !Number.isFinite(marginChange) || marginChange >= 0;
+  const profitOk = !Number.isFinite(ni) || ni >= 0;
+  if (growing && marginOk && profitOk) {
+    return {
+      state: "improving",
+      note: `revenue up ${rev.toFixed(0)}% year over year with steady or rising margins`,
+    };
+  }
+  return { state: "stable" };
+}
+
+// (#3) The current unbroken run of prior days already flagged as a fire sale,
+// trusting only same-engine-version rows. History is oldest → newest and does
+// NOT yet include today's row. Returns how long the streak has run and how
+// far off its high the stock was when it started, so the caller can tell a
+// discount that's persisting from one that's finally narrowing.
+function fireSaleStreak(history) {
+  if (!Array.isArray(history) || !history.length) return null;
+  let start = null;
+  let latestDay = null;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const row = history[i];
+    if (row.engineVersion !== COMMITTEE_ENGINE_VERSION || !row.fireSale) break;
+    if (!latestDay) latestDay = row.day;
+    start = row;
+  }
+  if (!start || !latestDay) return null;
+  const days = Math.round(
+    (new Date(latestDay).getTime() - new Date(start.day).getTime()) / DAY_MS,
+  );
+  return {
+    days,
+    startOffHighPct: Number.isFinite(start.fireSale?.offHighPct)
+      ? start.fireSale.offHighPct
+      : null,
+  };
+}
+
 /**
  * Detect the discount setup. Deliberately conservative: it needs strong
  * fundamentals, a real markdown from the high, news that isn't screaming
@@ -23,7 +238,7 @@ const DISCOUNT_NUDGE = 5;
  * A collapsing business fails the fundamental/sentiment gates — this is not
  * a falling-knife pass, and the exit line still applies.
  */
-function discountCheck(candles = [], pillars) {
+function discountCheck(candles = [], pillars, quarterly = [], metrics = {}) {
   const { technical, fundamental, sentiment } = pillars;
   if (!Number.isFinite(fundamental) || fundamental < DISCOUNT_MIN_FUNDAMENTAL)
     return null;
@@ -33,20 +248,18 @@ function discountCheck(candles = [], pillars) {
     return null;
 
   // Distance below the 52-week high, from the same 252-candle window the
-  // technical pillar uses. Thin history can't establish a "high" to be
-  // discounted from.
-  const slice = candles.slice(-252);
-  if (slice.length < 120) return null;
-  const highs = slice.map((c) => Number(c.high)).filter(Number.isFinite);
-  const price = Number(slice.at(-1)?.close);
-  if (!highs.length || !Number.isFinite(price)) return null;
-  const high52 = Math.max(...highs);
-  if (!(high52 > 0)) return null;
+  // technical pillar uses.
+  const off = offHighPct(candles);
+  if (!Number.isFinite(off) || off < DISCOUNT_MIN_OFF_HIGH_PCT) return null;
 
-  const offHighPct = ((high52 - price) / high52) * 100;
-  if (offHighPct < DISCOUNT_MIN_OFF_HIGH_PCT) return null;
+  // (#1) Valuation gate: a stock down from its high but still richly valued
+  // versus its own history/growth isn't "on sale" — it's a correction
+  // unwinding an overvaluation. Only blocks on a positive "rich" reading;
+  // unknown valuation never blocks.
+  const valuation = valuationRead(candles, quarterly, metrics);
+  if (valuation?.verdict === "rich") return null;
 
-  return { offHighPct, fundamental };
+  return { offHighPct: off, fundamental, valuation };
 }
 
 function discountFinding(discount) {
@@ -62,11 +275,13 @@ function discountFinding(discount) {
 // whether the markdown is so deep it might be telling us something. Returns
 // confidence 0-100, a label on the same High/Moderate/Low scale the verdict
 // uses, and the plain-English reasons/cautions behind the grade.
-function buildFireSale(discount, pillars, metrics) {
+function buildFireSale(discount, pillars, metrics, ctx = {}) {
+  const { valuation, trajectory, benchmark, streak } = ctx;
   const reasons = [];
   const cautions = [];
   let confidence = 50;
 
+  // Financial strength (level).
   const fundMargin = discount.fundamental - DISCOUNT_MIN_FUNDAMENTAL;
   confidence += Math.min(fundMargin * 1.2, 25);
   reasons.push(
@@ -76,6 +291,38 @@ function buildFireSale(discount, pillars, metrics) {
     `The stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high — a genuine markdown, not a routine dip.`,
   );
 
+  // (#1) Valuation: cheap versus its own history/growth, not just off its high.
+  if (valuation) {
+    if (valuation.verdict === "cheap") {
+      confidence += 10;
+      reasons.push(valuationReason(valuation));
+    } else if (valuation.verdict === "fair") {
+      reasons.push(valuationReason(valuation));
+    }
+    // "rich" can't reach here — discountCheck rejects the flag outright.
+  } else {
+    confidence -= 5;
+    cautions.push(
+      "Couldn't confirm it's genuinely cheap (not enough valuation data) — being down from its high isn't the same as being a bargain.",
+    );
+  }
+
+  // (#2) Fundamental trajectory: filters the classic value trap.
+  if (trajectory?.state === "deteriorating") {
+    confidence = Math.min(confidence, 29); // force a Low grade
+    cautions.unshift(
+      `The business is heading the wrong way — ${trajectory.note}. A cheap price on shrinking fundamentals is the classic value trap, so treat this flag with caution.`,
+    );
+  } else if (trajectory?.state === "improving") {
+    confidence += 8;
+    reasons.push(`The fundamentals are still improving — ${trajectory.note}.`);
+  } else if (trajectory?.state === "unknown") {
+    cautions.push(
+      "Not enough quarters to tell whether the business is improving or slipping.",
+    );
+  }
+
+  // News.
   const sentiment = pillars.sentiment;
   if (Number.isFinite(sentiment)) {
     if (sentiment >= 55) {
@@ -96,6 +343,7 @@ function buildFireSale(discount, pillars, metrics) {
     );
   }
 
+  // Sign of a turn.
   const { price, sma50 } = metrics;
   if (Number.isFinite(price) && Number.isFinite(sma50)) {
     if (price > sma50) {
@@ -111,11 +359,52 @@ function buildFireSale(discount, pillars, metrics) {
     }
   }
 
+  // (#5) Market-relative: is this a company-specific discount, or just beta?
+  if (Number.isFinite(benchmark)) {
+    if (benchmark >= BENCH_MARKET_WIDE_OFF_HIGH) {
+      confidence -= 8;
+      cautions.push(
+        `Much of this markdown is market-wide — the broad market is itself ${benchmark.toFixed(0)}% off its high, so less of the discount is specific to this company.`,
+      );
+    } else if (benchmark <= BENCH_NEAR_HIGH_OFF) {
+      confidence += 8;
+      reasons.push(
+        `The broad market is near its highs (only ${benchmark.toFixed(0)}% off) while this name is ${discount.offHighPct.toFixed(0)}% down — the discount looks specific to this stock, not the whole market.`,
+      );
+    }
+  }
+
+  // Deep-markdown caution.
   if (discount.offHighPct >= 50) {
     confidence -= 15;
     cautions.push(
       `The markdown is very deep (${discount.offHighPct.toFixed(0)}% off the high) — discounts this large sometimes mean the market sees a problem the numbers don't show yet.`,
     );
+  }
+
+  // (#3) Staleness: a flag that's persisted a long time without recovering.
+  let weeksFlagged = null;
+  if (
+    streak &&
+    Number.isFinite(streak.days) &&
+    streak.days >= FIRESALE_STALE_MIN_DAYS
+  ) {
+    weeksFlagged = Math.round(streak.days / 7);
+    const noRecovery =
+      !Number.isFinite(streak.startOffHighPct) ||
+      discount.offHighPct >= streak.startOffHighPct - 2;
+    if (noRecovery) {
+      confidence =
+        Math.min(confidence, 55) -
+        Math.min((streak.days - FIRESALE_STALE_MIN_DAYS) / 14, 15);
+      cautions.push(
+        `It's been flagged as a fire sale for about ${weeksFlagged} weeks without recovering — the longer a discount persists, the more likely the market sees something the numbers don't.`,
+      );
+    } else {
+      reasons.push(
+        `Flagged for about ${weeksFlagged} weeks and the discount is finally narrowing — the recovery may be underway.`,
+      );
+    }
   }
 
   confidence = clamp(confidence, 0, 100);
@@ -127,6 +416,9 @@ function buildFireSale(discount, pillars, metrics) {
     fundamental: discount.fundamental,
     confidence,
     confidenceLabel,
+    valuationBasis: valuation?.basis ?? null,
+    trajectory: trajectory?.state ?? null,
+    weeksFlagged,
     reasons,
     cautions,
   };
@@ -425,7 +717,9 @@ export function runPortfolioManager({
   devil,
   bear: bearAgent,
   candles = [],
+  quarterly = [],
   history = [],
+  benchmarkCandles = [],
 }) {
   const pillarScores = {
     technical: dataScout.technicalScore,
@@ -461,7 +755,12 @@ export function runPortfolioManager({
   // modest lift — enough to tip a borderline Hold toward Buy (or a
   // borderline Reduce back to Hold), never enough to manufacture a
   // Strong Buy out of a middling score.
-  const discount = discountCheck(candles, pillarScores);
+  const discount = discountCheck(
+    candles,
+    pillarScores,
+    quarterly,
+    dataScout.metrics ?? {},
+  );
   if (discount) composite = clamp(composite + DISCOUNT_NUDGE, 0, 100);
 
   let action;
@@ -509,7 +808,12 @@ export function runPortfolioManager({
   // discount.
   const fireSale =
     discount && action !== "SELL"
-      ? buildFireSale(discount, pillarScores, dataScout.metrics ?? {})
+      ? buildFireSale(discount, pillarScores, dataScout.metrics ?? {}, {
+          valuation: discount.valuation,
+          trajectory: fundamentalTrajectory(dataScout.metrics ?? {}),
+          benchmark: offHighPct(benchmarkCandles),
+          streak: fireSaleStreak(history),
+        })
       : null;
 
   // Confidence: distance from neutral, less the devil's full penalty

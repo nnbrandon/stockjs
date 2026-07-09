@@ -20,6 +20,7 @@ export const HONESTY_NOTES = [
   "Fundamentals are as-fetched, not a true point-in-time database; a 45-day reporting lag is applied as an approximation.",
   "Survivorship bias: only symbols you watch today are replayed.",
   "Weekly samples of the same symbol overlap heavily — N overstates independent observations.",
+  "Fire-sale staleness decay and score-momentum aren't replayed (no verdict history is threaded through the walk-forward), so the flag is measured on its point-in-time signals only.",
   `Committee engine version ${COMMITTEE_ENGINE_VERSION}. Results are indicative, not audit-grade.`,
 ];
 
@@ -33,25 +34,41 @@ export function walkForward({
   quarterly = [],
   annual = [],
   earnings = [],
+  spyCandles = [],
 }) {
   const records = [];
   if (candles.length <= WARMUP_TRADING_DAYS) return records;
 
   const sorted = [...candles].sort((a, b) => t(a.date) - t(b.date));
+  // Point-in-time benchmark: at each step we hand the committee only the SPY
+  // candles that would have existed then, so the market-relative fire-sale
+  // check (#5) is replayed honestly.
+  const spySorted = spyCandles.length
+    ? [...spyCandles].sort((a, b) => t(a.date) - t(b.date))
+    : null;
 
-  for (let i = WARMUP_TRADING_DAYS; i < sorted.length - 1; i += STEP_TRADING_DAYS) {
+  for (
+    let i = WARMUP_TRADING_DAYS;
+    i < sorted.length - 1;
+    i += STEP_TRADING_DAYS
+  ) {
     const stepTime = t(sorted[i].date);
     if (!Number.isFinite(stepTime)) continue;
     const fundamentalsCutoff = stepTime - FUNDAMENTALS_LAG_DAYS * DAY_MS;
+
+    const benchmarkCandles = spySorted
+      ? spySorted
+          .filter((c) => t(c.date) <= stepTime)
+          .slice(-WINDOW_TRADING_DAYS)
+      : [];
 
     const report = runAnalystCommittee({
       chartData: sorted.slice(Math.max(0, i - WINDOW_TRADING_DAYS + 1), i + 1),
       quarterly: quarterly.filter((r) => t(r.date) <= fundamentalsCutoff),
       annual: annual.filter((r) => t(r.date) <= fundamentalsCutoff),
-      earnings: earnings.filter(
-        (r) => t(r.reportedDate ?? r.date) <= stepTime,
-      ),
+      earnings: earnings.filter((r) => t(r.reportedDate ?? r.date) <= stepTime),
       news: [],
+      benchmarkCandles,
     });
     if (!report) continue;
 
@@ -64,6 +81,10 @@ export function walkForward({
       composite: report.verdict.composite,
       technical: report.pillars.technical,
       fundamental: report.pillars.fundamental,
+      // Fire-sale flag + grade (#4), so we can measure whether flagged names
+      // actually outperform, and whether the confidence grade ranks outcomes.
+      fireSale: Boolean(report.verdict.fireSale),
+      fireSaleLabel: report.verdict.fireSale?.confidenceLabel ?? null,
       // Yahoo only serves ~6 quarters of fundamentals, so deep-history
       // verdicts are technicals-only. Metrics segment on this.
       hasFundamentals: Number.isFinite(report.pillars.fundamental),
@@ -72,7 +93,8 @@ export function walkForward({
   return records;
 }
 
-const mean = (xs) => (xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : null);
+const mean = (xs) =>
+  xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : null;
 const median = (xs) => {
   if (!xs.length) return null;
   const s = [...xs].sort((a, b) => a - b);
@@ -82,7 +104,9 @@ const median = (xs) => {
 const round = (v, d = 2) => (v == null ? null : Number(v.toFixed(d)));
 
 const TIER_ORDER = ["Strong Buy", "Buy", "Hold", "Reduce", "Sell"];
-const TIER_RANK = Object.fromEntries(TIER_ORDER.map((tier, i) => [tier, 4 - i]));
+const TIER_RANK = Object.fromEntries(
+  TIER_ORDER.map((tier, i) => [tier, 4 - i]),
+);
 
 /**
  * Grade the recorded verdicts against what prices did next.
@@ -126,7 +150,9 @@ export function computeMetrics(records, candlesBySymbol, spyCandles = null) {
     const recs = records.filter((r) => r.tier === tier);
     const row = { tier, n: recs.length };
     for (const [name, horizon] of Object.entries(HORIZONS)) {
-      const rets = recs.map((r) => fwdReturn(r, horizon)).filter(Number.isFinite);
+      const rets = recs
+        .map((r) => fwdReturn(r, horizon))
+        .filter(Number.isFinite);
       row[`${name}Mean`] = round(mean(rets));
       row[`${name}Median`] = round(median(rets));
     }
@@ -144,7 +170,9 @@ export function computeMetrics(records, candlesBySymbol, spyCandles = null) {
 
   // 2. Sell avoidance: what happened after Reduce/Sell calls
   const sellRecs = records.filter((r) => r.action === "SELL");
-  const sellFwd = sellRecs.map((r) => fwdReturn(r, HORIZONS.fwd6m)).filter(Number.isFinite);
+  const sellFwd = sellRecs
+    .map((r) => fwdReturn(r, HORIZONS.fwd6m))
+    .filter(Number.isFinite);
   const sellDd = sellRecs
     .map((r) => maxDrawdownAhead(r, HORIZONS.fwd6m))
     .filter(Number.isFinite);
@@ -212,6 +240,60 @@ export function computeMetrics(records, candlesBySymbol, spyCandles = null) {
   const calibration = buildCalibration(records);
   const calibrationWithFundamentals = buildCalibration(withFundamentals);
 
+  // 5. Fire-sale flag: do flagged names actually beat unflagged ones, and
+  // does the High/Moderate/Low grade rank the outcomes? This is the honest
+  // test of whether the discount signal earns its place.
+  const flagged = records.filter((r) => r.fireSale);
+  const unflagged = records.filter((r) => !r.fireSale);
+  const meanFwd = (recs, horizon) =>
+    round(mean(recs.map((r) => fwdReturn(r, horizon)).filter(Number.isFinite)));
+  const meanExcess6m = (recs) =>
+    round(
+      mean(
+        recs
+          .map((r) => {
+            const own = fwdReturn(r, HORIZONS.fwd6m);
+            const spy = spyFwdReturn(r, HORIZONS.fwd6m);
+            return Number.isFinite(own) && Number.isFinite(spy)
+              ? own - spy
+              : null;
+          })
+          .filter(Number.isFinite),
+      ),
+    );
+  const byFireSale = {
+    flagged: {
+      group: "fire sale",
+      n: flagged.length,
+      fwd3mMean: meanFwd(flagged, HORIZONS.fwd3m),
+      fwd6mMean: meanFwd(flagged, HORIZONS.fwd6m),
+      fwd12mMean: meanFwd(flagged, HORIZONS.fwd12m),
+      vsSpy6m: meanExcess6m(flagged),
+      smallSample: flagged.length < 20,
+    },
+    unflagged: {
+      group: "no flag",
+      n: unflagged.length,
+      fwd3mMean: meanFwd(unflagged, HORIZONS.fwd3m),
+      fwd6mMean: meanFwd(unflagged, HORIZONS.fwd6m),
+      fwd12mMean: meanFwd(unflagged, HORIZONS.fwd12m),
+      vsSpy6m: meanExcess6m(unflagged),
+    },
+    byConfidence: ["High", "Moderate", "Low"]
+      .map((label) => {
+        const recs = flagged.filter((r) => r.fireSaleLabel === label);
+        return {
+          grade: label,
+          n: recs.length,
+          fwd6mMean: meanFwd(recs, HORIZONS.fwd6m),
+          fwd12mMean: meanFwd(recs, HORIZONS.fwd12m),
+          vsSpy6m: meanExcess6m(recs),
+          smallSample: recs.length < 20,
+        };
+      })
+      .filter((row) => row.n > 0),
+  };
+
   return {
     fundamentalsCoveragePct: records.length
       ? round((withFundamentals.length / records.length) * 100, 1)
@@ -227,5 +309,6 @@ export function computeMetrics(records, candlesBySymbol, spyCandles = null) {
     sellAvoidance,
     transitions,
     calibration,
+    byFireSale,
   };
 }

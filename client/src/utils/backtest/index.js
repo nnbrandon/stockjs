@@ -26,6 +26,14 @@ export async function runBacktest({ log = true, benchmark = "SPY" } = {}) {
   const allRecords = [];
   const skipped = [];
 
+  // Fetch the benchmark once up front so it can be replayed point-in-time
+  // inside each symbol's walk-forward (market-relative fire-sale check).
+  const benchmarkCandles = (await getStockDataBySymbol(benchmark)) ?? null;
+  const spyForReplay =
+    benchmarkCandles && benchmarkCandles.length >= MIN_CANDLES
+      ? benchmarkCandles
+      : [];
+
   for (const symbol of symbols) {
     const candles = await getStockDataBySymbol(symbol);
     if (!candles || candles.length < MIN_CANDLES) {
@@ -49,6 +57,7 @@ export async function runBacktest({ log = true, benchmark = "SPY" } = {}) {
       quarterly: mergeEarningsIntoQuarterly(quarterly ?? [], earnings ?? []),
       annual: annual ?? [],
       earnings: earnings ?? [],
+      spyCandles: spyForReplay,
     });
     // computeMetrics indexes into the same sorted array walkForward used.
     candlesBySymbol[symbol] = [...candles].sort(
@@ -57,8 +66,7 @@ export async function runBacktest({ log = true, benchmark = "SPY" } = {}) {
     allRecords.push(...records);
   }
 
-  const spyCandles =
-    candlesBySymbol[benchmark] ?? (await getStockDataBySymbol(benchmark)) ?? null;
+  const spyCandles = benchmarkCandles ?? candlesBySymbol[benchmark] ?? null;
 
   const report = computeMetrics(
     allRecords,
@@ -84,6 +92,10 @@ export async function runBacktest({ log = true, benchmark = "SPY" } = {}) {
       { change: "upgrades", ...report.transitions.upgrades },
       { change: "downgrades", ...report.transitions.downgrades },
     ]);
+    console.log("Fire-sale flag → forward returns (flagged vs. not):");
+    console.table([report.byFireSale.flagged, report.byFireSale.unflagged]);
+    console.log("Fire-sale by confidence grade → forward returns:");
+    console.table(report.byFireSale.byConfidence);
     console.log("Calibration (composite decile → avg forward 6m return):");
     console.table(report.calibration);
     console.log(

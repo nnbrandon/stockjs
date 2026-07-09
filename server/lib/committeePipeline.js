@@ -156,6 +156,16 @@ export async function analyzeSymbols(uniqueHoldings, state) {
   const symbolState = state.symbols || {};
   const day = pacificDay();
 
+  // Benchmark for market-relative fire-sale grading (#5) — one fetch per run,
+  // shared across every holding, kicked off alongside the holdings fetch.
+  // Never fail the run over it.
+  const benchmarkPromise = fetchDailyCandles("SPY", CANDLE_DAYS).catch(
+    (err) => {
+      console.error("pipeline: benchmark SPY fetch failed:", err.message);
+      return [];
+    },
+  );
+
   const fetched = await mapPool(
     uniqueHoldings,
     SYMBOL_CONCURRENCY,
@@ -209,6 +219,7 @@ export async function analyzeSymbols(uniqueHoldings, state) {
 
   // ── Committee + history per symbol (user-independent) ───────────────────
   const generatedAt = new Date().toISOString();
+  const benchmarkCandles = await benchmarkPromise;
   const symbolResults = fetched.map((f) => {
     const { symbol } = f.holding;
     if (f.error) {
@@ -248,6 +259,7 @@ export async function analyzeSymbols(uniqueHoldings, state) {
       news,
       history,
       analysis: f.analysis,
+      benchmarkCandles,
     });
 
     if (!report) return { ...base, report: null };
@@ -271,6 +283,14 @@ export async function analyzeSymbols(uniqueHoldings, state) {
       fundamental: report.pillars?.fundamental ?? null,
       sentiment: report.pillars?.sentiment ?? null,
       exitSignals: bearAgent?.exitSignals ?? null,
+      // Compact fire-sale snapshot so the staleness streak (#3) can measure
+      // how long a flag has persisted and whether the discount is narrowing.
+      fireSale: report.verdict.fireSale
+        ? {
+            offHighPct: report.verdict.fireSale.offHighPct,
+            confidence: report.verdict.fireSale.confidence,
+          }
+        : null,
       generatedAt: report.generatedAt,
     };
     const newHistory = [...history.filter((r) => r.day !== day), row]

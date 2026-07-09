@@ -25,72 +25,6 @@
   }
 }
 
-.btnAction {
-  padding: 7px 16px;
-  border-radius: var(--shape-radius-sm);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition:
-    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  background: transparent;
-  border: 1px solid var(--palette-divider);
-  color: var(--palette-text-secondary);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-.btnAction:hover:not(:disabled) {
-  background: var(--palette-hover-overlay);
-  color: var(--palette-text-primary);
-  border-color: var(--palette-divider-strong);
-}
-.btnAction:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btnAction svg {
-  width: 16px;
-  height: 16px;
-}
-
-.btnAddWatchlist {
-  padding: 7px 16px;
-  border-radius: var(--shape-radius-sm);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition:
-    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  background: var(--palette-success);
-  border: 1px solid var(--palette-success);
-  color: #fff;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-.btnAddWatchlist:hover:not(:disabled) {
-  filter: brightness(1.05);
-}
-.btnAddWatchlist:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.btnAddWatchlist svg {
-  width: 16px;
-  height: 16px;
-}
-
 .memberBadge {
   width: 32px;
   height: 32px;
@@ -101,39 +35,6 @@
   border: 1px solid var(--palette-divider);
 }
 .memberBadge svg {
-  width: 18px;
-  height: 18px;
-}
-
-.iconAction {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--shape-radius-sm);
-  background: transparent;
-  border: 1px solid var(--palette-divider);
-  color: var(--palette-text-secondary);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition:
-    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-.iconAction:hover:not(:disabled) {
-  background: var(--palette-hover-overlay);
-  color: var(--palette-text-primary);
-  border-color: var(--palette-divider-strong);
-}
-.iconAction:hover:not(:disabled).danger {
-  color: var(--palette-error);
-  border-color: var(--palette-error);
-}
-.iconAction:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.iconAction svg {
   width: 18px;
   height: 18px;
 }

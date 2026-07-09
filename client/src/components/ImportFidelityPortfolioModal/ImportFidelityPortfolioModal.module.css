@@ -18,48 +18,6 @@
   display: none;
 }
 
-.uploadBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: var(--shape-radius-sm);
-  border: 1px solid var(--palette-divider);
-  background: var(--palette-bg-elevated);
-  color: var(--palette-text-primary);
-  font-size: 12.5px;
-  cursor: pointer;
-}
-
-.uploadBtn:hover:not(:disabled) {
-  border-color: var(--palette-divider-strong);
-}
-
-.uploadBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border-radius: var(--shape-radius-sm);
-  border: 1px solid var(--palette-divider);
-  background: var(--palette-bg-elevated);
-  color: var(--palette-text-primary);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.45;
-  resize: vertical;
-  min-height: 120px;
-}
-
-.textarea:focus {
-  outline: none;
-  border-color: var(--palette-divider-strong);
-}
-
 .progress {
   margin: 10px 0 0;
   font-size: 12px;

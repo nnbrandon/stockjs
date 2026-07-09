@@ -1,4 +1,5 @@
 import Modal from "@mui/material/Modal";
+import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
 import modalStyles from "../AddTickerModal/AddTickerModal.module.css";
@@ -23,14 +24,14 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               advice.
             </p>
           </div>
-          <button
-            type="button"
+          <IconButton
             className={modalStyles.closeBtn}
             onClick={onClose}
             aria-label="Close"
+            size="small"
           >
             <CloseIcon fontSize="small" />
-          </button>
+          </IconButton>
         </div>
 
         <div className={styles.body}>

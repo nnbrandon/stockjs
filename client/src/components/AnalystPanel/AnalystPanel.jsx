@@ -11,6 +11,7 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import PsychologyIcon from "@mui/icons-material/Psychology";
 import CircularProgress from "@mui/material/CircularProgress";
+import Button from "@mui/material/Button";
 
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
 import { getScoreSeries } from "@stockjs/committee-engine/analyst/verdictHistory.js";
@@ -24,6 +25,13 @@ import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
 import { useRefreshSignal } from "../../hooks/useRefreshSignal";
 import useServerCommittee from "../../hooks/useServerCommittee";
 import styles from "./AnalystPanel.module.css";
+
+// Compact primary action button used in the panel's empty/error states.
+const naButtonSx = {
+  padding: "6px 14px",
+  fontSize: 12,
+  minWidth: 0,
+};
 
 const AGENT_ICONS = {
   dataScout: TravelExploreIcon,
@@ -436,14 +444,15 @@ export default function AnalystPanel({
           first, then come back here.
         </p>
         {onOpenSyncSetup && (
-          <button
-            type="button"
-            className={styles.naButton}
+          <Button
+            variant="contained"
+            color="primary"
+            sx={naButtonSx}
             onClick={onOpenSyncSetup}
+            startIcon={<EmailOutlinedIcon sx={{ fontSize: 15 }} />}
           >
-            <EmailOutlinedIcon sx={{ fontSize: 15, mr: 0.5 }} />
             Set up email report
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -476,14 +485,15 @@ export default function AnalystPanel({
         ) : (
           <p>No stored verdict for {symbol} yet.</p>
         )}
-        <button
-          type="button"
-          className={styles.naButton}
+        <Button
+          variant="contained"
+          color="primary"
+          sx={naButtonSx}
           onClick={committee.run}
+          startIcon={<AutoAwesomeIcon sx={{ fontSize: 15 }} />}
         >
-          <AutoAwesomeIcon sx={{ fontSize: 15, mr: 0.5 }} />
           Run committee on server
-        </button>
+        </Button>
       </div>
     );
   }
@@ -612,14 +622,15 @@ export default function AnalystPanel({
             ? `Analyzed ${fmtGeneratedAt(latest.generatedAt)} — same result as your daily email.`
             : "Same result as your daily email."}
         </p>
-        <button
-          type="button"
-          className={styles.naButton}
+        <Button
+          variant="contained"
+          color="primary"
+          sx={naButtonSx}
           onClick={committee.run}
+          startIcon={<AutoAwesomeIcon sx={{ fontSize: 15 }} />}
         >
-          <AutoAwesomeIcon sx={{ fontSize: 15, mr: 0.5 }} />
           Re-run
-        </button>
+        </Button>
       </div>
 
       <p className={styles.disclaimer}>

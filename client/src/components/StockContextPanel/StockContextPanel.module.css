@@ -45,28 +45,6 @@
   color: var(--palette-text-primary);
 }
 
-.collapseBtn,
-.expandBtn {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  color: var(--palette-text-secondary);
-  cursor: pointer;
-  transition:
-    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.collapseBtn:hover,
-.expandBtn:hover {
-  background: var(--palette-bg-hover);
-  color: var(--palette-text-primary);
-}
-
 .earningsWrap {
   flex-shrink: 0;
   border-bottom: 1px solid var(--palette-divider);
@@ -85,36 +63,6 @@
   padding: 10px 12px 12px;
   border-top: 1px solid var(--palette-divider);
   flex-shrink: 0;
-}
-
-.financialsBtn {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: var(--shape-radius-sm);
-  border: 1px solid var(--palette-divider);
-  background: var(--palette-bg-elevated);
-  color: var(--palette-text-primary);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.financialsBtn:hover:not(:disabled) {
-  background: var(--palette-bg-hover);
-  border-color: var(--palette-divider-strong);
-}
-
-.financialsBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 @media (max-width: 1100px) {

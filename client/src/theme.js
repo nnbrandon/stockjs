@@ -126,8 +126,76 @@ function buildTheme(mode, tokens) {
       ...customTokens,
       tokens,
     },
-    components: buildTableOverrides(tokens),
+    components: {
+      ...buildTableOverrides(tokens),
+      ...buildButtonOverrides(tokens),
+    },
   });
+}
+
+// Shared MUI Button / IconButton styling — mirrors the app's hand-styled
+// design-token buttons so components can use <Button variant="contained">
+// (primary) and <Button variant="outlined"> (secondary) instead of bespoke
+// CSS-module buttons. IconButton matches the circular ghost buttons.
+const buttonTransition =
+  "background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), " +
+  "border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), " +
+  "color 150ms cubic-bezier(0.4, 0, 0.2, 1), " +
+  "opacity 150ms cubic-bezier(0.4, 0, 0.2, 1)";
+
+function buildButtonOverrides(tokens) {
+  return {
+    MuiButton: {
+      defaultProps: { disableElevation: true },
+      styleOverrides: {
+        root: {
+          borderRadius: customTokens.radius.sm,
+          fontSize: 13,
+          fontWeight: 500,
+          letterSpacing: "0.02em",
+          textTransform: "none",
+          padding: "8px 18px",
+          gap: 8,
+          transition: buttonTransition,
+        },
+        containedPrimary: {
+          backgroundColor: tokens.textPrimary,
+          color: tokens.bgDefault,
+          border: `1px solid ${tokens.textPrimary}`,
+          minWidth: 96,
+          "&:hover": { backgroundColor: tokens.textPrimary, opacity: 0.9 },
+          "&.Mui-disabled": {
+            backgroundColor: tokens.textPrimary,
+            color: tokens.bgDefault,
+            opacity: 0.55,
+          },
+        },
+        outlined: {
+          backgroundColor: "transparent",
+          border: `1px solid ${tokens.divider}`,
+          color: tokens.textSecondary,
+          "&:hover": {
+            backgroundColor: tokens.hoverOverlay,
+            color: tokens.textPrimary,
+            borderColor: tokens.dividerStrong,
+          },
+          "&.Mui-disabled": { opacity: 0.55 },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          color: tokens.textSecondary,
+          transition: buttonTransition,
+          "&:hover": {
+            backgroundColor: tokens.hoverOverlay,
+            color: tokens.textPrimary,
+          },
+        },
+      },
+    },
+  };
 }
 
 // Shared MUI Table styling — applied to every <Table>/<TablePagination> in the

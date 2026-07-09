@@ -1,6 +1,21 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import IconButton from "@mui/material/IconButton";
 import EarningsDetailContent from "../EarningsDetail/EarningsDetailContent";
 import styles from "./EarningsChartPopover.module.css";
+
+const closeBtnSx = {
+  position: "absolute",
+  top: 8,
+  right: 8,
+  padding: "2px",
+  fontSize: 16,
+  lineHeight: 1,
+  color: "var(--palette-text-disabled)",
+  "&:hover": {
+    color: "var(--palette-text-primary)",
+    backgroundColor: "transparent",
+  },
+};
 
 export default function EarningsChartPopover({
   earning,
@@ -58,14 +73,9 @@ export default function EarningsChartPopover({
       role="dialog"
       aria-label="Earnings report details"
     >
-      <button
-        type="button"
-        className={styles.closeBtn}
-        onClick={onClose}
-        aria-label="Close"
-      >
+      <IconButton sx={closeBtnSx} onClick={onClose} aria-label="Close">
         ×
-      </button>
+      </IconButton>
       <EarningsDetailContent
         date={earning.date}
         reportedDate={earning.reportedDate}

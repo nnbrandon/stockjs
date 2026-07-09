@@ -1,6 +1,9 @@
 import { useState } from "react";
 import Modal from "@mui/material/Modal";
 import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import CircularProgress from "@mui/material/CircularProgress";
 import CloseIcon from "@mui/icons-material/Close";
 import Autocomplete from "@mui/material/Autocomplete";
 import isObject from "lodash/isObject";
@@ -141,14 +144,14 @@ function AddTickerModal({ onClose }) {
               Browse the S&amp;P 500 or search by symbol or company name.
             </p>
           </div>
-          <button
-            type="button"
+          <IconButton
             className={styles.closeBtn}
             onClick={() => onClose(null)}
             aria-label="Close"
+            size="small"
           >
             <CloseIcon fontSize="small" />
-          </button>
+          </IconButton>
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
@@ -234,28 +237,27 @@ function AddTickerModal({ onClose }) {
           </div>
 
           <div className={styles.footer}>
-            <button
+            <Button
               type="button"
-              className={styles.btnSecondary}
+              variant="outlined"
               onClick={() => onClose(null)}
               disabled={isLoading}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className={styles.btnPrimary}
+              variant="contained"
+              color="primary"
               disabled={isLoading}
+              startIcon={
+                isLoading ? (
+                  <CircularProgress size={12} color="inherit" thickness={5} />
+                ) : null
+              }
             >
-              {isLoading ? (
-                <>
-                  <span className={styles.spinner} aria-hidden />
-                  Adding…
-                </>
-              ) : (
-                "Add"
-              )}
-            </button>
+              {isLoading ? "Adding…" : "Add"}
+            </Button>
           </div>
         </form>
       </div>

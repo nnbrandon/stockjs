@@ -2,6 +2,7 @@ import { useState } from "react";
 import Modal from "@mui/material/Modal";
 import Tabs from "@mui/material/Tab";
 import Tab from "@mui/material/Tab";
+import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
 import LoadingPanel from "../LoadingPanel/LoadingPanel";
@@ -59,14 +60,14 @@ export default function FinancialsModal({
               Quarterly and annual fundamentals from cached data.
             </p>
           </div>
-          <button
-            type="button"
+          <IconButton
             className={modalStyles.closeBtn}
             onClick={onClose}
             aria-label="Close"
+            size="small"
           >
             <CloseIcon fontSize="small" />
-          </button>
+          </IconButton>
         </div>
 
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={tabsSx}>

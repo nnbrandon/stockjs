@@ -449,29 +449,6 @@
 .naTitle svg {
   color: var(--palette-success);
 }
-.naButton {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 14px;
-  border-radius: var(--shape-radius-sm);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  background: var(--palette-text-primary);
-  border: 1px solid var(--palette-text-primary);
-  color: var(--palette-bg-default);
-  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-}
-.naButton:hover:not(:disabled) {
-  opacity: 0.9;
-}
-.naButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 .naCoverage {
   font-size: 12px;
   color: var(--palette-text-secondary);

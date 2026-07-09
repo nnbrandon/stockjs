@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMatch, useNavigate } from "react-router";
 import { ThemeProvider, CssBaseline } from "@mui/material";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import { lightTheme, darkTheme } from "./theme";
 import { deleteSymbolData } from "./db";
@@ -333,14 +335,20 @@ function App() {
 
         {/* Mobile top bar (hidden on desktop) */}
         <header className={styles.mobileTopBar}>
-          <button
-            type="button"
+          <IconButton
             className={styles.mobileMenuBtn}
             onClick={() => setMobileNavOpen(true)}
             aria-label="Open menu"
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: "var(--shape-radius-sm)",
+              border: "1px solid var(--palette-divider)",
+              color: "var(--palette-text-secondary)",
+            }}
           >
             <MenuIcon fontSize="small" />
-          </button>
+          </IconButton>
           <button
             type="button"
             className={styles.mobileLogo}
@@ -420,13 +428,21 @@ function App() {
                 Couldn&apos;t load {selectedSymbol}
               </h2>
               <p className={styles.errorText}>{seedError}</p>
-              <button
-                type="button"
-                className={styles.errorHomeBtn}
+              <Button
+                variant="outlined"
                 onClick={handleGoHome}
+                sx={{
+                  backgroundColor: "var(--palette-bg-elevated)",
+                  border: "1px solid var(--palette-divider)",
+                  color: "var(--palette-text-primary)",
+                  "&:hover": {
+                    backgroundColor: "var(--palette-bg-elevated)",
+                    borderColor: "var(--palette-divider-strong)",
+                  },
+                }}
               >
                 Back to home
-              </button>
+              </Button>
             </div>
           ) : (
             <div className={styles.symbolWorkspace}>

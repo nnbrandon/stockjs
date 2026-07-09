@@ -85,19 +85,3 @@
   font-weight: 600;
 }
 
-.closeBtn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 2px;
-  border: none;
-  background: none;
-  font-size: 16px;
-  line-height: 1;
-  color: var(--palette-text-disabled);
-  cursor: pointer;
-}
-
-.closeBtn:hover {
-  color: var(--palette-text-primary);
-}

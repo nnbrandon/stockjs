@@ -1,10 +1,20 @@
 import { useRef } from "react";
+import Button from "@mui/material/Button";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import useTrendingStocks from "../../hooks/useTrendingStocks";
 import { formatDollars } from "../../utils/computePositionMetrics";
 import styles from "./TrendingStocks.module.css";
+
+const retryBtnSx = {
+  mt: "10px",
+  fontSize: 12.5,
+  backgroundColor: "var(--palette-bg-elevated)",
+  border: "1px solid var(--palette-divider)",
+  color: "var(--palette-text-primary)",
+  "&:hover": { backgroundColor: "var(--palette-bg-hover)" },
+};
 
 // Trending tiles are pure navigation: tapping one opens the stock's detail
 // page (data is seeded there on demand). Adding to the watchlist is an
@@ -136,13 +146,13 @@ export default function TrendingStocks({
         {!isLoading && error && (
           <div className={styles.stripError}>
             {error.message || "Could not load trending stocks"}
-            <button
-              type="button"
-              className={styles.retryBtn}
+            <Button
+              variant="outlined"
+              sx={retryBtnSx}
               onClick={() => refetch()}
             >
               Try again
-            </button>
+            </Button>
           </div>
         )}
 
@@ -177,13 +187,13 @@ export default function TrendingStocks({
         <div className={styles.error}>
           {error.message || "Could not load trending stocks"}
           <div>
-            <button
-              type="button"
-              className={styles.retryBtn}
+            <Button
+              variant="outlined"
+              sx={retryBtnSx}
               onClick={() => refetch()}
             >
               Try again
-            </button>
+            </Button>
           </div>
         </div>
       )}

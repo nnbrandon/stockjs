@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Tabs, Tab } from "@mui/material";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TableChartIcon from "@mui/icons-material/TableChart";
@@ -12,6 +14,31 @@ import FinancialsModal from "../FinancialsModal/FinancialsModal";
 import AiCommitteeHelpButton from "../AiCommitteeHelp/AiCommitteeHelpButton";
 import ResizableSidebar from "../ResizableSidebar/ResizableSidebar";
 import styles from "./StockContextPanel.module.css";
+
+const chevronBtnSx = {
+  width: 36,
+  height: 36,
+  borderRadius: 0,
+  color: "var(--palette-text-secondary)",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    color: "var(--palette-text-primary)",
+  },
+};
+
+const financialsBtnSx = {
+  flex: 1,
+  padding: "8px 10px",
+  fontSize: 12,
+  backgroundColor: "var(--palette-bg-elevated)",
+  border: "1px solid var(--palette-divider)",
+  color: "var(--palette-text-primary)",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    borderColor: "var(--palette-divider-strong)",
+  },
+  "&.Mui-disabled": { opacity: 0.45 },
+};
 
 const tabsSx = {
   minHeight: 40,
@@ -77,14 +104,13 @@ export default function StockContextPanel({
         collapsedClassName={styles.panelCollapsed}
         panelClassName={styles.panel}
         collapsedContent={
-          <button
-            type="button"
-            className={styles.expandBtn}
+          <IconButton
+            sx={chevronBtnSx}
             onClick={() => setCollapsed(false)}
             aria-label="Expand context panel"
           >
             <ChevronLeftIcon fontSize="small" />
-          </button>
+          </IconButton>
         }
       >
         <div className={styles.toolbar}>
@@ -98,14 +124,13 @@ export default function StockContextPanel({
             <Tab label="AI Committee" disableRipple />
           </Tabs>
           <AiCommitteeHelpButton className={styles.helpBtn} />
-          <button
-            type="button"
-            className={styles.collapseBtn}
+          <IconButton
+            sx={chevronBtnSx}
             onClick={() => setCollapsed(true)}
             aria-label="Collapse context panel"
           >
             <ChevronRightIcon fontSize="small" />
-          </button>
+          </IconButton>
         </div>
 
         <div className={styles.earningsWrap}>
@@ -133,24 +158,24 @@ export default function StockContextPanel({
         </div>
 
         <div className={styles.financialsBar}>
-          <button
-            type="button"
-            className={styles.financialsBtn}
+          <Button
+            variant="outlined"
+            sx={financialsBtnSx}
             onClick={() => setFinancialsModal(0)}
             disabled={!isLoading && !hasQuarterly}
+            startIcon={<TableChartIcon sx={{ fontSize: 15 }} />}
           >
-            <TableChartIcon sx={{ fontSize: 15 }} />
             Quarterly
-          </button>
-          <button
-            type="button"
-            className={styles.financialsBtn}
+          </Button>
+          <Button
+            variant="outlined"
+            sx={financialsBtnSx}
             onClick={() => setFinancialsModal(1)}
             disabled={!isLoading && !hasAnnual}
+            startIcon={<TableChartIcon sx={{ fontSize: 15 }} />}
           >
-            <TableChartIcon sx={{ fontSize: 15 }} />
             Annual
-          </button>
+          </Button>
         </div>
       </ResizableSidebar>
 

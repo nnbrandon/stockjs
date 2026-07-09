@@ -1,6 +1,9 @@
 import { useState } from "react";
 import Modal from "@mui/material/Modal";
 import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import CircularProgress from "@mui/material/CircularProgress";
 import CloseIcon from "@mui/icons-material/Close";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 
@@ -188,15 +191,15 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
               Fidelity import — or use Sync now anytime.
             </p>
           </div>
-          <button
-            type="button"
+          <IconButton
             className={addTickerStyles.closeBtn}
             onClick={() => onClose(null)}
             disabled={isBusy}
             aria-label="Close"
+            size="small"
           >
             <CloseIcon fontSize="small" />
-          </button>
+          </IconButton>
         </div>
 
         <p className={addTickerStyles.subtitle} style={{ marginBottom: 12 }}>
@@ -225,15 +228,14 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <button
-            type="button"
-            className={addTickerStyles.btnSecondary}
+          <Button
+            variant="outlined"
             onClick={handleRequestToken}
             disabled={isBusy || !email.trim()}
+            startIcon={<EmailOutlinedIcon fontSize="small" />}
           >
-            <EmailOutlinedIcon fontSize="small" />
             Email me a sync token
-          </button>
+          </Button>
         </div>
 
         <div className={addTickerStyles.field}>
@@ -270,33 +272,29 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
         </div>
 
         <div className={addTickerStyles.footer}>
-          <button
-            type="button"
-            className={addTickerStyles.btnSecondary}
+          <Button
+            variant="outlined"
             onClick={handleStopReport}
             disabled={isBusy || !token.trim() || !email.trim()}
             title="Remove your holdings from the server so the daily email stops"
           >
             Stop report
-          </button>
-          <button
-            type="button"
-            className={addTickerStyles.btnPrimary}
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
             onClick={handleSaveAndSync}
             disabled={isBusy || positionCount === 0}
-          >
-            {isBusy ? (
-              <>
-                <span className={addTickerStyles.spinner} aria-hidden />
-                Syncing…
-              </>
-            ) : (
-              <>
+            startIcon={
+              isBusy ? (
+                <CircularProgress size={12} color="inherit" thickness={5} />
+              ) : (
                 <EmailOutlinedIcon fontSize="small" />
-                Save &amp; sync now
-              </>
-            )}
-          </button>
+              )
+            }
+          >
+            {isBusy ? "Syncing…" : "Save & sync now"}
+          </Button>
         </div>
       </div>
     </Modal>

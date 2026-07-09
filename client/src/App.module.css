@@ -139,21 +139,6 @@
   color: var(--palette-text-secondary);
   margin: 0;
 }
-.errorHomeBtn {
-  padding: 9px 18px;
-  border-radius: var(--shape-radius-sm);
-  border: 1px solid var(--palette-divider);
-  background: var(--palette-bg-elevated);
-  color: var(--palette-text-primary);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.errorHomeBtn:hover {
-  border-color: var(--palette-divider-strong);
-}
-
 /* ── Mobile shell ─────────────────────────────────────────────────────────
    Desktop renders the left sidebar directly (display:contents makes this
    wrapper transparent); the mobile top bar + slide-in drawer are hidden.

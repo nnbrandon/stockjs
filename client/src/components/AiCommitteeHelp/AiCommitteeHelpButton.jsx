@@ -1,4 +1,5 @@
 import { useState } from "react";
+import IconButton from "@mui/material/IconButton";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
 import AiCommitteeHelpModal from "./AiCommitteeHelpModal";
@@ -12,15 +13,15 @@ export default function AiCommitteeHelpButton({
 
   return (
     <>
-      <button
-        type="button"
+      <IconButton
         className={className || styles.helpBtn}
         onClick={() => setOpen(true)}
         aria-label={ariaLabel}
         title="How does this work?"
+        size="small"
       >
         <HelpOutlineIcon fontSize="small" />
-      </button>
+      </IconButton>
       <AiCommitteeHelpModal open={open} onClose={() => setOpen(false)} />
     </>
   );

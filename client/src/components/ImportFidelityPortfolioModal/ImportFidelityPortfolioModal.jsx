@@ -1,11 +1,33 @@
 import { useRef, useState } from "react";
 import Modal from "@mui/material/Modal";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import TextField from "@mui/material/TextField";
+import CircularProgress from "@mui/material/CircularProgress";
 import CloseIcon from "@mui/icons-material/Close";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 import styles from "./ImportFidelityPortfolioModal.module.css";
 import addTickerStyles from "../AddTickerModal/AddTickerModal.module.css";
 import { importFidelityPortfolio } from "../../utils/importFidelityPortfolio";
+
+const textareaSx = {
+  "& .MuiOutlinedInput-root": {
+    backgroundColor: "var(--palette-bg-elevated)",
+    borderRadius: "var(--shape-radius-sm)",
+    padding: "10px 12px",
+    fontFamily: "var(--font-mono)",
+    fontSize: 11,
+    lineHeight: 1.45,
+    "& fieldset": { borderColor: "var(--palette-divider)" },
+    "&:hover fieldset": { borderColor: "var(--palette-divider-strong)" },
+    "&.Mui-focused fieldset": {
+      borderColor: "var(--palette-divider-strong)",
+      borderWidth: "1px",
+    },
+    "& textarea": { color: "var(--palette-text-primary)" },
+  },
+};
 
 const STEPS = [
   "Open Fidelity and go to your account",
@@ -91,15 +113,15 @@ function ImportFidelityPortfolioModal({ onClose }) {
               basis.
             </p>
           </div>
-          <button
-            type="button"
+          <IconButton
             className={addTickerStyles.closeBtn}
             onClick={() => onClose(null)}
             disabled={isLoading}
             aria-label="Close"
+            size="small"
           >
             <CloseIcon fontSize="small" />
-          </button>
+          </IconButton>
         </div>
 
         <ol className={styles.steps}>
@@ -116,19 +138,20 @@ function ImportFidelityPortfolioModal({ onClose }) {
             className={styles.fileInput}
             onChange={handleFileChange}
           />
-          <button
-            type="button"
-            className={styles.uploadBtn}
+          <Button
+            variant="outlined"
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
+            startIcon={<UploadFileIcon fontSize="small" />}
           >
-            <UploadFileIcon fontSize="small" />
             Upload CSV
-          </button>
+          </Button>
         </div>
 
-        <textarea
-          className={styles.textarea}
+        <TextField
+          fullWidth
+          multiline
+          minRows={8}
           placeholder="Or paste CSV contents here…"
           value={csvText}
           onChange={(e) => {
@@ -136,7 +159,7 @@ function ImportFidelityPortfolioModal({ onClose }) {
             setError("");
           }}
           disabled={isLoading}
-          rows={8}
+          sx={textareaSx}
         />
 
         {progressLabel && (
@@ -148,29 +171,26 @@ function ImportFidelityPortfolioModal({ onClose }) {
         </div>
 
         <div className={addTickerStyles.footer}>
-          <button
-            type="button"
-            className={addTickerStyles.btnSecondary}
+          <Button
+            variant="outlined"
             onClick={() => onClose(null)}
             disabled={isLoading}
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            className={addTickerStyles.btnPrimary}
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
             onClick={handleImport}
             disabled={isLoading}
+            startIcon={
+              isLoading ? (
+                <CircularProgress size={12} color="inherit" thickness={5} />
+              ) : null
+            }
           >
-            {isLoading ? (
-              <>
-                <span className={addTickerStyles.spinner} aria-hidden />
-                Importing…
-              </>
-            ) : (
-              "Import"
-            )}
-          </button>
+            {isLoading ? "Importing…" : "Import"}
+          </Button>
         </div>
       </div>
     </Modal>

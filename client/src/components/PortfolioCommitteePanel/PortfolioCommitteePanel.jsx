@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -11,6 +13,72 @@ import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
 import { getTierChange } from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import styles from "./PortfolioCommitteePanel.module.css";
+
+// Chevron collapse/expand toggles — square ghost icon buttons.
+const chevronBtnSx = {
+  width: 36,
+  height: 36,
+  borderRadius: 0,
+  color: "var(--palette-text-secondary)",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    color: "var(--palette-text-primary)",
+  },
+};
+
+// Full-width elevated action button ("Run committee").
+const runBtnSx = {
+  width: "100%",
+  padding: "10px 14px",
+  fontSize: 12.5,
+  backgroundColor: "var(--palette-bg-elevated)",
+  border: "1px solid var(--palette-divider)",
+  color: "var(--palette-text-primary)",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    borderColor: "var(--palette-divider-strong)",
+  },
+  "&.Mui-disabled": { opacity: 0.5 },
+};
+
+// Inline text-link button ("Open chart", "Show scores", …).
+const openBtnSx = {
+  padding: 0,
+  minWidth: 0,
+  fontSize: 11.5,
+  color: "var(--palette-success)",
+  "&:hover": {
+    backgroundColor: "transparent",
+    textDecoration: "underline",
+  },
+};
+
+// Compact bordered secondary button ("Re-run analysis").
+const secondaryBtnSx = {
+  flex: 1,
+  padding: "7px 10px",
+  fontSize: 11.5,
+  border: "1px solid var(--palette-divider)",
+  color: "var(--palette-text-secondary)",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    color: "var(--palette-text-primary)",
+  },
+};
+
+// Full-width muted button ("Clear results").
+const clearBtnSx = {
+  width: "100%",
+  mb: "14px",
+  padding: "7px 10px",
+  fontSize: 11.5,
+  border: "1px solid var(--palette-divider)",
+  color: "var(--palette-text-disabled)",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    color: "var(--palette-text-secondary)",
+  },
+};
 
 const FILTERS = {
   ALL: "ALL",
@@ -60,15 +128,15 @@ function progressLabel(progress) {
 function RunButtons({ count, disabled, onRun }) {
   return (
     <div className={styles.runActions}>
-      <button
-        type="button"
-        className={styles.runBtn}
+      <Button
+        variant="outlined"
+        sx={runBtnSx}
         onClick={onRun}
         disabled={disabled}
+        startIcon={<AutoAwesomeIcon fontSize="small" />}
       >
-        <AutoAwesomeIcon fontSize="small" />
         Run committee ({count})
-      </button>
+      </Button>
     </div>
   );
 }
@@ -89,13 +157,9 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
             Funds and ETFs track a basket of holdings, so the company committee
             doesn&apos;t score them.
           </p>
-          <button
-            type="button"
-            className={styles.openBtn}
-            onClick={() => onSelectSymbol(symbol)}
-          >
+          <Button variant="text" sx={openBtnSx} onClick={() => onSelectSymbol(symbol)}>
             Open chart
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -110,13 +174,9 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
         </div>
         <div className={styles.cardBody}>
           <p className={styles.na}>{error || "Not enough cached data."}</p>
-          <button
-            type="button"
-            className={styles.openBtn}
-            onClick={() => onSelectSymbol(symbol)}
-          >
+          <Button variant="text" sx={openBtnSx} onClick={() => onSelectSymbol(symbol)}>
             Open chart
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -242,20 +302,20 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
         )}
 
         <div className={styles.cardActions}>
-          <button
-            type="button"
-            className={styles.openBtn}
+          <Button
+            variant="text"
+            sx={openBtnSx}
             onClick={() => setExpanded((v) => !v)}
           >
             {expanded ? "Hide scores" : "Show scores"}
-          </button>
-          <button
-            type="button"
-            className={styles.openBtn}
+          </Button>
+          <Button
+            variant="text"
+            sx={openBtnSx}
             onClick={() => onSelectSymbol(symbol, { openCommittee: true })}
           >
             Open full committee
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -329,28 +389,26 @@ export default function PortfolioCommitteePanel({
       collapsedClassName={styles.panelCollapsed}
       panelClassName={styles.panel}
       collapsedContent={
-        <button
-          type="button"
-          className={styles.expandBtn}
+        <IconButton
+          sx={chevronBtnSx}
           onClick={() => setCollapsed(false)}
           aria-label="Expand portfolio committee panel"
         >
           <ChevronLeftIcon fontSize="small" />
-        </button>
+        </IconButton>
       }
     >
       <div className={styles.toolbar}>
         <span className={styles.title}>AI Committee</span>
         <div className={styles.toolbarActions}>
           <AiCommitteeHelpButton className={styles.helpBtn} />
-          <button
-            type="button"
-            className={styles.collapseBtn}
+          <IconButton
+            sx={chevronBtnSx}
             onClick={() => setCollapsed(true)}
             aria-label="Collapse portfolio committee panel"
           >
             <ChevronRightIcon fontSize="small" />
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -488,23 +546,19 @@ export default function PortfolioCommitteePanel({
             </div>
 
             <div className={styles.actions}>
-              <button
-                type="button"
-                className={styles.secondaryBtn}
+              <Button
+                variant="outlined"
+                sx={secondaryBtnSx}
                 onClick={handleRun}
                 disabled={runDisabled}
               >
                 Re-run analysis
-              </button>
+              </Button>
             </div>
 
-            <button
-              type="button"
-              className={styles.clearBtn}
-              onClick={handleReset}
-            >
+            <Button variant="outlined" sx={clearBtnSx} onClick={handleReset}>
               Clear results
-            </button>
+            </Button>
 
             <div className={styles.list}>
               {filteredResults.length === 0 ? (

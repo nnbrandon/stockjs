@@ -1,5 +1,6 @@
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Tooltip from "@mui/material/Tooltip";
+import Button from "@mui/material/Button";
 
 import TrendingStocks from "../TrendingStocks/TrendingStocks";
 import PortfolioSummary from "../PortfolioSummary/PortfolioSummary";
@@ -7,6 +8,18 @@ import styles from "./HomeView.module.css";
 
 const FIDELITY_IMPORT_TOOLTIP =
   "In Fidelity: open the Positions tab, click the ⋮ menu at the top-right of the positions table, then choose Download. Upload or paste that CSV here.";
+
+const importBtnSx = {
+  flexShrink: 0,
+  backgroundColor: "var(--palette-bg-elevated)",
+  border: "1px solid var(--palette-divider)",
+  color: "var(--palette-text-primary)",
+  whiteSpace: "nowrap",
+  "&:hover": {
+    backgroundColor: "var(--palette-bg-hover)",
+    borderColor: "var(--palette-divider-strong)",
+  },
+};
 
 export default function HomeView({
   positions,
@@ -38,14 +51,14 @@ export default function HomeView({
           </p>
         </div>
         <Tooltip title={FIDELITY_IMPORT_TOOLTIP}>
-          <button
-            type="button"
-            className={styles.importBtn}
+          <Button
+            variant="outlined"
+            sx={importBtnSx}
             onClick={onImportPortfolio}
+            startIcon={<UploadFileIcon fontSize="small" />}
           >
-            <UploadFileIcon fontSize="small" />
             Import Fidelity portfolio
-          </button>
+          </Button>
         </Tooltip>
       </div>
 

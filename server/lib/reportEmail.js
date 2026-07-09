@@ -48,12 +48,23 @@ function tierBadge(tier) {
 }
 
 // "Quality on sale": priced well below the 52-week high with strong finances.
-function fireSaleBadge() {
-  return `<span style="display:inline-block;padding:1px 10px;border-radius:12px;background:#fff1e5;border:1px solid #e8590c;color:#bc4c00;font-size:12px;font-weight:700;">🔥 FIRE SALE</span>`;
+function fireSaleBadge(fireSale) {
+  const label = fireSale?.confidenceLabel
+    ? ` · ${escapeHtml(fireSale.confidenceLabel)}`
+    : "";
+  return `<span style="display:inline-block;padding:1px 10px;border-radius:12px;background:#fff1e5;border:1px solid #e8590c;color:#bc4c00;font-size:12px;font-weight:700;">🔥 FIRE SALE${label}</span>`;
 }
 
-function fireSaleLine(fireSale) {
-  return `Fire sale: finances score ${fmtScore(fireSale.fundamental)}/100 while the stock sits ${fmtScore(fireSale.offHighPct)}% below its 52-week high — priced low on a healthy business, with room to bounce back.`;
+function fireSaleHead(fireSale) {
+  return `Fire sale${fireSale.confidenceLabel ? ` — ${fireSale.confidenceLabel.toLowerCase()} confidence` : ""}: priced low on a healthy business, with room to bounce back.`;
+}
+
+// Reasons first, cautions after — one flat list for both HTML and text.
+function fireSaleItems(fireSale) {
+  return [
+    ...(fireSale.reasons ?? []),
+    ...(fireSale.cautions ?? []).map((c) => `Keep in mind: ${c}`),
+  ];
 }
 
 function describeTierChange(r) {
@@ -160,14 +171,20 @@ function holdingHtml(r, appUrl) {
   cells.push(
     `<div style="margin-bottom:6px;">
       ${symbolLink(appUrl, r.symbol, `<strong style="font-size:16px;">${escapeHtml(r.symbol)}</strong>`)}
-      &nbsp;${tierBadge(v.tier)}${v.fireSale ? `&nbsp;${fireSaleBadge()}` : ""}
+      &nbsp;${tierBadge(v.tier)}${v.fireSale ? `&nbsp;${fireSaleBadge(v.fireSale)}` : ""}
       <span style="color:#57606a;font-size:13px;">&nbsp;score ${fmtScore(v.composite)}/100 · ${escapeHtml(v.convictionLabel)} confidence</span>
     </div>`,
   );
 
   if (v.fireSale) {
+    const items = fireSaleItems(v.fireSale)
+      .map((item) => `<li>${escapeHtml(item)}</li>`)
+      .join("");
     cells.push(
-      `<div style="color:#bc4c00;font-size:13px;margin-bottom:6px;">🔥 ${escapeHtml(fireSaleLine(v.fireSale))}</div>`,
+      `<div style="font-size:12px;color:#bc4c00;background:#fff8f3;border:1px solid #ffd8a8;border-radius:6px;padding:8px 12px;margin-bottom:6px;">
+        <div style="font-weight:700;">🔥 ${escapeHtml(fireSaleHead(v.fireSale))}</div>
+        ${items ? `<ul style="margin:4px 0 0 18px;padding:0;">${items}</ul>` : ""}
+      </div>`,
     );
   }
 
@@ -247,7 +264,8 @@ function holdingText(r, appUrl) {
   );
   link();
   if (v.fireSale) {
-    lines.push(`  ${fireSaleLine(v.fireSale)}`);
+    lines.push(`  ${fireSaleHead(v.fireSale)}`);
+    for (const item of fireSaleItems(v.fireSale)) lines.push(`   - ${item}`);
   }
   if (r.tierChange) {
     lines.push(`  ${describeTierChange(r)}`);

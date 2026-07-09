@@ -292,6 +292,9 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
               title={fireSaleTitle(verdict.fireSale)}
             >
               🔥 FIRE SALE
+              {verdict.fireSale.confidenceLabel
+                ? ` · ${verdict.fireSale.confidenceLabel}`
+                : ""}
             </span>
           )}
           {tierChange && (
@@ -319,6 +322,29 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
 
       <div className={styles.cardBody}>
         <p className={styles.context}>{context}</p>
+
+        {verdict.fireSale &&
+          (verdict.fireSale.reasons?.length ||
+            verdict.fireSale.cautions?.length) > 0 && (
+            <div className={styles.fireDetail}>
+              <p className={styles.fireDetailHead}>
+                🔥 Why it&apos;s a fire sale
+                {verdict.fireSale.confidenceLabel
+                  ? ` — ${verdict.fireSale.confidenceLabel.toLowerCase()} confidence`
+                  : ""}
+              </p>
+              <ul className={styles.fireDetailList}>
+                {(verdict.fireSale.reasons ?? []).map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+                {(verdict.fireSale.cautions ?? []).map((caution) => (
+                  <li key={caution} className={styles.fireDetailCaution}>
+                    {caution}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
         {sellSizing && (
           <p className={styles.sellSizing}>

@@ -49,14 +49,98 @@ function discountCheck(candles = [], pillars) {
   return { offHighPct, fundamental };
 }
 
-function discountFinding(discount, isFireSale) {
-  const lead = isFireSale
-    ? "Fire sale — on sale, not broken"
-    : "On sale, not broken";
+function discountFinding(discount) {
   return bull(
-    `${lead}: the finances score ${discount.fundamental.toFixed(0)}/100 while the stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high with news holding up — priced low on a healthy business, with room to recover if the trend turns. (Discounts can keep discounting: the exit line still applies.)`,
+    `On sale, not broken: the finances score ${discount.fundamental.toFixed(0)}/100 while the stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high with news holding up — priced low on a healthy business, with room to recover if the trend turns. (Discounts can keep discounting: the exit line still applies.)`,
     2,
   );
+}
+
+// Grades the fire-sale setup itself, separately from the verdict's own
+// conviction: how far the finances clear the bar, whether news backs the
+// "not broken" read, whether the price shows any sign of turning, and
+// whether the markdown is so deep it might be telling us something. Returns
+// confidence 0-100, a label on the same High/Moderate/Low scale the verdict
+// uses, and the plain-English reasons/cautions behind the grade.
+function buildFireSale(discount, pillars, metrics) {
+  const reasons = [];
+  const cautions = [];
+  let confidence = 50;
+
+  const fundMargin = discount.fundamental - DISCOUNT_MIN_FUNDAMENTAL;
+  confidence += Math.min(fundMargin * 1.2, 25);
+  reasons.push(
+    `The company's finances score ${discount.fundamental.toFixed(0)}/100 — ${fundMargin >= 10 ? "comfortably" : "just"} above the ${DISCOUNT_MIN_FUNDAMENTAL}/100 bar this flag requires.`,
+  );
+  reasons.push(
+    `The stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high — a genuine markdown, not a routine dip.`,
+  );
+
+  const sentiment = pillars.sentiment;
+  if (Number.isFinite(sentiment)) {
+    if (sentiment >= 55) {
+      confidence += 10;
+      reasons.push(
+        `News mood is holding up (${sentiment.toFixed(0)}/100) — the markdown doesn't look driven by bad company news.`,
+      );
+    } else {
+      confidence -= 5;
+      cautions.push(
+        `News is mixed (${sentiment.toFixed(0)}/100) — check whether there's a real story behind the drop.`,
+      );
+    }
+  } else {
+    confidence -= 10;
+    cautions.push(
+      "No scored news available — the committee can't rule out a story behind the drop.",
+    );
+  }
+
+  const { price, sma50 } = metrics;
+  if (Number.isFinite(price) && Number.isFinite(sma50)) {
+    if (price > sma50) {
+      confidence += 10;
+      reasons.push(
+        "The price has climbed back above its 50-day average — an early sign the bounce may have started.",
+      );
+    } else {
+      confidence -= 5;
+      cautions.push(
+        "The price is still below its 50-day average — no sign of a turn yet, so the discount could deepen before it recovers.",
+      );
+    }
+  }
+
+  if (discount.offHighPct >= 50) {
+    confidence -= 15;
+    cautions.push(
+      `The markdown is very deep (${discount.offHighPct.toFixed(0)}% off the high) — discounts this large sometimes mean the market sees a problem the numbers don't show yet.`,
+    );
+  }
+
+  confidence = clamp(confidence, 0, 100);
+  const confidenceLabel =
+    confidence >= 60 ? "High" : confidence >= 30 ? "Moderate" : "Low";
+
+  return {
+    offHighPct: discount.offHighPct,
+    fundamental: discount.fundamental,
+    confidence,
+    confidenceLabel,
+    reasons,
+    cautions,
+  };
+}
+
+function fireSaleFindings(fireSale) {
+  return [
+    bull(
+      `Fire sale flagged with ${fireSale.confidenceLabel.toLowerCase()} confidence — on sale, not broken: priced low on a healthy business, with room to bounce back. (Discounts can keep discounting: the exit line still applies.)`,
+      2,
+    ),
+    ...fireSale.reasons.map((r) => bull(`Why: ${r}`, 1)),
+    ...fireSale.cautions.map((c) => neutral(`Keep in mind: ${c}`, 1)),
+  ];
 }
 
 // Compare today's raw composite with the committee's own stored score from
@@ -425,7 +509,7 @@ export function runPortfolioManager({
   // discount.
   const fireSale =
     discount && action !== "SELL"
-      ? { offHighPct: discount.offHighPct, fundamental: discount.fundamental }
+      ? buildFireSale(discount, pillarScores, dataScout.metrics ?? {})
       : null;
 
   // Confidence: distance from neutral, less the devil's full penalty
@@ -464,7 +548,8 @@ export function runPortfolioManager({
     summary: buildThesis(tier, composite, convictionLabel, pillarScores),
     findings: [
       ...(momentum ? [momentumFinding(momentum, composite)] : []),
-      ...(discount ? [discountFinding(discount, Boolean(fireSale))] : []),
+      ...(discount && !fireSale ? [discountFinding(discount)] : []),
+      ...(fireSale ? fireSaleFindings(fireSale) : []),
       ...(chaseCapped
         ? [
             neutral(

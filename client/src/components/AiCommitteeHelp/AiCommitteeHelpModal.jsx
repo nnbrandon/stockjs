@@ -173,6 +173,15 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               lift. It never appears on Reduce or Sell verdicts, and a discount
               can keep discounting: the exit line still applies.
             </p>
+            <p>
+              Each fire sale carries its own High / Moderate / Low confidence,
+              graded on how far the finances clear the bar, whether the news
+              backs the &ldquo;not broken&rdquo; read, whether the price has
+              started turning back up, and whether the markdown is so deep it
+              might signal a real problem. The reasoning behind the grade is
+              listed on the holding&apos;s card and in the Portfolio
+              Manager&apos;s notes.
+            </p>
           </section>
 
           <section className={styles.section}>

@@ -211,6 +211,38 @@
   white-space: nowrap;
 }
 
+/* Fire-sale reasoning: why the flag fired and what keeps its confidence
+   in check. */
+.fireDetail {
+  border: 1px solid
+    color-mix(in srgb, var(--palette-warning) 30%, var(--palette-divider));
+  border-radius: var(--shape-radius-sm);
+  background: var(--palette-warning-soft);
+  padding: 8px 10px;
+}
+
+.fireDetailHead {
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--palette-warning);
+}
+
+.fireDetailList {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--palette-text-secondary);
+}
+
+.fireDetailCaution {
+  color: var(--palette-text-disabled);
+}
+
 .score {
   font-family: var(--font-mono);
   font-size: 12px;

@@ -8,7 +8,10 @@ export function getVerdictContext(
 ) {
   const base = baseContext(action, { hasPosition, tier });
   if (fireSale && action !== "SELL") {
-    return `${base} It's also flagged as a fire sale: priced well below its 52-week high while the finances stay strong — the kind of discount that can bounce back.`;
+    const label = fireSale.confidenceLabel
+      ? ` with ${fireSale.confidenceLabel.toLowerCase()} confidence`
+      : "";
+    return `${base} It's also flagged as a fire sale${label}: priced well below its 52-week high while the finances stay strong — the kind of discount that can bounce back.`;
   }
   return base;
 }

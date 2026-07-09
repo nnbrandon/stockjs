@@ -77,6 +77,9 @@ export function runAnalystCommittee(input = {}) {
     composite: portfolioManager.composite,
     conviction: portfolioManager.conviction,
     convictionLabel: portfolioManager.convictionLabel,
+    // "Quality on sale" indicator: {offHighPct, fundamental} when the stock
+    // is priced well below its 52-week high with strong finances, else null.
+    fireSale: portfolioManager.fireSale ?? null,
   };
 
   return {

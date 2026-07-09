@@ -403,11 +403,7 @@
 .findingLink {
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: color-mix(
-    in srgb,
-    currentColor 35%,
-    transparent
-  );
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   text-underline-offset: 2px;
   transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -624,6 +620,24 @@
 }
 .tierChangeDown {
   color: var(--palette-error);
+}
+
+/* "Quality on sale" indicator: priced low with strong finances. */
+.fireBadge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: var(--shape-radius-chip);
+  border: 1px solid
+    color-mix(in srgb, var(--palette-warning) 45%, var(--palette-divider));
+  background: var(--palette-warning-soft);
+  color: var(--palette-warning);
+  white-space: nowrap;
 }
 
 .scoreHistory {

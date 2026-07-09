@@ -47,6 +47,15 @@ function tierBadge(tier) {
   return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;background:${color};color:#ffffff;font-size:13px;font-weight:700;">${escapeHtml(tier)}</span>`;
 }
 
+// "Quality on sale": priced well below the 52-week high with strong finances.
+function fireSaleBadge() {
+  return `<span style="display:inline-block;padding:1px 10px;border-radius:12px;background:#fff1e5;border:1px solid #e8590c;color:#bc4c00;font-size:12px;font-weight:700;">🔥 FIRE SALE</span>`;
+}
+
+function fireSaleLine(fireSale) {
+  return `Fire sale: finances score ${fmtScore(fireSale.fundamental)}/100 while the stock sits ${fmtScore(fireSale.offHighPct)}% below its 52-week high — priced low on a healthy business, with room to bounce back.`;
+}
+
 function describeTierChange(r) {
   const c = r.tierChange;
   const verb = c.direction === "upgrade" ? "upgraded" : "downgraded";
@@ -58,12 +67,14 @@ function subjectLine(results, meta) {
   const buys = rated.filter((r) => r.report.verdict.action === "BUY").length;
   const holds = rated.filter((r) => r.report.verdict.action === "HOLD").length;
   const sells = rated.filter((r) => r.report.verdict.action === "SELL").length;
+  const fireSales = rated.filter((r) => r.report.verdict.fireSale).length;
   const changes = results.filter((r) => r.tierChange).length;
 
   const counts = [
     buys ? `${buys} Buy` : null,
     holds ? `${holds} Hold` : null,
     sells ? `${sells} Sell` : null,
+    fireSales ? `${fireSales} 🔥 Fire Sale` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -149,10 +160,16 @@ function holdingHtml(r, appUrl) {
   cells.push(
     `<div style="margin-bottom:6px;">
       ${symbolLink(appUrl, r.symbol, `<strong style="font-size:16px;">${escapeHtml(r.symbol)}</strong>`)}
-      &nbsp;${tierBadge(v.tier)}
+      &nbsp;${tierBadge(v.tier)}${v.fireSale ? `&nbsp;${fireSaleBadge()}` : ""}
       <span style="color:#57606a;font-size:13px;">&nbsp;score ${fmtScore(v.composite)}/100 · ${escapeHtml(v.convictionLabel)} confidence</span>
     </div>`,
   );
+
+  if (v.fireSale) {
+    cells.push(
+      `<div style="color:#bc4c00;font-size:13px;margin-bottom:6px;">🔥 ${escapeHtml(fireSaleLine(v.fireSale))}</div>`,
+    );
+  }
 
   if (r.tierChange) {
     const color = r.tierChange.direction === "upgrade" ? "#1a7f37" : "#cf222e";
@@ -226,16 +243,21 @@ function holdingText(r, appUrl) {
   const v = r.report.verdict;
   const pm = r.report.agents?.find((a) => a.key === "portfolioManager");
   lines.push(
-    `${r.symbol}: ${v.tier} — score ${fmtScore(v.composite)}/100 (${v.convictionLabel} confidence)`,
+    `${r.symbol}: ${v.tier}${v.fireSale ? " · 🔥 FIRE SALE" : ""} — score ${fmtScore(v.composite)}/100 (${v.convictionLabel} confidence)`,
   );
   link();
+  if (v.fireSale) {
+    lines.push(`  ${fireSaleLine(v.fireSale)}`);
+  }
   if (r.tierChange) {
     lines.push(`  ${describeTierChange(r)}`);
   }
   if (pm?.summary) lines.push(`  ${pm.summary}`);
   if (r.newsMood) lines.push(`  ${r.newsMood}`);
   if (r.topPositive?.title)
-    lines.push(`  Most upbeat: ${r.topPositive.title} ${r.topPositive.link || ""}`);
+    lines.push(
+      `  Most upbeat: ${r.topPositive.title} ${r.topPositive.link || ""}`,
+    );
   if (r.topNegative?.title)
     lines.push(
       `  Most negative: ${r.topNegative.title} ${r.topNegative.link || ""}`,

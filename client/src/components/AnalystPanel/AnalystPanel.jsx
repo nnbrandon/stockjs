@@ -503,6 +503,7 @@ export default function AnalystPanel({
   const verdictContext = getVerdictContext(verdict.action, {
     hasPosition: Boolean(position),
     tier: verdict.tier,
+    fireSale: verdict.fireSale,
   });
   const VerdictIcon =
     verdict.action === "BUY"
@@ -522,6 +523,14 @@ export default function AnalystPanel({
           <div>
             <div className={styles.verdictAction}>
               {verdict.tier ?? verdict.action}
+              {verdict.fireSale && (
+                <span
+                  className={styles.fireBadge}
+                  title={`Finances score ${fmtScore(verdict.fireSale.fundamental)}/100 while the stock sits ${fmtScore(verdict.fireSale.offHighPct)}% below its 52-week high — priced low with room to bounce back.`}
+                >
+                  🔥 FIRE SALE
+                </span>
+              )}
               {tierChange && (
                 <span
                   className={`${styles.tierChange} ${

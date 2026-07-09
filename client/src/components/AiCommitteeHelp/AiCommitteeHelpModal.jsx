@@ -163,6 +163,16 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               cash, moving toward your Buy-rated holdings, or a broad index
               fund.
             </p>
+            <p>
+              A 🔥 <strong>Fire Sale</strong> badge can appear on Buy or Hold
+              verdicts. It means the stock looks priced low rather than broken:
+              the company&apos;s finances score at least 62/100 while the price
+              sits 25%+ below its 52-week high and the news isn&apos;t alarming.
+              The committee reads that as a discount on a healthy business — one
+              with room to bounce back — not decay, and gives the score a small
+              lift. It never appears on Reduce or Sell verdicts, and a discount
+              can keep discounting: the exit line still applies.
+            </p>
           </section>
 
           <section className={styles.section}>

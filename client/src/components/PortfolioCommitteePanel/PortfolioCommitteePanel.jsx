@@ -92,6 +92,11 @@ const CHIP_TONES = {
     borderColor:
       "color-mix(in srgb, var(--palette-error) 35%, var(--palette-divider))",
   },
+  fire: {
+    color: "var(--palette-warning)",
+    borderColor:
+      "color-mix(in srgb, var(--palette-warning) 35%, var(--palette-divider))",
+  },
 };
 
 function chipSx(tone) {
@@ -138,6 +143,7 @@ const FILTERS = {
   BUY: "BUY",
   HOLD: "HOLD",
   SELL: "SELL",
+  FIRE: "FIRE",
   CHANGED: "CHANGED",
   FUND: "FUND",
   NA: "NA",
@@ -166,6 +172,14 @@ function getItemFilterKey(item) {
 
 function getItemTierChange(item) {
   return getTierChange(item.report, item.previousSnapshot);
+}
+
+function getItemFireSale(item) {
+  return item.report?.verdict?.fireSale ?? null;
+}
+
+function fireSaleTitle(fireSale) {
+  return `Priced low, not broken: finances score ${fmtScore(fireSale.fundamental)}/100 while the stock sits ${fmtScore(fireSale.offHighPct)}% below its 52-week high — a discount with room to bounce back.`;
 }
 
 function actionClass(action) {
@@ -240,6 +254,7 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
   const context = getVerdictContext(verdict.action, {
     hasPosition: true,
     tier: verdict.tier,
+    fireSale: verdict.fireSale,
   });
 
   // For SELL verdicts, surface the Portfolio Manager's suggested trim size in
@@ -271,6 +286,14 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
           >
             {(verdict.tier ?? verdict.action).toUpperCase()}
           </span>
+          {verdict.fireSale && (
+            <span
+              className={styles.fireBadge}
+              title={fireSaleTitle(verdict.fireSale)}
+            >
+              🔥 FIRE SALE
+            </span>
+          )}
           {tierChange && (
             <span
               className={`${styles.changeBadge} ${
@@ -399,10 +422,19 @@ export default function PortfolioCommitteePanel({
   const runDisabled = positionsLoading || count === 0 || status === "running";
 
   const summary = useMemo(() => {
-    const counts = { BUY: 0, HOLD: 0, SELL: 0, FUND: 0, NA: 0, CHANGED: 0 };
+    const counts = {
+      BUY: 0,
+      HOLD: 0,
+      SELL: 0,
+      FUND: 0,
+      NA: 0,
+      CHANGED: 0,
+      FIRE: 0,
+    };
     for (const item of results) {
       counts[getItemFilterKey(item)] += 1;
       if (getItemTierChange(item)) counts.CHANGED += 1;
+      if (getItemFireSale(item)) counts.FIRE += 1;
     }
     return counts;
   }, [results]);
@@ -411,6 +443,8 @@ export default function PortfolioCommitteePanel({
     if (actionFilter === FILTERS.ALL) return results;
     if (actionFilter === FILTERS.CHANGED)
       return results.filter((item) => getItemTierChange(item));
+    if (actionFilter === FILTERS.FIRE)
+      return results.filter((item) => getItemFireSale(item));
     return results.filter((item) => getItemFilterKey(item) === actionFilter);
   }, [results, actionFilter]);
 
@@ -533,6 +567,7 @@ export default function PortfolioCommitteePanel({
                 { key: FILTERS.BUY, label: `${summary.BUY} Buy`, tone: "buy", show: summary.BUY > 0 },
                 { key: FILTERS.HOLD, label: `${summary.HOLD} Hold`, show: summary.HOLD > 0 },
                 { key: FILTERS.SELL, label: `${summary.SELL} Sell`, tone: "sell", show: summary.SELL > 0 },
+                { key: FILTERS.FIRE, label: `${summary.FIRE} 🔥 Fire Sale`, tone: "fire", show: summary.FIRE > 0 },
                 { key: FILTERS.CHANGED, label: `${summary.CHANGED} Changed`, show: summary.CHANGED > 0 },
                 { key: FILTERS.FUND, label: `${summary.FUND} Fund${summary.FUND === 1 ? "" : "s"}`, show: summary.FUND > 0 },
                 { key: FILTERS.NA, label: `${summary.NA} No data`, show: summary.NA > 0 },

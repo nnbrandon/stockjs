@@ -49,9 +49,12 @@ function discountCheck(candles = [], pillars) {
   return { offHighPct, fundamental };
 }
 
-function discountFinding(discount) {
+function discountFinding(discount, isFireSale) {
+  const lead = isFireSale
+    ? "Fire sale — on sale, not broken"
+    : "On sale, not broken";
   return bull(
-    `On sale, not broken: the finances score ${discount.fundamental.toFixed(0)}/100 while the stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high with news holding up — the weak trend looks more like a discount on a healthy business than decay. (Discounts can keep discounting: the exit line still applies.)`,
+    `${lead}: the finances score ${discount.fundamental.toFixed(0)}/100 while the stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high with news holding up — priced low on a healthy business, with room to recover if the trend turns. (Discounts can keep discounting: the exit line still applies.)`,
     2,
   );
 }
@@ -415,6 +418,16 @@ export function runPortfolioManager({
   const evidenceCapped = tier === "Strong Buy" && noFundamentals;
   if (evidenceCapped) tier = "Buy";
 
+  // Fire sale: the discount setup surfaced as its own indicator — the stock
+  // is priced low while the business stays strong, the kind of markdown with
+  // room to bounce back toward its old high. Never shown on a SELL verdict:
+  // if the composite still lands there, the markdown reads as decay, not a
+  // discount.
+  const fireSale =
+    discount && action !== "SELL"
+      ? { offHighPct: discount.offHighPct, fundamental: discount.fundamental }
+      : null;
+
   // Confidence: distance from neutral, less the devil's full penalty
   // (contradictions and data gaps both make us less sure).
   const conviction = clamp(
@@ -445,12 +458,13 @@ export function runPortfolioManager({
     composite,
     conviction,
     convictionLabel,
+    fireSale,
     risk,
     plan,
     summary: buildThesis(tier, composite, convictionLabel, pillarScores),
     findings: [
       ...(momentum ? [momentumFinding(momentum, composite)] : []),
-      ...(discount ? [discountFinding(discount)] : []),
+      ...(discount ? [discountFinding(discount, Boolean(fireSale))] : []),
       ...(chaseCapped
         ? [
             neutral(

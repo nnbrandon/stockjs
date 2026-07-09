@@ -2,7 +2,18 @@
  * Plain-language framing for what BUY/HOLD/SELL means given whether the
  * user holds the symbol. Does not change the committee score.
  */
-export function getVerdictContext(action, { hasPosition, tier } = {}) {
+export function getVerdictContext(
+  action,
+  { hasPosition, tier, fireSale } = {},
+) {
+  const base = baseContext(action, { hasPosition, tier });
+  if (fireSale && action !== "SELL") {
+    return `${base} It's also flagged as a fire sale: priced well below its 52-week high while the finances stay strong — the kind of discount that can bounce back.`;
+  }
+  return base;
+}
+
+function baseContext(action, { hasPosition, tier }) {
   if (!hasPosition) {
     if (action === "BUY") {
       return "You don't hold this symbol — the committee sees a favorable setup to consider starting a position.";

@@ -303,7 +303,7 @@ function AgentCard({ agent }) {
         </div>
         <span className={styles.agentChip}>{chip}</span>
       </div>
-      <p className={styles.agentSummary}>{agent.narrative || agent.summary}</p>
+      <p className={styles.agentSummary}>{agent.summary}</p>
       {agent.findings?.length > 0 && (
         <ul className={styles.findingList}>
           {agent.findings.map((f, i) => (
@@ -589,6 +589,10 @@ export default function AnalystPanel({
           </div>
         </div>
       </div>
+
+      {!compact && portfolioManager?.narrative && (
+        <p className={styles.verdictNarrative}>{portfolioManager.narrative}</p>
+      )}
 
       {position && (
         <PositionHolding

@@ -260,10 +260,10 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
 
   // For SELL verdicts, surface the Portfolio Manager's suggested trim size in
   // this holder's actual shares/dollars.
-  const exitPlan =
-    verdict.action === "SELL"
-      ? report.agents?.find((a) => a.key === "portfolioManager")?.plan
-      : null;
+  const portfolioManager = report.agents?.find(
+    (a) => a.key === "portfolioManager",
+  );
+  const exitPlan = verdict.action === "SELL" ? portfolioManager?.plan : null;
   const quantity = item.position?.quantity;
   // Exit timing baked into every SELL/REDUCE, reasoned from the company's
   // financial trajectory over the past year.
@@ -330,7 +330,7 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
       </div>
 
       <div className={styles.cardBody}>
-        <p className={styles.context}>{context}</p>
+        <p className={styles.context}>{portfolioManager?.narrative || context}</p>
 
         {verdict.fireSale &&
           (verdict.fireSale.reasons?.length ||

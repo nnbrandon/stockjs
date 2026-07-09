@@ -157,6 +157,14 @@
   color: var(--palette-text-secondary);
 }
 
+/* The chair's-verdict narrative, shown as the lead paragraph under the banner. */
+.verdictNarrative {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--palette-text-primary);
+}
+
 /* ───────────────────────── Pillars ───────────────────────── */
 .pillars {
   display: grid;

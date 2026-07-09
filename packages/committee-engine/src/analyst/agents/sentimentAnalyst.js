@@ -15,9 +15,14 @@ export function runSentimentAnalyst({ news = [] }) {
   const findings = [];
   const unscored = result.unscoredCount || 0;
 
-  // FinBERT polarity is decisive; map -1..+1 → 0..100 over a ±0.7 band.
+  // FinBERT polarity is decisive; map -1..+1 → 0..100 over a ±0.5 band. Two
+  // things widened the effective range vs. the old ±0.7: the band itself, and
+  // the directional weighting in sentiment.js (which stops neutral wire copy
+  // from dragging the aggregate to 0). ±0.5 balances the two — a ±0.25
+  // aggregate reads as a clear one-sided ~75/25, without a single material
+  // headline pegging the whole score to an extreme.
   const sentimentScore =
-    counts.total > 0 ? scaleClamp(score, -0.7, 0.7, 0, 100) : null;
+    counts.total > 0 ? scaleClamp(score, -0.5, 0.5, 0, 100) : null;
 
   if (counts.total === 0) {
     findings.push(

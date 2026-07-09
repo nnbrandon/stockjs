@@ -182,6 +182,18 @@ function recencyWeight(dateStr, halfLifeDays = 10) {
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
+// Directional weighting for the sentiment aggregate. FinBERT labels a large
+// share of financial news "neutral" (sentiment ≈ 0); counted at full weight in
+// the average, those articles drag the weighted mean toward 0 and peg most
+// stocks near 50. So each article's averaging weight is scaled by how
+// directional it is: near-neutral articles keep only NEUTRAL_FLOOR of their
+// weight — enough that a genuinely quiet news week still reads ~neutral, but
+// not so much that a page of neutral wire copy washes out a real signal. An
+// article with |sentiment| ≥ DIR_REF counts as fully directional. The floor
+// also keeps a lone strong headline from pegging the whole read to an extreme.
+const NEUTRAL_FLOOR = 0.25;
+const DIR_REF = 0.5;
+
 // Normalized key for de-duplicating wire reprints (same story, many outlets).
 export function titleKey(title = "") {
   return tokenize(title).slice(0, 9).join(" ");
@@ -274,7 +286,13 @@ export function analyzeNewsSentiment(news = []) {
     else if (a.sentiment < -0.05) negative += 1;
     else neutral += 1;
 
-    const weight = a.recency * a.materiality * a.confidence;
+    // Averaging weight = recency × materiality × confidence, scaled by how
+    // directional the article is so near-neutral copy doesn't dilute the mean.
+    const base = a.recency * a.materiality * a.confidence;
+    const dirStrength =
+      NEUTRAL_FLOOR +
+      (1 - NEUTRAL_FLOOR) * Math.min(1, Math.abs(a.sentiment) / DIR_REF);
+    const weight = base * dirStrength;
     a.weight = weight;
     weightedSum += a.sentiment * weight;
     weightTotal += weight;

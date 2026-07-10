@@ -15,14 +15,14 @@ export function runSentimentAnalyst({ news = [] }) {
   const findings = [];
   const unscored = result.unscoredCount || 0;
 
-  // FinBERT polarity is decisive; map -1..+1 → 0..100 over a ±0.5 band. Two
-  // things widened the effective range vs. the old ±0.7: the band itself, and
-  // the directional weighting in sentiment.js (which stops neutral wire copy
-  // from dragging the aggregate to 0). ±0.5 balances the two — a ±0.25
-  // aggregate reads as a clear one-sided ~75/25, without a single material
-  // headline pegging the whole score to an extreme.
+  // `score` is now a diffusion index (see sentiment.js): the balance of
+  // positive vs. negative coverage, which spans the full range instead of
+  // collapsing toward 0 like a mean of signed magnitudes did. Map -1..+1 →
+  // 0..100 over a ±0.7 band: a ~2:1 one-sided news week lands near 75/25, a
+  // decisively lopsided week reads clearly bullish/bearish, and balanced or
+  // mostly-neutral coverage sits at ~50.
   const sentimentScore =
-    counts.total > 0 ? scaleClamp(score, -0.5, 0.5, 0, 100) : null;
+    counts.total > 0 ? scaleClamp(score, -0.7, 0.7, 0, 100) : null;
 
   if (counts.total === 0) {
     findings.push(

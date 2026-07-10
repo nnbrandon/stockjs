@@ -11,4 +11,8 @@
 // for flags that persist a quarter without recovering, and a market-relative
 // drawdown check (benchmark candles) to separate company-specific discounts
 // from market-wide selloffs.
-export const COMMITTEE_ENGINE_VERSION = 4;
+// v5 (2026-07-10): news-mood pillar reworked from a mean of signed FinBERT
+// magnitudes (which regressed to ~50 as articles piled up) to a weighted
+// diffusion index — the balance of positive vs. negative coverage — so the
+// score uses the full 0–100 range. Mapping band retuned to ±0.7.
+export const COMMITTEE_ENGINE_VERSION = 5;

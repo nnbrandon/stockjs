@@ -182,17 +182,16 @@ function recencyWeight(dateStr, halfLifeDays = 10) {
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-// Directional weighting for the sentiment aggregate. FinBERT labels a large
-// share of financial news "neutral" (sentiment ≈ 0); counted at full weight in
-// the average, those articles drag the weighted mean toward 0 and peg most
-// stocks near 50. So each article's averaging weight is scaled by how
-// directional it is: near-neutral articles keep only NEUTRAL_FLOOR of their
-// weight — enough that a genuinely quiet news week still reads ~neutral, but
-// not so much that a page of neutral wire copy washes out a real signal. An
-// article with |sentiment| ≥ DIR_REF counts as fully directional. The floor
-// also keeps a lone strong headline from pegging the whole read to an extreme.
-const NEUTRAL_FLOOR = 0.25;
-const DIR_REF = 0.5;
+// Diffusion-index tuning. The aggregate is a balance of positive vs. negative
+// coverage, not a mean of signed magnitudes — a mean of many mostly-neutral,
+// partially-cancelling articles regresses to ~0 and pins most stocks near 50.
+// POS_THRESHOLD is the FinBERT polarity above/below which an article counts as
+// positive / negative. NEUTRAL_DAMP is how much neutral coverage counts in the
+// denominator: at 1.0 a wall of neutral wire copy would re-compress the range,
+// at 0 a couple of articles could swing the whole score — 0.5 damps a quiet,
+// mostly-neutral week toward neutral without washing out a real signal.
+const POS_THRESHOLD = 0.05;
+const NEUTRAL_DAMP = 0.5;
 
 // Normalized key for de-duplicating wire reprints (same story, many outlets).
 export function titleKey(title = "") {
@@ -271,38 +270,45 @@ export function analyzeNewsSentiment(news = []) {
     };
   });
 
-  // 3) Aggregate over FinBERT-scored articles only.
+  // 3) Aggregate over FinBERT-scored articles only, as a weighted DIFFUSION
+  // INDEX: the share of importance-weight behind positive news minus the share
+  // behind negative news, i.e. (Wpos − Wneg) / (Wpos + Wneg + damp·Wneut).
+  // A balance of positive vs. negative coverage uses the full 0–100 range,
+  // where a mean of signed magnitudes collapses toward 50. Each article's
+  // importance weight (recency × materiality × confidence) is independent of
+  // its direction; the FinBERT sentiment only decides which bucket it lands in.
   let positive = 0;
   let negative = 0;
   let neutral = 0;
-  let weightedSum = 0;
-  let weightTotal = 0;
+  let wPos = 0;
+  let wNeg = 0;
+  let wNeut = 0;
   const eventTally = new Map();
 
   for (const a of scored) {
     if (!a.usedModel) continue;
 
-    if (a.sentiment > 0.05) positive += 1;
-    else if (a.sentiment < -0.05) negative += 1;
-    else neutral += 1;
-
-    // Averaging weight = recency × materiality × confidence, scaled by how
-    // directional the article is so near-neutral copy doesn't dilute the mean.
-    const base = a.recency * a.materiality * a.confidence;
-    const dirStrength =
-      NEUTRAL_FLOOR +
-      (1 - NEUTRAL_FLOOR) * Math.min(1, Math.abs(a.sentiment) / DIR_REF);
-    const weight = base * dirStrength;
+    const weight = a.recency * a.materiality * a.confidence;
     a.weight = weight;
-    weightedSum += a.sentiment * weight;
-    weightTotal += weight;
+
+    if (a.sentiment > POS_THRESHOLD) {
+      positive += 1;
+      wPos += weight;
+    } else if (a.sentiment < -POS_THRESHOLD) {
+      negative += 1;
+      wNeg += weight;
+    } else {
+      neutral += 1;
+      wNeut += weight;
+    }
 
     if (!["general", "general / listicle"].includes(a.eventType)) {
       eventTally.set(a.eventType, (eventTally.get(a.eventType) || 0) + 1);
     }
   }
 
-  const score = weightTotal > 0 ? weightedSum / weightTotal : 0;
+  const denom = wPos + wNeg + NEUTRAL_DAMP * wNeut;
+  const score = denom > 0 ? (wPos - wNeg) / denom : 0;
   const modelCount = positive + negative + neutral;
 
   const ranked = scored

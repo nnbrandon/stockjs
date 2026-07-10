@@ -282,6 +282,18 @@ function App() {
     }
   };
 
+  // Holdings were pulled from the server onto this device (Fetch synced
+  // holdings). Refresh so the portfolio and watchlist show up immediately.
+  const handleReportSyncFetched = async (result) => {
+    await refreshStoredSymbols();
+    await refreshPositions();
+    let message = `Restored ${result.count} holding${result.count === 1 ? "" : "s"} from your synced portfolio.`;
+    if (result.failed > 0) {
+      message += ` ${result.failed} symbol(s) need a manual refresh for market data.`;
+    }
+    showSnackbar(message, result.failed > 0 ? "warning" : "success");
+  };
+
   // Shared props for the sidebar (rendered as desktop rail AND mobile drawer).
   const navProps = {
     mode,
@@ -389,6 +401,7 @@ function App() {
         {showReportSyncModal && (
           <ReportPortfolioSyncModal
             positionCount={positions.length}
+            onFetched={handleReportSyncFetched}
             onClose={handleReportSyncClose}
           />
         )}

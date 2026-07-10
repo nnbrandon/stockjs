@@ -1,5 +1,6 @@
 import { getAllPositions } from "../db";
 import LambdaService from "../LambdaService";
+import { applyImportedPositions } from "./applyImportedPositions";
 
 const TOKEN_KEY = "stockjsReportSyncToken";
 const EMAIL_KEY = "stockjsReportSyncEmail";
@@ -75,6 +76,43 @@ export async function syncReportPortfolio(positions) {
     );
   }
   return result;
+}
+
+/**
+ * Pull this email's server-stored holdings down into IndexedDB so a fresh
+ * device (e.g. a phone that never imported) gets its portfolio. Seeds market
+ * data and watchlist membership exactly like a CSV import. Requires a saved
+ * token + email. A never-synced address resolves to { ok: true, count: 0 }.
+ */
+export async function pullReportPortfolio({ onProgress } = {}) {
+  const token = getReportSyncToken();
+  const email = getReportSyncEmail();
+  if (!token || !email) return { ok: false, reason: "not-configured" };
+
+  const result = await LambdaService.fetchPortfolio(token, email);
+  if (!result.ok) return result;
+  if (!result.positions.length) {
+    return { ok: true, count: 0, failed: [], watchlistAdded: [] };
+  }
+
+  const rows = result.positions.map((p) => ({
+    symbol: p.symbol,
+    quantity: p.quantity,
+    averageCostBasis: p.averageCostBasis,
+    importedAt: new Date().toISOString(),
+    source: "sync",
+  }));
+
+  const applied = await applyImportedPositions(rows, { onProgress });
+  // Reflect that this device now matches the server snapshot.
+  if (result.updatedAt) localStorage.setItem(LAST_SYNC_KEY, result.updatedAt);
+
+  return {
+    ok: true,
+    count: applied.imported.length,
+    failed: applied.failed,
+    watchlistAdded: applied.watchlistAdded,
+  };
 }
 
 /**

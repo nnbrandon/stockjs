@@ -7,7 +7,11 @@ import { fetchPrices } from "./handlers/prices.js";
 import { fetchQuote } from "./handlers/quote.js";
 import { fetchSymbolSearch } from "./handlers/search.js";
 import { fetchTrending } from "./handlers/trending.js";
-import { removePortfolio, syncPortfolio } from "./handlers/portfolioSync.js";
+import {
+  fetchPortfolio,
+  removePortfolio,
+  syncPortfolio,
+} from "./handlers/portfolioSync.js";
 import { requestSyncToken } from "./handlers/requestToken.js";
 import { getCommitteeResults, runCommittee } from "./handlers/committee.js";
 import {
@@ -27,6 +31,7 @@ const VALID_ACTIONS = [
   "trending",
   "search",
   "portfolioSync",
+  "fetchPortfolio",
   "requestToken",
   "removePortfolio",
   "committeeResults",
@@ -88,6 +93,8 @@ export const handler = async (event) => {
         return await fetchArticles(parseBody(event), corsOrigin);
       case "portfolioSync":
         return await syncPortfolio(parseBody(event), corsOrigin);
+      case "fetchPortfolio":
+        return await fetchPortfolio(parseBody(event), corsOrigin);
       case "requestToken":
         return await requestSyncToken(parseBody(event), corsOrigin);
       case "removePortfolio":

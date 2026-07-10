@@ -213,6 +213,31 @@ class LambdaService {
     }
   }
 
+  // Pull this email's stored holdings back down (e.g. onto a phone that never
+  // imported). Read-only; same credentials as syncPortfolio. A never-synced
+  // address resolves to { ok: true, positions: [] } rather than an error.
+  async fetchPortfolio(token, email) {
+    try {
+      const response = await fetch(`${this.API_URL}?action=fetchPortfolio`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, email }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: data.error || "Could not fetch holdings" };
+      }
+      return {
+        ok: true,
+        positions: Array.isArray(data.positions) ? data.positions : [],
+        count: data.count ?? (data.positions?.length || 0),
+        updatedAt: data.updatedAt || null,
+      };
+    } catch (err) {
+      return { ok: false, error: err?.message || "Could not fetch holdings" };
+    }
+  }
+
   // Unsubscribe: delete this email's portfolio from S3 so the daily report
   // stops covering it. Same credentials as syncPortfolio; re-syncing later
   // turns the report back on.

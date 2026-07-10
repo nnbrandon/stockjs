@@ -220,6 +220,59 @@ export async function syncPortfolio(body, corsOrigin) {
 }
 
 /**
+ * Return the email's stored portfolio (action=fetchPortfolio) so a fresh
+ * device — e.g. a phone that never imported — can pull its holdings back
+ * down. Read-only, same credentials as syncPortfolio. A missing portfolio is
+ * not an error: it resolves to an empty list so the client can say "nothing
+ * synced yet" rather than showing a failure.
+ */
+export async function fetchPortfolio(body, corsOrigin) {
+  const bucket = process.env.REPORT_STATE_BUCKET || "";
+  if (!bucket) {
+    return errorResponse(
+      503,
+      "Portfolio sync is not configured on the server",
+      corsOrigin,
+    );
+  }
+
+  const auth = await authenticateSync(body, bucket);
+  if (auth.error) return errorResponse(...auth.error, corsOrigin);
+  const { email } = auth;
+
+  try {
+    const res = await s3.send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: portfolioKeyForEmail(email),
+      }),
+    );
+    const data = JSON.parse(await res.Body.transformToString());
+    const positions = sanitizePositions(data?.positions) || [];
+    return jsonResponse(
+      200,
+      {
+        ok: true,
+        positions,
+        count: positions.length,
+        updatedAt: data?.updatedAt || null,
+      },
+      corsOrigin,
+    );
+  } catch (err) {
+    if (err instanceof NoSuchKey || err.name === "NoSuchKey") {
+      return jsonResponse(
+        200,
+        { ok: true, positions: [], count: 0, updatedAt: null },
+        corsOrigin,
+      );
+    }
+    console.error("portfolioSync: S3 read failed:", err);
+    return errorResponse(502, "Failed to read portfolio", corsOrigin);
+  }
+}
+
+/**
  * The unsubscribe (action=removePortfolio): deletes the email's portfolio so
  * the daily report stops covering it. Same credentials as syncPortfolio.
  * Re-syncing later turns the report back on.

@@ -6,6 +6,7 @@ import IconButton from "@mui/material/IconButton";
 import CircularProgress from "@mui/material/CircularProgress";
 import CloseIcon from "@mui/icons-material/Close";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import CloudDownloadOutlinedIcon from "@mui/icons-material/CloudDownloadOutlined";
 
 import addTickerStyles from "../AddTickerModal/AddTickerModal.module.css";
 import LambdaService from "../../LambdaService";
@@ -13,6 +14,7 @@ import {
   getLastReportSyncAt,
   getReportSyncEmail,
   getReportSyncToken,
+  pullReportPortfolio,
   removeReportPortfolio,
   setReportSyncEmail,
   setReportSyncToken,
@@ -48,7 +50,7 @@ function formatSyncTime(iso) {
   }
 }
 
-function ReportPortfolioSyncModal({ positionCount, onClose }) {
+function ReportPortfolioSyncModal({ positionCount, onFetched, onClose }) {
   const [token, setToken] = useState(getReportSyncToken);
   const [email, setEmail] = useState(getReportSyncEmail);
   const [error, setError] = useState("");
@@ -132,6 +134,44 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
       setStatus(
         `Sync token sent to ${trimmedEmail} — check your inbox and paste it below.`,
       );
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  // Pull the server-stored holdings down onto this device — the entry point
+  // for a phone that never imported. Seeds market data + watchlist just like
+  // a CSV import, then tells App to refresh so the portfolio shows up.
+  async function handleFetch() {
+    setError("");
+    setStatus("");
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedToken = token.trim();
+    if (!EMAIL_RE.test(trimmedEmail) || !trimmedToken) {
+      setError("Enter your email and sync token to fetch your holdings.");
+      return;
+    }
+
+    setIsBusy(true);
+    setReportSyncEmail(trimmedEmail);
+    setReportSyncToken(trimmedToken);
+    try {
+      const result = await pullReportPortfolio();
+      if (!result.ok) {
+        setError(result.error || "Could not fetch your holdings — try again.");
+        return;
+      }
+      if (result.count === 0) {
+        setStatus(
+          `No synced holdings found for ${trimmedEmail} yet — import from Fidelity, then Save & sync.`,
+        );
+        return;
+      }
+      setLastSync(getLastReportSyncAt());
+      setStatus(
+        `Restored ${result.count} holding${result.count === 1 ? "" : "s"} to this device.`,
+      );
+      onFetched?.({ count: result.count, failed: result.failed.length });
     } finally {
       setIsBusy(false);
     }
@@ -288,6 +328,16 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
             <Button
               type="button"
               variant="outlined"
+              onClick={handleFetch}
+              disabled={isBusy || !token.trim() || !email.trim()}
+              startIcon={<CloudDownloadOutlinedIcon fontSize="small" />}
+              title="Pull your synced holdings onto this device"
+            >
+              Fetch synced holdings
+            </Button>
+            <Button
+              type="button"
+              variant="outlined"
               onClick={handleStopReport}
               disabled={isBusy || !token.trim() || !email.trim()}
               title="Remove your holdings from the server so the daily email stops"
@@ -298,7 +348,10 @@ function ReportPortfolioSyncModal({ positionCount, onClose }) {
               type="submit"
               variant="contained"
               color="primary"
-              disabled={isBusy || positionCount === 0}
+              // Only disable while a request is in flight. With no local
+              // holdings the handler explains why nothing syncs (and points at
+              // Fetch), instead of leaving a silent, greyed-out dead button.
+              disabled={isBusy}
               startIcon={
                 isBusy ? (
                   <CircularProgress size={12} color="inherit" thickness={5} />

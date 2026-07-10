@@ -7,7 +7,15 @@ import isObject from "lodash/isObject";
 
 import useSymbolSearch from "../../hooks/useSymbolSearch";
 import normalizeSymbol from "../../utils/normalizeSymbol";
+import sp500 from "../AddTickerModal/sp500.json";
 import styles from "./SymbolSearch.module.css";
+
+// Shown as a browse list before the user types anything; a real search call
+// takes over once there's input.
+const SP500_OPTIONS = sp500.map(({ Symbol, Name }) => ({
+  symbol: Symbol,
+  name: Name,
+}));
 
 // Browse-first search: pick a result → navigate to its detail page. Does NOT
 // add to the watchlist (that's the detail page's Add button / AddTickerModal).
@@ -76,7 +84,8 @@ export default function SymbolSearch({ onSelectSymbol, placeholder = "Search any
       freeSolo
       fullWidth
       autoHighlight
-      options={inputValue.trim() ? results : []}
+      openOnFocus
+      options={inputValue.trim() ? results : SP500_OPTIONS}
       loading={isSearching}
       filterOptions={(x) => x}
       slotProps={popperSlotProps}

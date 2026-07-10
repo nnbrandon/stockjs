@@ -14,13 +14,16 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Button from "@mui/material/Button";
 
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
-import { getScoreSeries } from "@stockjs/committee-engine/analyst/verdictHistory.js";
+import {
+  getScoreSeries,
+  summarizeScoreSeries,
+} from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import { computePositionMetrics } from "../../utils/computePositionMetrics";
 import { getGuardrail } from "@stockjs/committee-engine/guardrails.js";
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
 import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
 import PositionHolding from "../PositionHolding/PositionHolding";
-import TickerSparkline from "../SparklineChart/SparklineChart";
+import CommitteeScoreChart from "../CommitteeScoreChart/CommitteeScoreChart";
 import { getStockDataByDateRange } from "../../db";
 import calculateRange from "../../utils/calculateRange";
 import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
@@ -441,6 +444,11 @@ export default function AnalystPanel({
     [committee.row],
   );
 
+  const scoreTrend = useMemo(
+    () => summarizeScoreSeries(scoreSeries),
+    [scoreSeries],
+  );
+
   const positionMetrics = useMemo(
     () => (position ? computePositionMetrics(position, yearCandles) : null),
     [position, yearCandles],
@@ -656,11 +664,10 @@ export default function AnalystPanel({
               {scoreSeries[0].day} → today
             </span>
           </div>
-          <TickerSparkline
-            data={scoreSeries.map((p) => p.composite)}
-            isUp={scoreSeries.at(-1).composite >= scoreSeries[0].composite}
-            height={36}
-          />
+          <CommitteeScoreChart series={scoreSeries} height={128} />
+          {scoreTrend && (
+            <p className={styles.scoreHistoryAnalysis}>{scoreTrend.text}</p>
+          )}
         </div>
       )}
 

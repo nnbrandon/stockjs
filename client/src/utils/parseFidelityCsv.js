@@ -85,13 +85,17 @@ export function parseFidelityCsv(text) {
     return { positions: [], skipped: [{ reason: "No data rows found" }] };
   }
 
+  // Match headers case-insensitively \u2014 Fidelity's export uses sentence case
+  // ("Average cost basis", "Account name") that doesn't match a literal
+  // title-cased lookup.
   const headers = parseCsvLine(lines[0]).map((h) =>
-    h.replace(/^\uFEFF/, "").trim(),
+    h.replace(/^\uFEFF/, "").trim().toLowerCase(),
   );
-  const symbolIdx = headers.indexOf("Symbol");
-  const quantityIdx = headers.indexOf("Quantity");
-  const avgCostIdx = headers.indexOf("Average Cost Basis");
-  const accountIdx = headers.indexOf("Account Name");
+  const headerIdx = (name) => headers.indexOf(name.toLowerCase());
+  const symbolIdx = headerIdx("Symbol");
+  const quantityIdx = headerIdx("Quantity");
+  const avgCostIdx = headerIdx("Average Cost Basis");
+  const accountIdx = headerIdx("Account Name");
 
   if (symbolIdx === -1 || quantityIdx === -1 || avgCostIdx === -1) {
     throw new Error(

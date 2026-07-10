@@ -398,7 +398,18 @@
   .panel {
     border-left: none;
     border-top: 1px solid var(--palette-divider);
-    max-height: 420px;
+    /* Grow with the content and let the page (the workspace, already
+       overflow-y:auto here) scroll — no nested scrollbar. Fills the viewport
+       when content is short and expands past it when long. */
+    flex: 1;
+    min-height: auto;
+  }
+
+  /* Not its own scroll box in the stacked layout: content flows and the
+     workspace scrolls, so the widget takes the full height it needs. */
+  .scroll {
+    overflow: visible;
+    min-height: auto;
   }
 
   .panelCollapsed {

@@ -152,6 +152,7 @@ function ImportFidelityPortfolioModal({ onClose }) {
           fullWidth
           multiline
           minRows={8}
+          maxRows={10}
           placeholder="Or paste CSV contents here…"
           value={csvText}
           onChange={(e) => {

@@ -20,34 +20,14 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "ABMD",
-    "Name": "Abiomed",
-    "Sector": "Health Care"
-  },
-  {
     "Symbol": "ACN",
     "Name": "Accenture",
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "ATVI",
-    "Name": "Activision Blizzard",
-    "Sector": "Communication Services"
-  },
-  {
-    "Symbol": "ADM",
-    "Name": "ADM",
-    "Sector": "Consumer Staples"
-  },
-  {
     "Symbol": "ADBE",
-    "Name": "Adobe",
+    "Name": "Adobe Inc.",
     "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "AAP",
-    "Name": "Advance Auto Parts",
-    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "AMD",
@@ -56,7 +36,7 @@
   },
   {
     "Symbol": "AES",
-    "Name": "AES Corp",
+    "Name": "AES Corporation",
     "Sector": "Utilities"
   },
   {
@@ -71,18 +51,18 @@
   },
   {
     "Symbol": "APD",
-    "Name": "Air Products & Chemicals",
+    "Name": "Air Products",
     "Sector": "Materials"
+  },
+  {
+    "Symbol": "ABNB",
+    "Name": "Airbnb",
+    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "AKAM",
     "Name": "Akamai Technologies",
     "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "ALK",
-    "Name": "Alaska Air Group",
-    "Sector": "Industrials"
   },
   {
     "Symbol": "ALB",
@@ -111,22 +91,22 @@
   },
   {
     "Symbol": "ALL",
-    "Name": "Allstate Corp",
+    "Name": "Allstate",
     "Sector": "Financials"
   },
   {
     "Symbol": "GOOGL",
-    "Name": "Alphabet (Class A)",
+    "Name": "Alphabet Inc. (Class A)",
     "Sector": "Communication Services"
   },
   {
     "Symbol": "GOOG",
-    "Name": "Alphabet (Class C)",
+    "Name": "Alphabet Inc. (Class C)",
     "Sector": "Communication Services"
   },
   {
     "Symbol": "MO",
-    "Name": "Altria Group",
+    "Name": "Altria",
     "Sector": "Consumer Staples"
   },
   {
@@ -141,13 +121,8 @@
   },
   {
     "Symbol": "AEE",
-    "Name": "Ameren Corp",
+    "Name": "Ameren",
     "Sector": "Utilities"
-  },
-  {
-    "Symbol": "AAL",
-    "Name": "American Airlines Group",
-    "Sector": "Industrials"
   },
   {
     "Symbol": "AEP",
@@ -180,11 +155,6 @@
     "Sector": "Financials"
   },
   {
-    "Symbol": "ABC",
-    "Name": "AmerisourceBergen",
-    "Sector": "Health Care"
-  },
-  {
     "Symbol": "AME",
     "Name": "Ametek",
     "Sector": "Industrials"
@@ -205,18 +175,8 @@
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "ANSS",
-    "Name": "Ansys",
-    "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "ANTM",
-    "Name": "Anthem",
-    "Sector": "Health Care"
-  },
-  {
     "Symbol": "AON",
-    "Name": "Aon",
+    "Name": "Aon plc",
     "Sector": "Financials"
   },
   {
@@ -225,8 +185,13 @@
     "Sector": "Energy"
   },
   {
+    "Symbol": "APO",
+    "Name": "Apollo Global Management",
+    "Sector": "Financials"
+  },
+  {
     "Symbol": "AAPL",
-    "Name": "Apple",
+    "Name": "Apple Inc.",
     "Sector": "Information Technology"
   },
   {
@@ -235,9 +200,29 @@
     "Sector": "Information Technology"
   },
   {
+    "Symbol": "APP",
+    "Name": "AppLovin",
+    "Sector": "Information Technology"
+  },
+  {
     "Symbol": "APTV",
     "Name": "Aptiv",
     "Sector": "Consumer Discretionary"
+  },
+  {
+    "Symbol": "ACGL",
+    "Name": "Arch Capital Group",
+    "Sector": "Financials"
+  },
+  {
+    "Symbol": "ADM",
+    "Name": "Archer Daniels Midland",
+    "Sector": "Consumer Staples"
+  },
+  {
+    "Symbol": "ARES",
+    "Name": "Ares Management",
+    "Sector": "Financials"
   },
   {
     "Symbol": "ANET",
@@ -272,7 +257,7 @@
   {
     "Symbol": "ADP",
     "Name": "Automatic Data Processing",
-    "Sector": "Information Technology"
+    "Sector": "Industrials"
   },
   {
     "Symbol": "AZO",
@@ -290,24 +275,24 @@
     "Sector": "Materials"
   },
   {
+    "Symbol": "AXON",
+    "Name": "Axon Enterprise",
+    "Sector": "Industrials"
+  },
+  {
     "Symbol": "BKR",
     "Name": "Baker Hughes",
     "Sector": "Energy"
   },
   {
-    "Symbol": "BLL",
-    "Name": "Ball Corp",
+    "Symbol": "BALL",
+    "Name": "Ball Corporation",
     "Sector": "Materials"
   },
   {
     "Symbol": "BAC",
     "Name": "Bank of America",
     "Sector": "Financials"
-  },
-  {
-    "Symbol": "BBWI",
-    "Name": "Bath & Body Works Inc.",
-    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "BAX",
@@ -320,7 +305,7 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "BRK-B",
+    "Symbol": "BRK.B",
     "Name": "Berkshire Hathaway",
     "Sector": "Financials"
   },
@@ -328,11 +313,6 @@
     "Symbol": "BBY",
     "Name": "Best Buy",
     "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "BIO",
-    "Name": "Bio-Rad Laboratories",
-    "Sector": "Health Care"
   },
   {
     "Symbol": "TECH",
@@ -350,7 +330,17 @@
     "Sector": "Financials"
   },
   {
-    "Symbol": "BK",
+    "Symbol": "BX",
+    "Name": "Blackstone Inc.",
+    "Sector": "Financials"
+  },
+  {
+    "Symbol": "XYZ",
+    "Name": "Block, Inc.",
+    "Sector": "Financials"
+  },
+  {
+    "Symbol": "BNY",
     "Name": "BNY Mellon",
     "Sector": "Financials"
   },
@@ -363,16 +353,6 @@
     "Symbol": "BKNG",
     "Name": "Booking Holdings",
     "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "BWA",
-    "Name": "BorgWarner",
-    "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "BXP",
-    "Name": "Boston Properties",
-    "Sector": "Real Estate"
   },
   {
     "Symbol": "BSX",
@@ -392,7 +372,7 @@
   {
     "Symbol": "BR",
     "Name": "Broadridge Financial Solutions",
-    "Sector": "Information Technology"
+    "Sector": "Industrials"
   },
   {
     "Symbol": "BRO",
@@ -400,13 +380,28 @@
     "Sector": "Financials"
   },
   {
-    "Symbol": "BF-B",
+    "Symbol": "BF.B",
     "Name": "Brown–Forman",
     "Sector": "Consumer Staples"
   },
   {
+    "Symbol": "BLDR",
+    "Name": "Builders FirstSource",
+    "Sector": "Industrials"
+  },
+  {
+    "Symbol": "BG",
+    "Name": "Bunge Global",
+    "Sector": "Consumer Staples"
+  },
+  {
+    "Symbol": "BXP",
+    "Name": "BXP, Inc.",
+    "Sector": "Real Estate"
+  },
+  {
     "Symbol": "CHRW",
-    "Name": "C. H. Robinson",
+    "Name": "C.H. Robinson",
     "Sector": "Industrials"
   },
   {
@@ -415,29 +410,19 @@
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "CZR",
-    "Name": "Caesars Entertainment",
-    "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "CPB",
-    "Name": "Campbell Soup",
-    "Sector": "Consumer Staples"
+    "Symbol": "CPT",
+    "Name": "Camden Property Trust",
+    "Sector": "Real Estate"
   },
   {
     "Symbol": "COF",
-    "Name": "Capital One Financial",
+    "Name": "Capital One",
     "Sector": "Financials"
   },
   {
     "Symbol": "CAH",
     "Name": "Cardinal Health",
     "Sector": "Health Care"
-  },
-  {
-    "Symbol": "KMX",
-    "Name": "CarMax",
-    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "CCL",
@@ -450,13 +435,18 @@
     "Sector": "Industrials"
   },
   {
-    "Symbol": "CTLT",
-    "Name": "Catalent",
-    "Sector": "Health Care"
+    "Symbol": "CVNA",
+    "Name": "Carvana",
+    "Sector": "Consumer Discretionary"
+  },
+  {
+    "Symbol": "CASY",
+    "Name": "Casey's",
+    "Sector": "Consumer Staples"
   },
   {
     "Symbol": "CAT",
-    "Name": "Caterpillar",
+    "Name": "Caterpillar Inc.",
     "Sector": "Industrials"
   },
   {
@@ -466,18 +456,18 @@
   },
   {
     "Symbol": "CBRE",
-    "Name": "CBRE",
+    "Name": "CBRE Group",
     "Sector": "Real Estate"
   },
   {
     "Symbol": "CDW",
-    "Name": "CDW",
+    "Name": "CDW Corporation",
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "CE",
-    "Name": "Celanese",
-    "Sector": "Materials"
+    "Symbol": "COR",
+    "Name": "Cencora",
+    "Sector": "Health Care"
   },
   {
     "Symbol": "CNC",
@@ -488,16 +478,6 @@
     "Symbol": "CNP",
     "Name": "CenterPoint Energy",
     "Sector": "Utilities"
-  },
-  {
-    "Symbol": "CDAY",
-    "Name": "Ceridian",
-    "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "CERN",
-    "Name": "Cerner",
-    "Sector": "Health Care"
   },
   {
     "Symbol": "CF",
@@ -531,13 +511,18 @@
   },
   {
     "Symbol": "CB",
-    "Name": "Chubb",
+    "Name": "Chubb Limited",
     "Sector": "Financials"
   },
   {
     "Symbol": "CHD",
     "Name": "Church & Dwight",
     "Sector": "Consumer Staples"
+  },
+  {
+    "Symbol": "CIEN",
+    "Name": "Ciena",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "CI",
@@ -551,12 +536,12 @@
   },
   {
     "Symbol": "CTAS",
-    "Name": "Cintas Corporation",
+    "Name": "Cintas",
     "Sector": "Industrials"
   },
   {
     "Symbol": "CSCO",
-    "Name": "Cisco Systems",
+    "Name": "Cisco",
     "Sector": "Information Technology"
   },
   {
@@ -568,11 +553,6 @@
     "Symbol": "CFG",
     "Name": "Citizens Financial Group",
     "Sector": "Financials"
-  },
-  {
-    "Symbol": "CTXS",
-    "Name": "Citrix Systems",
-    "Sector": "Information Technology"
   },
   {
     "Symbol": "CLX",
@@ -591,13 +571,23 @@
   },
   {
     "Symbol": "KO",
-    "Name": "Coca-Cola Company",
+    "Name": "Coca-Cola Company (The)",
     "Sector": "Consumer Staples"
   },
   {
     "Symbol": "CTSH",
-    "Name": "Cognizant Technology Solutions",
+    "Name": "Cognizant",
     "Sector": "Information Technology"
+  },
+  {
+    "Symbol": "COHR",
+    "Name": "Coherent Corp.",
+    "Sector": "Information Technology"
+  },
+  {
+    "Symbol": "COIN",
+    "Name": "Coinbase",
+    "Sector": "Financials"
   },
   {
     "Symbol": "CL",
@@ -610,14 +600,9 @@
     "Sector": "Communication Services"
   },
   {
-    "Symbol": "CMA",
-    "Name": "Comerica",
-    "Sector": "Financials"
-  },
-  {
-    "Symbol": "CAG",
-    "Name": "Conagra Brands",
-    "Sector": "Consumer Staples"
+    "Symbol": "FIX",
+    "Name": "Comfort Systems USA",
+    "Sector": "Industrials"
   },
   {
     "Symbol": "COP",
@@ -635,14 +620,29 @@
     "Sector": "Consumer Staples"
   },
   {
+    "Symbol": "CEG",
+    "Name": "Constellation Energy",
+    "Sector": "Utilities"
+  },
+  {
+    "Symbol": "COO",
+    "Name": "Cooper Companies (The)",
+    "Sector": "Health Care"
+  },
+  {
     "Symbol": "CPRT",
     "Name": "Copart",
     "Sector": "Industrials"
   },
   {
     "Symbol": "GLW",
-    "Name": "Corning",
+    "Name": "Corning Inc.",
     "Sector": "Information Technology"
+  },
+  {
+    "Symbol": "CPAY",
+    "Name": "Corpay",
+    "Sector": "Financials"
   },
   {
     "Symbol": "CTVA",
@@ -650,14 +650,24 @@
     "Sector": "Materials"
   },
   {
+    "Symbol": "CSGP",
+    "Name": "CoStar Group",
+    "Sector": "Real Estate"
+  },
+  {
     "Symbol": "COST",
     "Name": "Costco",
     "Sector": "Consumer Staples"
   },
   {
-    "Symbol": "CTRA",
-    "Name": "Coterra",
-    "Sector": "Energy"
+    "Symbol": "CRH",
+    "Name": "CRH plc",
+    "Sector": "Materials"
+  },
+  {
+    "Symbol": "CRWD",
+    "Name": "CrowdStrike",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "CCI",
@@ -666,7 +676,7 @@
   },
   {
     "Symbol": "CSX",
-    "Name": "CSX",
+    "Name": "CSX Corporation",
     "Sector": "Industrials"
   },
   {
@@ -680,11 +690,6 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "DHI",
-    "Name": "D. R. Horton",
-    "Sector": "Consumer Discretionary"
-  },
-  {
     "Symbol": "DHR",
     "Name": "Danaher Corporation",
     "Sector": "Health Care"
@@ -695,24 +700,34 @@
     "Sector": "Consumer Discretionary"
   },
   {
+    "Symbol": "DDOG",
+    "Name": "Datadog",
+    "Sector": "Information Technology"
+  },
+  {
     "Symbol": "DVA",
     "Name": "DaVita",
     "Sector": "Health Care"
   },
   {
+    "Symbol": "DECK",
+    "Name": "Deckers Brands",
+    "Sector": "Consumer Discretionary"
+  },
+  {
     "Symbol": "DE",
-    "Name": "Deere & Co.",
+    "Name": "Deere & Company",
     "Sector": "Industrials"
+  },
+  {
+    "Symbol": "DELL",
+    "Name": "Dell Technologies",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "DAL",
     "Name": "Delta Air Lines",
     "Sector": "Industrials"
-  },
-  {
-    "Symbol": "XRAY",
-    "Name": "Dentsply Sirona",
-    "Sector": "Health Care"
   },
   {
     "Symbol": "DVN",
@@ -721,7 +736,7 @@
   },
   {
     "Symbol": "DXCM",
-    "Name": "DexCom",
+    "Name": "Dexcom",
     "Sector": "Health Care"
   },
   {
@@ -731,38 +746,18 @@
   },
   {
     "Symbol": "DLR",
-    "Name": "Digital Realty Trust",
+    "Name": "Digital Realty",
     "Sector": "Real Estate"
-  },
-  {
-    "Symbol": "DFS",
-    "Name": "Discover Financial Services",
-    "Sector": "Financials"
-  },
-  {
-    "Symbol": "DISCA",
-    "Name": "Discovery (Series A)",
-    "Sector": "Communication Services"
-  },
-  {
-    "Symbol": "DISCK",
-    "Name": "Discovery (Series C)",
-    "Sector": "Communication Services"
-  },
-  {
-    "Symbol": "DISH",
-    "Name": "Dish Network",
-    "Sector": "Communication Services"
   },
   {
     "Symbol": "DG",
     "Name": "Dollar General",
-    "Sector": "Consumer Discretionary"
+    "Sector": "Consumer Staples"
   },
   {
     "Symbol": "DLTR",
     "Name": "Dollar Tree",
-    "Sector": "Consumer Discretionary"
+    "Sector": "Consumer Staples"
   },
   {
     "Symbol": "D",
@@ -771,7 +766,12 @@
   },
   {
     "Symbol": "DPZ",
-    "Name": "Domino's Pizza",
+    "Name": "Domino's",
+    "Sector": "Consumer Discretionary"
+  },
+  {
+    "Symbol": "DASH",
+    "Name": "DoorDash",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -781,8 +781,13 @@
   },
   {
     "Symbol": "DOW",
-    "Name": "Dow",
+    "Name": "Dow Inc.",
     "Sector": "Materials"
+  },
+  {
+    "Symbol": "DHI",
+    "Name": "D. R. Horton",
+    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "DTE",
@@ -795,23 +800,8 @@
     "Sector": "Utilities"
   },
   {
-    "Symbol": "DRE",
-    "Name": "Duke Realty Corp",
-    "Sector": "Real Estate"
-  },
-  {
     "Symbol": "DD",
     "Name": "DuPont",
-    "Sector": "Materials"
-  },
-  {
-    "Symbol": "DXC",
-    "Name": "DXC Technology",
-    "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "EMN",
-    "Name": "Eastman Chemical",
     "Sector": "Materials"
   },
   {
@@ -821,8 +811,13 @@
   },
   {
     "Symbol": "EBAY",
-    "Name": "eBay",
+    "Name": "eBay Inc.",
     "Sector": "Consumer Discretionary"
+  },
+  {
+    "Symbol": "ECHO",
+    "Name": "EchoStar",
+    "Sector": "Communication Services"
   },
   {
     "Symbol": "ECL",
@@ -845,19 +840,19 @@
     "Sector": "Communication Services"
   },
   {
-    "Symbol": "LLY",
-    "Name": "Eli Lilly & Co",
+    "Symbol": "ELV",
+    "Name": "Elevance Health",
     "Sector": "Health Care"
   },
   {
-    "Symbol": "EMR",
-    "Name": "Emerson Electric Company",
+    "Symbol": "EME",
+    "Name": "Emcor",
     "Sector": "Industrials"
   },
   {
-    "Symbol": "ENPH",
-    "Name": "Enphase Energy",
-    "Sector": "Information Technology"
+    "Symbol": "EMR",
+    "Name": "Emerson Electric",
+    "Sector": "Industrials"
   },
   {
     "Symbol": "ETR",
@@ -867,6 +862,11 @@
   {
     "Symbol": "EOG",
     "Name": "EOG Resources",
+    "Sector": "Energy"
+  },
+  {
+    "Symbol": "EQT",
+    "Name": "EQT Corporation",
     "Sector": "Energy"
   },
   {
@@ -885,23 +885,23 @@
     "Sector": "Real Estate"
   },
   {
+    "Symbol": "ERIE",
+    "Name": "Erie Indemnity",
+    "Sector": "Financials"
+  },
+  {
     "Symbol": "ESS",
     "Name": "Essex Property Trust",
     "Sector": "Real Estate"
   },
   {
     "Symbol": "EL",
-    "Name": "Estée Lauder Companies",
+    "Name": "Estée Lauder Companies (The)",
     "Sector": "Consumer Staples"
   },
   {
-    "Symbol": "ETSY",
-    "Name": "Etsy",
-    "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "RE",
-    "Name": "Everest Re",
+    "Symbol": "EG",
+    "Name": "Everest Group",
     "Sector": "Financials"
   },
   {
@@ -920,13 +920,18 @@
     "Sector": "Utilities"
   },
   {
+    "Symbol": "EXE",
+    "Name": "Expand Energy",
+    "Sector": "Energy"
+  },
+  {
     "Symbol": "EXPE",
     "Name": "Expedia Group",
     "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "EXPD",
-    "Name": "Expeditors",
+    "Name": "Expeditors International",
     "Sector": "Industrials"
   },
   {
@@ -941,13 +946,18 @@
   },
   {
     "Symbol": "FFIV",
-    "Name": "F5 Networks",
+    "Name": "F5, Inc.",
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "FB",
-    "Name": "Facebook",
-    "Sector": "Communication Services"
+    "Symbol": "FDS",
+    "Name": "FactSet",
+    "Sector": "Financials"
+  },
+  {
+    "Symbol": "FICO",
+    "Name": "Fair Isaac",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "FAST",
@@ -965,9 +975,14 @@
     "Sector": "Industrials"
   },
   {
+    "Symbol": "FDXF",
+    "Name": "FedEx Freight",
+    "Sector": "Industrials"
+  },
+  {
     "Symbol": "FIS",
     "Name": "Fidelity National Information Services",
-    "Sector": "Information Technology"
+    "Sector": "Financials"
   },
   {
     "Symbol": "FITB",
@@ -975,9 +990,9 @@
     "Sector": "Financials"
   },
   {
-    "Symbol": "FRC",
-    "Name": "First Republic Bank",
-    "Sector": "Financials"
+    "Symbol": "FSLR",
+    "Name": "First Solar",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "FE",
@@ -987,21 +1002,16 @@
   {
     "Symbol": "FISV",
     "Name": "Fiserv",
-    "Sector": "Information Technology"
+    "Sector": "Financials"
   },
   {
-    "Symbol": "FLT",
-    "Name": "Fleetcor",
+    "Symbol": "FLEX",
+    "Name": "Flex Ltd.",
     "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "FMC",
-    "Name": "FMC Corporation",
-    "Sector": "Materials"
   },
   {
     "Symbol": "F",
-    "Name": "Ford",
+    "Name": "Ford Motor Company",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -1012,11 +1022,6 @@
   {
     "Symbol": "FTV",
     "Name": "Fortive",
-    "Sector": "Industrials"
-  },
-  {
-    "Symbol": "FBHS",
-    "Name": "Fortune Brands Home & Security",
     "Sector": "Industrials"
   },
   {
@@ -1040,11 +1045,6 @@
     "Sector": "Materials"
   },
   {
-    "Symbol": "GPS",
-    "Name": "Gap",
-    "Sector": "Consumer Discretionary"
-  },
-  {
     "Symbol": "GRMN",
     "Name": "Garmin",
     "Sector": "Consumer Discretionary"
@@ -1055,18 +1055,33 @@
     "Sector": "Information Technology"
   },
   {
+    "Symbol": "GE",
+    "Name": "GE Aerospace",
+    "Sector": "Industrials"
+  },
+  {
+    "Symbol": "GEHC",
+    "Name": "GE HealthCare",
+    "Sector": "Health Care"
+  },
+  {
+    "Symbol": "GEV",
+    "Name": "GE Vernova",
+    "Sector": "Industrials"
+  },
+  {
+    "Symbol": "GEN",
+    "Name": "Gen Digital",
+    "Sector": "Information Technology"
+  },
+  {
     "Symbol": "GNRC",
-    "Name": "Generac Holdings",
+    "Name": "Generac",
     "Sector": "Industrials"
   },
   {
     "Symbol": "GD",
     "Name": "General Dynamics",
-    "Sector": "Industrials"
-  },
-  {
-    "Symbol": "GE",
-    "Name": "General Electric",
     "Sector": "Industrials"
   },
   {
@@ -1081,7 +1096,7 @@
   },
   {
     "Symbol": "GPC",
-    "Name": "Genuine Parts",
+    "Name": "Genuine Parts Company",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -1092,12 +1107,17 @@
   {
     "Symbol": "GPN",
     "Name": "Global Payments",
-    "Sector": "Information Technology"
+    "Sector": "Financials"
   },
   {
     "Symbol": "GL",
     "Name": "Globe Life",
     "Sector": "Financials"
+  },
+  {
+    "Symbol": "GDDY",
+    "Name": "GoDaddy",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "GS",
@@ -1110,9 +1130,9 @@
     "Sector": "Energy"
   },
   {
-    "Symbol": "HBI",
-    "Name": "Hanesbrands",
-    "Sector": "Consumer Discretionary"
+    "Symbol": "HIG",
+    "Name": "Hartford (The)",
+    "Sector": "Financials"
   },
   {
     "Symbol": "HAS",
@@ -1125,7 +1145,7 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "PEAK",
+    "Symbol": "DOC",
     "Name": "Healthpeak Properties",
     "Sector": "Real Estate"
   },
@@ -1135,9 +1155,9 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "HES",
-    "Name": "Hess Corporation",
-    "Sector": "Energy"
+    "Symbol": "HSY",
+    "Name": "Hershey Company (The)",
+    "Sector": "Consumer Staples"
   },
   {
     "Symbol": "HPE",
@@ -1150,23 +1170,23 @@
     "Sector": "Consumer Discretionary"
   },
   {
-    "Symbol": "HOLX",
-    "Name": "Hologic",
-    "Sector": "Health Care"
-  },
-  {
     "Symbol": "HD",
-    "Name": "Home Depot",
+    "Name": "Home Depot (The)",
     "Sector": "Consumer Discretionary"
   },
   {
+    "Symbol": "HONA",
+    "Name": "Honeywell Aerospace",
+    "Sector": "Industrials"
+  },
+  {
     "Symbol": "HON",
-    "Name": "Honeywell",
+    "Name": "Honeywell Technologies",
     "Sector": "Industrials"
   },
   {
     "Symbol": "HRL",
-    "Name": "Hormel",
+    "Name": "Hormel Foods",
     "Sector": "Consumer Staples"
   },
   {
@@ -1181,8 +1201,13 @@
   },
   {
     "Symbol": "HPQ",
-    "Name": "HP",
+    "Name": "HP Inc.",
     "Sector": "Information Technology"
+  },
+  {
+    "Symbol": "HUBB",
+    "Name": "Hubbell Incorporated",
+    "Sector": "Industrials"
   },
   {
     "Symbol": "HUM",
@@ -1215,19 +1240,9 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "INFO",
-    "Name": "IHS Markit",
-    "Sector": "Industrials"
-  },
-  {
     "Symbol": "ITW",
     "Name": "Illinois Tool Works",
     "Sector": "Industrials"
-  },
-  {
-    "Symbol": "ILMN",
-    "Name": "Illumina",
-    "Sector": "Health Care"
   },
   {
     "Symbol": "INCY",
@@ -1240,9 +1255,19 @@
     "Sector": "Industrials"
   },
   {
+    "Symbol": "PODD",
+    "Name": "Insulet Corporation",
+    "Sector": "Health Care"
+  },
+  {
     "Symbol": "INTC",
     "Name": "Intel",
     "Sector": "Information Technology"
+  },
+  {
+    "Symbol": "IBKR",
+    "Name": "Interactive Brokers",
+    "Sector": "Financials"
   },
   {
     "Symbol": "ICE",
@@ -1260,11 +1285,6 @@
     "Sector": "Materials"
   },
   {
-    "Symbol": "IPG",
-    "Name": "Interpublic Group",
-    "Sector": "Communication Services"
-  },
-  {
     "Symbol": "INTU",
     "Name": "Intuit",
     "Sector": "Information Technology"
@@ -1280,9 +1300,9 @@
     "Sector": "Financials"
   },
   {
-    "Symbol": "IPGP",
-    "Name": "IPG Photonics",
-    "Sector": "Information Technology"
+    "Symbol": "INVH",
+    "Name": "Invitation Homes",
+    "Sector": "Real Estate"
   },
   {
     "Symbol": "IQV",
@@ -1296,23 +1316,23 @@
   },
   {
     "Symbol": "JBHT",
-    "Name": "J. B. Hunt",
+    "Name": "J.B. Hunt",
     "Sector": "Industrials"
+  },
+  {
+    "Symbol": "JBL",
+    "Name": "Jabil",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "JKHY",
     "Name": "Jack Henry & Associates",
-    "Sector": "Information Technology"
+    "Sector": "Financials"
   },
   {
     "Symbol": "J",
-    "Name": "Jacobs Engineering Group",
+    "Name": "Jacobs Solutions",
     "Sector": "Industrials"
-  },
-  {
-    "Symbol": "SJM",
-    "Name": "JM Smucker",
-    "Sector": "Consumer Staples"
   },
   {
     "Symbol": "JNJ",
@@ -1330,18 +1350,13 @@
     "Sector": "Financials"
   },
   {
-    "Symbol": "JNPR",
-    "Name": "Juniper Networks",
-    "Sector": "Information Technology"
+    "Symbol": "KVUE",
+    "Name": "Kenvue",
+    "Sector": "Consumer Staples"
   },
   {
-    "Symbol": "KSU",
-    "Name": "Kansas City Southern",
-    "Sector": "Industrials"
-  },
-  {
-    "Symbol": "K",
-    "Name": "Kellogg's",
+    "Symbol": "KDP",
+    "Name": "Keurig Dr Pepper",
     "Sector": "Consumer Staples"
   },
   {
@@ -1370,6 +1385,11 @@
     "Sector": "Energy"
   },
   {
+    "Symbol": "KKR",
+    "Name": "KKR & Co.",
+    "Sector": "Financials"
+  },
+  {
     "Symbol": "KLAC",
     "Name": "KLA Corporation",
     "Sector": "Information Technology"
@@ -1386,12 +1406,12 @@
   },
   {
     "Symbol": "LHX",
-    "Name": "L3Harris Technologies",
+    "Name": "L3Harris",
     "Sector": "Industrials"
   },
   {
     "Symbol": "LH",
-    "Name": "LabCorp",
+    "Name": "Labcorp",
     "Sector": "Health Care"
   },
   {
@@ -1400,18 +1420,8 @@
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "LW",
-    "Name": "Lamb Weston",
-    "Sector": "Consumer Staples"
-  },
-  {
     "Symbol": "LVS",
     "Name": "Las Vegas Sands",
-    "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "LEG",
-    "Name": "Leggett & Platt",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -1425,24 +1435,24 @@
     "Sector": "Consumer Discretionary"
   },
   {
-    "Symbol": "LNC",
-    "Name": "Lincoln National",
-    "Sector": "Financials"
+    "Symbol": "LII",
+    "Name": "Lennox International",
+    "Sector": "Industrials"
+  },
+  {
+    "Symbol": "LLY",
+    "Name": "Lilly (Eli)",
+    "Sector": "Health Care"
   },
   {
     "Symbol": "LIN",
-    "Name": "Linde",
+    "Name": "Linde plc",
     "Sector": "Materials"
   },
   {
     "Symbol": "LYV",
     "Name": "Live Nation Entertainment",
     "Sector": "Communication Services"
-  },
-  {
-    "Symbol": "LKQ",
-    "Name": "LKQ Corporation",
-    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "LMT",
@@ -1460,9 +1470,14 @@
     "Sector": "Consumer Discretionary"
   },
   {
-    "Symbol": "LUMN",
-    "Name": "Lumen Technologies",
-    "Sector": "Communication Services"
+    "Symbol": "LULU",
+    "Name": "Lululemon Athletica",
+    "Sector": "Consumer Discretionary"
+  },
+  {
+    "Symbol": "LITE",
+    "Name": "Lumentum",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "LYB",
@@ -1475,19 +1490,9 @@
     "Sector": "Financials"
   },
   {
-    "Symbol": "MRO",
-    "Name": "Marathon Oil",
-    "Sector": "Energy"
-  },
-  {
     "Symbol": "MPC",
     "Name": "Marathon Petroleum",
     "Sector": "Energy"
-  },
-  {
-    "Symbol": "MKTX",
-    "Name": "MarketAxess",
-    "Sector": "Financials"
   },
   {
     "Symbol": "MAR",
@@ -1495,14 +1500,19 @@
     "Sector": "Consumer Discretionary"
   },
   {
-    "Symbol": "MMC",
-    "Name": "Marsh & McLennan",
+    "Symbol": "MRSH",
+    "Name": "Marsh McLennan",
     "Sector": "Financials"
   },
   {
     "Symbol": "MLM",
     "Name": "Martin Marietta Materials",
     "Sector": "Materials"
+  },
+  {
+    "Symbol": "MRVL",
+    "Name": "Marvell Technology",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "MAS",
@@ -1512,12 +1522,7 @@
   {
     "Symbol": "MA",
     "Name": "Mastercard",
-    "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "MTCH",
-    "Name": "Match Group",
-    "Sector": "Communication Services"
+    "Sector": "Financials"
   },
   {
     "Symbol": "MKC",
@@ -1545,6 +1550,11 @@
     "Sector": "Health Care"
   },
   {
+    "Symbol": "META",
+    "Name": "Meta Platforms",
+    "Sector": "Communication Services"
+  },
+  {
     "Symbol": "MET",
     "Name": "MetLife",
     "Sector": "Financials"
@@ -1556,7 +1566,7 @@
   },
   {
     "Symbol": "MGM",
-    "Name": "MGM Resorts International",
+    "Name": "MGM Resorts",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -1576,18 +1586,13 @@
   },
   {
     "Symbol": "MAA",
-    "Name": "Mid-America Apartments",
+    "Name": "Mid-America Apartment Communities",
     "Sector": "Real Estate"
   },
   {
     "Symbol": "MRNA",
     "Name": "Moderna",
     "Sector": "Health Care"
-  },
-  {
-    "Symbol": "MHK",
-    "Name": "Mohawk Industries",
-    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "TAP",
@@ -1620,18 +1625,23 @@
     "Sector": "Financials"
   },
   {
+    "Symbol": "MOS",
+    "Name": "Mosaic Company (The)",
+    "Sector": "Materials"
+  },
+  {
     "Symbol": "MSI",
     "Name": "Motorola Solutions",
     "Sector": "Information Technology"
   },
   {
     "Symbol": "MSCI",
-    "Name": "MSCI",
+    "Name": "MSCI Inc.",
     "Sector": "Financials"
   },
   {
     "Symbol": "NDAQ",
-    "Name": "Nasdaq",
+    "Name": "Nasdaq, Inc.",
     "Sector": "Financials"
   },
   {
@@ -1643,11 +1653,6 @@
     "Symbol": "NFLX",
     "Name": "Netflix",
     "Sector": "Communication Services"
-  },
-  {
-    "Symbol": "NWL",
-    "Name": "Newell Brands",
-    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "NEM",
@@ -1670,19 +1675,19 @@
     "Sector": "Utilities"
   },
   {
-    "Symbol": "NLSN",
-    "Name": "Nielsen Holdings",
-    "Sector": "Industrials"
-  },
-  {
     "Symbol": "NKE",
-    "Name": "Nike",
+    "Name": "Nike, Inc.",
     "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "NI",
     "Name": "NiSource",
     "Sector": "Utilities"
+  },
+  {
+    "Symbol": "NDSN",
+    "Name": "Nordson Corporation",
+    "Sector": "Industrials"
   },
   {
     "Symbol": "NSC",
@@ -1698,11 +1703,6 @@
     "Symbol": "NOC",
     "Name": "Northrop Grumman",
     "Sector": "Industrials"
-  },
-  {
-    "Symbol": "NLOK",
-    "Name": "NortonLifeLock",
-    "Sector": "Information Technology"
   },
   {
     "Symbol": "NCLH",
@@ -1726,17 +1726,17 @@
   },
   {
     "Symbol": "NVR",
-    "Name": "NVR",
+    "Name": "NVR, Inc.",
     "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "NXPI",
-    "Name": "NXP",
+    "Name": "NXP Semiconductors",
     "Sector": "Information Technology"
   },
   {
     "Symbol": "ORLY",
-    "Name": "O'Reilly Automotive",
+    "Name": "O’Reilly Automotive",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -1746,7 +1746,7 @@
   },
   {
     "Symbol": "ODFL",
-    "Name": "Old Dominion Freight Line",
+    "Name": "Old Dominion",
     "Sector": "Industrials"
   },
   {
@@ -1755,19 +1755,19 @@
     "Sector": "Communication Services"
   },
   {
+    "Symbol": "ON",
+    "Name": "ON Semiconductor",
+    "Sector": "Information Technology"
+  },
+  {
     "Symbol": "OKE",
     "Name": "Oneok",
     "Sector": "Energy"
   },
   {
     "Symbol": "ORCL",
-    "Name": "Oracle",
+    "Name": "Oracle Corporation",
     "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "OGN",
-    "Name": "Organon & Co.",
-    "Sector": "Health Care"
   },
   {
     "Symbol": "OTIS",
@@ -1785,29 +1785,34 @@
     "Sector": "Materials"
   },
   {
+    "Symbol": "PLTR",
+    "Name": "Palantir Technologies",
+    "Sector": "Information Technology"
+  },
+  {
+    "Symbol": "PANW",
+    "Name": "Palo Alto Networks",
+    "Sector": "Information Technology"
+  },
+  {
+    "Symbol": "PSKY",
+    "Name": "Paramount Skydance Corporation",
+    "Sector": "Communication Services"
+  },
+  {
     "Symbol": "PH",
-    "Name": "Parker-Hannifin",
+    "Name": "Parker Hannifin",
     "Sector": "Industrials"
   },
   {
     "Symbol": "PAYX",
     "Name": "Paychex",
-    "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "PAYC",
-    "Name": "Paycom",
-    "Sector": "Information Technology"
+    "Sector": "Industrials"
   },
   {
     "Symbol": "PYPL",
     "Name": "PayPal",
-    "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "PENN",
-    "Name": "Penn National Gaming",
-    "Sector": "Consumer Discretionary"
+    "Sector": "Financials"
   },
   {
     "Symbol": "PNR",
@@ -1815,24 +1820,19 @@
     "Sector": "Industrials"
   },
   {
-    "Symbol": "PBCT",
-    "Name": "People's United Financial",
-    "Sector": "Financials"
-  },
-  {
     "Symbol": "PEP",
     "Name": "PepsiCo",
     "Sector": "Consumer Staples"
   },
   {
-    "Symbol": "PKI",
-    "Name": "PerkinElmer",
-    "Sector": "Health Care"
-  },
-  {
     "Symbol": "PFE",
     "Name": "Pfizer",
     "Sector": "Health Care"
+  },
+  {
+    "Symbol": "PCG",
+    "Name": "PG&E Corporation",
+    "Sector": "Utilities"
   },
   {
     "Symbol": "PM",
@@ -1850,19 +1850,9 @@
     "Sector": "Utilities"
   },
   {
-    "Symbol": "PXD",
-    "Name": "Pioneer Natural Resources",
-    "Sector": "Energy"
-  },
-  {
     "Symbol": "PNC",
     "Name": "PNC Financial Services",
     "Sector": "Financials"
-  },
-  {
-    "Symbol": "POOL",
-    "Name": "Pool Corporation",
-    "Sector": "Consumer Discretionary"
   },
   {
     "Symbol": "PPG",
@@ -1871,7 +1861,7 @@
   },
   {
     "Symbol": "PPL",
-    "Name": "PPL",
+    "Name": "PPL Corporation",
     "Sector": "Utilities"
   },
   {
@@ -1900,14 +1890,14 @@
     "Sector": "Financials"
   },
   {
-    "Symbol": "PTC",
-    "Name": "PTC",
-    "Sector": "Information Technology"
-  },
-  {
     "Symbol": "PEG",
     "Name": "Public Service Enterprise Group",
     "Sector": "Utilities"
+  },
+  {
+    "Symbol": "PTC",
+    "Name": "PTC Inc.",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "PSA",
@@ -1920,14 +1910,9 @@
     "Sector": "Consumer Discretionary"
   },
   {
-    "Symbol": "PVH",
-    "Name": "PVH",
-    "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "QRVO",
-    "Name": "Qorvo",
-    "Sector": "Information Technology"
+    "Symbol": "PWR",
+    "Name": "Quanta Services",
+    "Sector": "Industrials"
   },
   {
     "Symbol": "QCOM",
@@ -1935,14 +1920,14 @@
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "PWR",
-    "Name": "Quanta Services",
-    "Sector": "Industrials"
-  },
-  {
     "Symbol": "DGX",
     "Name": "Quest Diagnostics",
     "Sector": "Health Care"
+  },
+  {
+    "Symbol": "Q",
+    "Name": "Qnity Electronics",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "RL",
@@ -1956,12 +1941,12 @@
   },
   {
     "Symbol": "RTX",
-    "Name": "Raytheon Technologies",
+    "Name": "RTX Corporation",
     "Sector": "Industrials"
   },
   {
     "Symbol": "O",
-    "Name": "Realty Income Corporation",
+    "Name": "Realty Income",
     "Sector": "Real Estate"
   },
   {
@@ -1990,9 +1975,14 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "RHI",
-    "Name": "Robert Half International",
-    "Sector": "Industrials"
+    "Symbol": "RVTY",
+    "Name": "Revvity",
+    "Sector": "Health Care"
+  },
+  {
+    "Symbol": "HOOD",
+    "Name": "Robinhood Markets",
+    "Sector": "Financials"
   },
   {
     "Symbol": "ROK",
@@ -2001,13 +1991,13 @@
   },
   {
     "Symbol": "ROL",
-    "Name": "Rollins",
+    "Name": "Rollins, Inc.",
     "Sector": "Industrials"
   },
   {
     "Symbol": "ROP",
     "Name": "Roper Technologies",
-    "Sector": "Industrials"
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "ROST",
@@ -2030,6 +2020,11 @@
     "Sector": "Information Technology"
   },
   {
+    "Symbol": "SNDK",
+    "Name": "Sandisk",
+    "Sector": "Information Technology"
+  },
+  {
     "Symbol": "SBAC",
     "Name": "SBA Communications",
     "Sector": "Real Estate"
@@ -2045,13 +2040,8 @@
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "SEE",
-    "Name": "Sealed Air",
-    "Sector": "Materials"
-  },
-  {
     "Symbol": "SRE",
-    "Name": "Sempra Energy",
+    "Name": "Sempra",
     "Sector": "Utilities"
   },
   {
@@ -2075,9 +2065,24 @@
     "Sector": "Information Technology"
   },
   {
+    "Symbol": "SJM",
+    "Name": "J.M. Smucker Company (The)",
+    "Sector": "Consumer Staples"
+  },
+  {
+    "Symbol": "SW",
+    "Name": "Smurfit Westrock",
+    "Sector": "Materials"
+  },
+  {
     "Symbol": "SNA",
     "Name": "Snap-on",
     "Sector": "Industrials"
+  },
+  {
+    "Symbol": "SOLV",
+    "Name": "Solventum",
+    "Sector": "Health Care"
   },
   {
     "Symbol": "SO",
@@ -2105,6 +2110,11 @@
     "Sector": "Financials"
   },
   {
+    "Symbol": "STLD",
+    "Name": "Steel Dynamics",
+    "Sector": "Materials"
+  },
+  {
     "Symbol": "STE",
     "Name": "Steris",
     "Sector": "Health Care"
@@ -2115,9 +2125,9 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "SIVB",
-    "Name": "SVB Financial",
-    "Sector": "Financials"
+    "Symbol": "SMCI",
+    "Name": "Supermicro",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "SYF",
@@ -2151,13 +2161,18 @@
   },
   {
     "Symbol": "TPR",
-    "Name": "Tapestry",
+    "Name": "Tapestry, Inc.",
     "Sector": "Consumer Discretionary"
+  },
+  {
+    "Symbol": "TRGP",
+    "Name": "Targa Resources",
+    "Sector": "Energy"
   },
   {
     "Symbol": "TGT",
     "Name": "Target Corporation",
-    "Sector": "Consumer Discretionary"
+    "Sector": "Consumer Staples"
   },
   {
     "Symbol": "TEL",
@@ -2167,12 +2182,7 @@
   {
     "Symbol": "TDY",
     "Name": "Teledyne Technologies",
-    "Sector": "Industrials"
-  },
-  {
-    "Symbol": "TFX",
-    "Name": "Teleflex",
-    "Sector": "Health Care"
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "TER",
@@ -2181,7 +2191,7 @@
   },
   {
     "Symbol": "TSLA",
-    "Name": "Tesla",
+    "Name": "Tesla, Inc.",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -2190,39 +2200,14 @@
     "Sector": "Information Technology"
   },
   {
+    "Symbol": "TPL",
+    "Name": "Texas Pacific Land Corporation",
+    "Sector": "Energy"
+  },
+  {
     "Symbol": "TXT",
     "Name": "Textron",
     "Sector": "Industrials"
-  },
-  {
-    "Symbol": "COO",
-    "Name": "The Cooper Companies",
-    "Sector": "Health Care"
-  },
-  {
-    "Symbol": "HIG",
-    "Name": "The Hartford",
-    "Sector": "Financials"
-  },
-  {
-    "Symbol": "HSY",
-    "Name": "The Hershey Company",
-    "Sector": "Consumer Staples"
-  },
-  {
-    "Symbol": "MOS",
-    "Name": "The Mosaic Company",
-    "Sector": "Materials"
-  },
-  {
-    "Symbol": "TRV",
-    "Name": "The Travelers Companies",
-    "Sector": "Financials"
-  },
-  {
-    "Symbol": "DIS",
-    "Name": "The Walt Disney Company",
-    "Sector": "Communication Services"
   },
   {
     "Symbol": "TMO",
@@ -2235,8 +2220,18 @@
     "Sector": "Consumer Discretionary"
   },
   {
+    "Symbol": "TKO",
+    "Name": "TKO Group Holdings",
+    "Sector": "Communication Services"
+  },
+  {
+    "Symbol": "TTD",
+    "Name": "Trade Desk (The)",
+    "Sector": "Communication Services"
+  },
+  {
     "Symbol": "TSCO",
-    "Name": "Tractor Supply Company",
+    "Name": "Tractor Supply",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -2250,19 +2245,19 @@
     "Sector": "Industrials"
   },
   {
+    "Symbol": "TRV",
+    "Name": "Travelers Companies (The)",
+    "Sector": "Financials"
+  },
+  {
     "Symbol": "TRMB",
-    "Name": "Trimble",
+    "Name": "Trimble Inc.",
     "Sector": "Information Technology"
   },
   {
     "Symbol": "TFC",
     "Name": "Truist Financial",
     "Sector": "Financials"
-  },
-  {
-    "Symbol": "TWTR",
-    "Name": "Twitter",
-    "Sector": "Communication Services"
   },
   {
     "Symbol": "TYL",
@@ -2280,8 +2275,13 @@
     "Sector": "Financials"
   },
   {
+    "Symbol": "UBER",
+    "Name": "Uber",
+    "Sector": "Industrials"
+  },
+  {
     "Symbol": "UDR",
-    "Name": "UDR",
+    "Name": "UDR, Inc.",
     "Sector": "Real Estate"
   },
   {
@@ -2290,23 +2290,13 @@
     "Sector": "Consumer Discretionary"
   },
   {
-    "Symbol": "UAA",
-    "Name": "Under Armour (Class A)",
-    "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "UA",
-    "Name": "Under Armour (Class C)",
-    "Sector": "Consumer Discretionary"
-  },
-  {
     "Symbol": "UNP",
-    "Name": "Union Pacific",
+    "Name": "Union Pacific Corporation",
     "Sector": "Industrials"
   },
   {
     "Symbol": "UAL",
-    "Name": "United Airlines",
+    "Name": "United Airlines Holdings",
     "Sector": "Industrials"
   },
   {
@@ -2335,9 +2325,19 @@
     "Sector": "Energy"
   },
   {
+    "Symbol": "VEEV",
+    "Name": "Veeva Systems",
+    "Sector": "Health Care"
+  },
+  {
     "Symbol": "VTR",
     "Name": "Ventas",
     "Sector": "Real Estate"
+  },
+  {
+    "Symbol": "VLTO",
+    "Name": "Veralto",
+    "Sector": "Industrials"
   },
   {
     "Symbol": "VRSN",
@@ -2351,7 +2351,7 @@
   },
   {
     "Symbol": "VZ",
-    "Name": "Verizon Communications",
+    "Name": "Verizon",
     "Sector": "Communication Services"
   },
   {
@@ -2360,14 +2360,9 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "VFC",
-    "Name": "VF Corporation",
-    "Sector": "Consumer Discretionary"
-  },
-  {
-    "Symbol": "VIAC",
-    "Name": "ViacomCBS",
-    "Sector": "Communication Services"
+    "Symbol": "VRT",
+    "Name": "Vertiv",
+    "Sector": "Industrials"
   },
   {
     "Symbol": "VTRS",
@@ -2375,18 +2370,23 @@
     "Sector": "Health Care"
   },
   {
-    "Symbol": "V",
-    "Name": "Visa",
-    "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "VNO",
-    "Name": "Vornado Realty Trust",
+    "Symbol": "VICI",
+    "Name": "Vici Properties",
     "Sector": "Real Estate"
   },
   {
+    "Symbol": "V",
+    "Name": "Visa Inc.",
+    "Sector": "Financials"
+  },
+  {
+    "Symbol": "VST",
+    "Name": "Vistra Corp.",
+    "Sector": "Utilities"
+  },
+  {
     "Symbol": "VMC",
-    "Name": "Vulcan Materials",
+    "Name": "Vulcan Materials Company",
     "Sector": "Materials"
   },
   {
@@ -2405,14 +2405,19 @@
     "Sector": "Industrials"
   },
   {
-    "Symbol": "WBA",
-    "Name": "Walgreens Boots Alliance",
-    "Sector": "Consumer Staples"
-  },
-  {
     "Symbol": "WMT",
     "Name": "Walmart",
     "Sector": "Consumer Staples"
+  },
+  {
+    "Symbol": "DIS",
+    "Name": "Walt Disney Company (The)",
+    "Sector": "Communication Services"
+  },
+  {
+    "Symbol": "WBD",
+    "Name": "Warner Bros. Discovery",
+    "Sector": "Communication Services"
   },
   {
     "Symbol": "WM",
@@ -2450,23 +2455,13 @@
     "Sector": "Information Technology"
   },
   {
-    "Symbol": "WU",
-    "Name": "Western Union",
-    "Sector": "Information Technology"
-  },
-  {
-    "Symbol": "WRK",
-    "Name": "WestRock",
-    "Sector": "Materials"
-  },
-  {
     "Symbol": "WY",
     "Name": "Weyerhaeuser",
     "Sector": "Real Estate"
   },
   {
-    "Symbol": "WHR",
-    "Name": "Whirlpool Corporation",
+    "Symbol": "WSM",
+    "Name": "Williams-Sonoma, Inc.",
     "Sector": "Consumer Discretionary"
   },
   {
@@ -2475,9 +2470,14 @@
     "Sector": "Energy"
   },
   {
-    "Symbol": "WLTW",
+    "Symbol": "WTW",
     "Name": "Willis Towers Watson",
     "Sector": "Financials"
+  },
+  {
+    "Symbol": "WDAY",
+    "Name": "Workday, Inc.",
+    "Sector": "Information Technology"
   },
   {
     "Symbol": "WYNN",
@@ -2490,13 +2490,8 @@
     "Sector": "Utilities"
   },
   {
-    "Symbol": "XLNX",
-    "Name": "Xilinx",
-    "Sector": "Information Technology"
-  },
-  {
     "Symbol": "XYL",
-    "Name": "Xylem",
+    "Name": "Xylem Inc.",
     "Sector": "Industrials"
   },
   {
@@ -2513,11 +2508,6 @@
     "Symbol": "ZBH",
     "Name": "Zimmer Biomet",
     "Sector": "Health Care"
-  },
-  {
-    "Symbol": "ZION",
-    "Name": "Zions Bancorp",
-    "Sector": "Financials"
   },
   {
     "Symbol": "ZTS",

@@ -66,8 +66,8 @@ function tierBadge(tier) {
 
 // "Quality on sale": priced well below the 52-week high with strong finances.
 function fireSaleBadge(fireSale) {
-  const label = fireSale?.confidenceLabel
-    ? ` · ${escapeHtml(fireSale.confidenceLabel)}`
+  const label = fireSale?.signalLabel
+    ? ` · ${escapeHtml(fireSale.signalLabel)}`
     : "";
   return `<span style="display:inline-block;padding:1px 10px;border-radius:12px;background:#fff1e5;border:1px solid #e8590c;color:#bc4c00;font-size:12px;font-weight:700;">🔥 FIRE SALE${label}</span>`;
 }

@@ -178,11 +178,13 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               can keep discounting: the exit line still applies.
             </p>
             <p>
-              Each fire sale carries its own High / Moderate / Low confidence,
-              graded on how far the finances clear the bar, whether the news
+              Each fire sale is graded as a Strong, Mixed, or Weak signal —
+              based on how far the finances clear the bar, whether the news
               backs the &ldquo;not broken&rdquo; read, whether the price has
               started turning back up, and whether the markdown is so deep it
-              might signal a real problem. The reasoning behind the grade is
+              might signal a real problem. (This grades the fire-sale setup
+              itself; the verdict&apos;s High/Moderate/Low confidence is a
+              separate measure of the overall call.) The reasoning behind the grade is
               listed on the holding&apos;s card and in the Portfolio
               Manager&apos;s notes.
             </p>

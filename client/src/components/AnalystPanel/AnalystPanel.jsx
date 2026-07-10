@@ -618,8 +618,8 @@ export default function AnalystPanel({
                   title={`Finances score ${fmtScore(verdict.fireSale.fundamental)}/100 while the stock sits ${fmtScore(verdict.fireSale.offHighPct)}% below its 52-week high — priced low with room to bounce back. Full reasoning is in the Portfolio Manager card below.`}
                 >
                   🔥 FIRE SALE
-                  {verdict.fireSale.confidenceLabel
-                    ? ` · ${verdict.fireSale.confidenceLabel}`
+                  {verdict.fireSale.signalLabel
+                    ? ` · ${verdict.fireSale.signalLabel}`
                     : ""}
                 </span>
               )}

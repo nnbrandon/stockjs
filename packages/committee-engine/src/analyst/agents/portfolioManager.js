@@ -413,12 +413,22 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
   confidence = clamp(confidence, 0, 100);
   const confidenceLabel =
     confidence >= 60 ? "High" : confidence >= 30 ? "Moderate" : "Low";
+  // Deliberately a different vocabulary from the verdict's High/Moderate/Low
+  // conviction — "FIRE SALE · High next to Low Confidence" read as a
+  // contradiction. "Signal" grades the setup; "confidence" stays the verdict's.
+  const signalLabel =
+    confidence >= 60
+      ? "Strong signal"
+      : confidence >= 30
+        ? "Mixed signal"
+        : "Weak signal";
 
   return {
     offHighPct: discount.offHighPct,
     fundamental: discount.fundamental,
     confidence,
     confidenceLabel,
+    signalLabel,
     valuationBasis: valuation?.basis ?? null,
     trajectory: trajectory?.state ?? null,
     weeksFlagged,
@@ -430,7 +440,7 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
 function fireSaleFindings(fireSale) {
   return [
     bull(
-      `Fire sale flagged with ${fireSale.confidenceLabel.toLowerCase()} confidence — on sale, not broken: priced low on a healthy business, with room to bounce back. (Discounts can keep discounting: the exit line still applies.)`,
+      `Fire sale flagged (${fireSale.signalLabel.toLowerCase()}) — on sale, not broken: priced low on a healthy business, with room to bounce back. (Discounts can keep discounting: the exit line still applies.)`,
       2,
     ),
     ...fireSale.reasons.map((r) => bull(`Why: ${r}`, 1)),
@@ -899,7 +909,6 @@ const PILLAR_LABELS = {
 };
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-const lowerFirst = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 // Deterministic index into a phrase bank, seeded by the numeric inputs so the
 // same verdict always reads the same while different stocks vary. Not for
@@ -922,7 +931,7 @@ function describePillar(key, val) {
 
 // The action, hedged to conviction — appropriate hedging is what reads as
 // judgment rather than a canned label.
-function resolutionSentence(action, tier, convictionLabel, seed) {
+function resolutionSentence(action, tier, convictionLabel, seed, onSale) {
   const low = convictionLabel === "Low";
   const high = convictionLabel === "High";
   if (action === "BUY") {
@@ -945,6 +954,10 @@ function resolutionSentence(action, tier, convictionLabel, seed) {
       return `It leans toward ${verb === "exit" ? "selling" : "trimming"}, though the call is close.`;
     return `The committee would ${verb} rather than add to it.`;
   }
+  // A "coin-flip" HOLD line under a fire-sale framing read as a contradiction;
+  // name the actual stance instead: not adding yet, but worth watching.
+  if (onSale)
+    return "For now it's a hold — the committee wouldn't add until the trend steadies, but this is a markdown worth watching.";
   if (low)
     return "There's no edge either way — close to a coin-flip, so the committee neither adds nor trims.";
   return "There's no clear edge, so the committee would neither add money nor pull it out.";
@@ -994,17 +1007,13 @@ export function buildNarrative({
   const contradiction = devil?.contradictions?.[0] ?? null;
 
   if (Number.isFinite(off) && (discount || fireSale)) {
-    // Distinctive "quality on sale" framing when the setup is present.
+    // Distinctive "quality on sale" framing when the setup is present. One
+    // sentence only — the fire-sale box carries the reasons and cautions, and
+    // the devil's contradiction here ("healthy business, falling price")
+    // restates this same tension, so quoting it too just doubled the length.
     sentences.push(
-      `The finances here are strong while the stock trades ${off.toFixed(0)}% below its 52-week high — priced low on a healthy business, not a broken one.`,
+      `Strong finances, but the stock sits ${off.toFixed(0)}% below its 52-week high — priced low on a healthy business, not a broken one.`,
     );
-    if (contradiction) {
-      sentences.push(`The catch: ${lowerFirst(contradiction)}`);
-    } else if (opposing) {
-      sentences.push(
-        `The catch is ${opposing.text}: ${pick(["the market hasn't turned yet", "that's what's kept the score in check", "the discount can still deepen before it recovers"], seed)}.`,
-      );
-    }
   } else if (contradiction) {
     // Open with the tension the devil's advocate flagged — it's a self-contained
     // "X but Y" statement, so it leads on its own without a pillar-score
@@ -1034,7 +1043,15 @@ export function buildNarrative({
     sentences.push(`${cap(lead.text)}.`);
   }
 
-  sentences.push(resolutionSentence(action, tier, convictionLabel, seed));
+  sentences.push(
+    resolutionSentence(
+      action,
+      tier,
+      convictionLabel,
+      seed,
+      Boolean(discount || fireSale),
+    ),
+  );
 
   return sentences.join(" ");
 }

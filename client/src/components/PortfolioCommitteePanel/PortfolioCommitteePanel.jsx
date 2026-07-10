@@ -181,14 +181,58 @@ function getItemFireSale(item) {
   return item.report?.verdict?.fireSale ?? null;
 }
 
+// Reading order = priority order: positions that need action come first,
+// "nothing to do" holds and unscored rows sink to the bottom.
+function urgencyRank(item) {
+  const key = getItemFilterKey(item);
+  if (key === FILTERS.SELL) return 0;
+  if (getItemTierChange(item)) return 1;
+  if (getItemFireSale(item)) return 2;
+  if (key === FILTERS.BUY) return 3;
+  if (key === FILTERS.HOLD) return 4;
+  if (key === FILTERS.FUND) return 5;
+  return 6;
+}
+
+function compareUrgency(a, b) {
+  const rankA = urgencyRank(a);
+  const rankB = urgencyRank(b);
+  if (rankA !== rankB) return rankA - rankB;
+  const scoreA = a.report?.verdict?.composite;
+  const scoreB = b.report?.verdict?.composite;
+  if (!Number.isFinite(scoreA) || !Number.isFinite(scoreB)) return 0;
+  // Within sells the worst score is the most urgent; elsewhere best first.
+  return rankA === 0 ? scoreA - scoreB : scoreB - scoreA;
+}
+
 function fireSaleTitle(fireSale) {
   return `Priced low, not broken: finances score ${fmtScore(fireSale.fundamental)}/100 while the stock sits ${fmtScore(fireSale.offHighPct)}% below its 52-week high — a discount with room to bounce back.`;
+}
+
+// "Strong/Mixed/Weak signal" — deliberately not the verdict's High/Moderate/Low
+// confidence vocabulary. Falls back to mapping reports from older engine runs.
+const FIRE_SIGNAL_FALLBACK = {
+  High: "Strong signal",
+  Moderate: "Mixed signal",
+  Low: "Weak signal",
+};
+
+function fireSignalLabel(fireSale) {
+  return (
+    fireSale.signalLabel ?? FIRE_SIGNAL_FALLBACK[fireSale.confidenceLabel] ?? null
+  );
 }
 
 function actionClass(action) {
   if (action === "BUY") return styles.actionBuy;
   if (action === "SELL") return styles.actionSell;
   return styles.actionHold;
+}
+
+function calloutClass(action) {
+  if (action === "BUY") return styles.calloutBuy;
+  if (action === "SELL") return styles.calloutSell;
+  return styles.calloutHold;
 }
 
 function progressLabel(progress) {
@@ -303,9 +347,6 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
               title={fireSaleTitle(verdict.fireSale)}
             >
               🔥 FIRE SALE
-              {verdict.fireSale.confidenceLabel
-                ? ` · ${verdict.fireSale.confidenceLabel}`
-                : ""}
             </span>
           )}
           {tierChange && (
@@ -327,7 +368,10 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
           >
             {verdict.convictionLabel} Confidence
           </span>
-          <span className={styles.score}>{fmtScore(verdict.composite)}</span>
+          <span className={styles.score} title="Overall committee score">
+            {fmtScore(verdict.composite)}
+            <span className={styles.scoreDenom}>/100</span>
+          </span>
         </span>
       </div>
 
@@ -338,14 +382,31 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
           <p className={styles.changeReason}>{tierChange.reason}</p>
         )}
 
-        <p className={styles.whatToDo}>
-          <strong>What to do:</strong>{" "}
-          {whatToDo({
-            action: verdict.action,
-            tier: verdict.tier,
-            plan: portfolioManager?.plan,
-          })}
-        </p>
+        <div className={`${styles.whatToDo} ${calloutClass(verdict.action)}`}>
+          <p className={styles.whatToDoLabel}>What to do</p>
+          <p className={styles.whatToDoText}>
+            {whatToDo({
+              action: verdict.action,
+              tier: verdict.tier,
+              plan: portfolioManager?.plan,
+            })}
+          </p>
+          {sellSizing && (
+            <p className={styles.sellSizing}>
+              {exitPlan.fullExit
+                ? `Sell the full position: ${fmtShares(quantity)} sh${
+                    Number.isFinite(sellSizing.proceeds)
+                      ? ` (≈${fmtDollars(sellSizing.proceeds)})`
+                      : ""
+                  }.`
+                : `That's about ${fmtShares(sellSizing.sharesToSell)} of your ${fmtShares(quantity)} shares${
+                    Number.isFinite(sellSizing.proceeds)
+                      ? ` (≈${fmtDollars(sellSizing.proceeds)})`
+                      : ""
+                  }.`}
+            </p>
+          )}
+        </div>
 
         {verdict.fireSale &&
           (verdict.fireSale.reasons?.length ||
@@ -353,8 +414,8 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
             <div className={styles.fireDetail}>
               <p className={styles.fireDetailHead}>
                 🔥 Why it&apos;s a fire sale
-                {verdict.fireSale.confidenceLabel
-                  ? ` — ${verdict.fireSale.confidenceLabel.toLowerCase()} confidence`
+                {fireSignalLabel(verdict.fireSale)
+                  ? ` — ${fireSignalLabel(verdict.fireSale).toLowerCase()}`
                   : ""}
               </p>
               <ul className={styles.fireDetailList}>
@@ -370,22 +431,6 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
             </div>
           )}
 
-        {sellSizing && (
-          <p className={styles.sellSizing}>
-            {exitPlan.fullExit
-              ? `Suggested: sell the full position (${fmtShares(quantity)} sh${
-                  Number.isFinite(sellSizing.proceeds)
-                    ? `, ≈${fmtDollars(sellSizing.proceeds)}`
-                    : ""
-                }).`
-              : `Suggested: sell ~${exitPlan.trimPct}% — about ${fmtShares(sellSizing.sharesToSell)} of ${fmtShares(quantity)} sh${
-                  Number.isFinite(sellSizing.proceeds)
-                    ? ` (≈${fmtDollars(sellSizing.proceeds)})`
-                    : ""
-                }.`}
-          </p>
-        )}
-
         {horizonAdvice && (
           <div className={styles.horizonAdvice}>
             <p className={styles.horizonHeadline}>{horizonAdvice.headline}</p>
@@ -397,22 +442,29 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
           </div>
         )}
 
-        {newsMood && <p className={styles.newsMood}>{newsMood}</p>}
-
-        {news.length > 0 && (
-          <ul className={styles.newsList}>
-            {news.map((article) => (
-              <li key={article.id || article.link} className={styles.newsItem}>
-                <a
-                  href={article.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {article.title}
-                </a>
-              </li>
-            ))}
-          </ul>
+        {(newsMood || news.length > 0) && (
+          <div className={styles.newsSection}>
+            <p className={styles.newsLabel}>Recent news</p>
+            {newsMood && <p className={styles.newsMood}>{newsMood}</p>}
+            {news.length > 0 && (
+              <ul className={styles.newsList}>
+                {news.map((article) => (
+                  <li
+                    key={article.id || article.link}
+                    className={styles.newsItem}
+                  >
+                    <a
+                      href={article.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {article.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
 
         {expanded && (
@@ -501,12 +553,13 @@ export default function PortfolioCommitteePanel({
   }, [results]);
 
   const filteredResults = useMemo(() => {
-    if (actionFilter === FILTERS.ALL) return results;
+    const sorted = [...results].sort(compareUrgency);
+    if (actionFilter === FILTERS.ALL) return sorted;
     if (actionFilter === FILTERS.CHANGED)
-      return results.filter((item) => getItemTierChange(item));
+      return sorted.filter((item) => getItemTierChange(item));
     if (actionFilter === FILTERS.FIRE)
-      return results.filter((item) => getItemFireSale(item));
-    return results.filter((item) => getItemFilterKey(item) === actionFilter);
+      return sorted.filter((item) => getItemFireSale(item));
+    return sorted.filter((item) => getItemFilterKey(item) === actionFilter);
   }, [results, actionFilter]);
 
   const handleRun = () => {

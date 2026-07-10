@@ -171,7 +171,9 @@
 .cardMeta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 8px;
 }
 
 .actionBadge {
@@ -246,8 +248,15 @@
 .score {
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--palette-text-primary);
+  white-space: nowrap;
+}
+
+.scoreDenom {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--palette-text-disabled);
 }
 
 .convictionBadge {
@@ -277,15 +286,48 @@
   color: var(--palette-text-secondary);
 }
 
-/* The concrete "what to do" step — made to stand out from the context above. */
+/* The concrete "what to do" step — the one thing to read on each card, so it
+   gets a tinted callout with a left stripe in the verdict's color. */
 .whatToDo {
-  margin: 8px 0 0;
-  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 2px 0;
+  padding: 8px 10px;
+  border-radius: var(--shape-radius-sm);
+  border-left: 3px solid var(--palette-divider-strong);
+  background: var(--palette-bg-paper);
+}
+
+.calloutBuy {
+  border-left-color: var(--palette-success);
+  background: color-mix(in srgb, var(--palette-success) 6%, var(--palette-bg-paper));
+}
+
+.calloutSell {
+  border-left-color: var(--palette-error);
+  background: color-mix(in srgb, var(--palette-error) 6%, var(--palette-bg-paper));
+}
+
+.calloutHold {
+  border-left-color: var(--palette-divider-strong);
+}
+
+.whatToDoLabel {
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--palette-text-disabled);
+}
+
+.whatToDoText {
+  margin: 0;
   font-size: 12.5px;
+  font-weight: 500;
   line-height: 1.45;
   color: var(--palette-text-primary);
-  background: var(--palette-action-hover);
-  border-radius: 6px;
 }
 
 .changeReason {
@@ -295,19 +337,38 @@
   color: var(--palette-text-secondary);
 }
 
+/* News gets its own labeled section so headlines don't read as analysis. */
+.newsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--palette-divider);
+}
+
+.newsLabel {
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--palette-text-disabled);
+}
+
 .newsMood {
   margin: 0;
   font-size: 11.5px;
   line-height: 1.4;
-  color: var(--palette-text-disabled);
+  color: var(--palette-text-secondary);
 }
 
+/* Share/dollar sizing sub-line inside the "what to do" callout. */
 .sellSizing {
   margin: 0;
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.45;
-  font-weight: 500;
-  color: var(--palette-error);
+  color: var(--palette-text-secondary);
 }
 
 /* Holding-period-aware exit timing (read-only here; set on the committee tab). */
@@ -371,6 +432,20 @@
   gap: 6px;
 }
 
+.newsItem {
+  display: flex;
+  gap: 6px;
+}
+
+/* Small marker so each headline reads as a list entry, not body copy. */
+.newsItem::before {
+  content: "›";
+  flex-shrink: 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--palette-text-disabled);
+}
+
 .newsItem a {
   font-size: 11.5px;
   line-height: 1.35;
@@ -380,6 +455,7 @@
 
 .newsItem a:hover {
   color: var(--palette-text-primary);
+  text-decoration: underline;
 }
 
 .cardActions {

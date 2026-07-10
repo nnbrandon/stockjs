@@ -48,6 +48,12 @@
 @media (max-width: 1100px) {
   .wrap {
     width: 100% !important;
+    /* Stacked layout: fill the column when content is short, but grow past it
+       when long so the page scrolls instead of the widget. A consumer that
+       keeps an inner overflow-y:auto scroll (min-height:0) stays pinned at
+       100% and scrolls internally; one that lets content flow expands here. */
+    height: auto;
+    min-height: 100%;
   }
 
   .handle {

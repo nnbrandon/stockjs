@@ -9,7 +9,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import AiCommitteeHelpButton from "../AiCommitteeHelp/AiCommitteeHelpButton";
-import PortfolioHealthCard from "./PortfolioHealthCard";
+import CommitteeBacktestModal from "./CommitteeBacktestModal";
 import ResizableSidebar from "../ResizableSidebar/ResizableSidebar";
 import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
@@ -467,7 +467,6 @@ export default function PortfolioCommitteePanel({
     status,
     results,
     progress,
-    health,
     generatedAt,
     run,
     reset,
@@ -607,8 +606,6 @@ export default function PortfolioCommitteePanel({
                 : "Server review — same results as your daily email"}
             </p>
 
-            <PortfolioHealthCard health={health} />
-
             <ToggleButtonGroup
               exclusive
               value={actionFilter}
@@ -676,6 +673,8 @@ export default function PortfolioCommitteePanel({
             </p>
           </>
         )}
+
+        {status !== "running" && <CommitteeBacktestModal />}
       </div>
     </ResizableSidebar>
   );

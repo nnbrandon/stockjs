@@ -87,6 +87,10 @@ export function runAnalystCommittee(input = {}) {
     // "Quality on sale" indicator: {offHighPct, fundamental} when the stock
     // is priced well below its 52-week high with strong finances, else null.
     fireSale: portfolioManager.fireSale ?? null,
+    // Two answers, one verdict: `ownIt` (is this a business worth owning?)
+    // and `addNow` (is now a decent time to add?) — {score, label, tone,
+    // line}, worded for beginners.
+    answers: portfolioManager.answers,
   };
 
   return {

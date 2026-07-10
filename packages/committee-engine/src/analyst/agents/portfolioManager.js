@@ -689,6 +689,116 @@ function buildPlanFindings(action, tier, plan) {
   return out;
 }
 
+// ── Two answers, one verdict ────────────────────────────────────────────────
+// A single 0-100 score blends two questions a long-term investor should keep
+// separate: "is this a business worth owning?" (which barely changes month to
+// month) and "is now a decent time to add?" (which is all the month-to-month
+// noise). Professionals answer them separately — a great company can be a bad
+// buy today, and vice versa — so the verdict exposes both, in plain words.
+
+function buildOwnItAnswer(fundamental) {
+  if (!Number.isFinite(fundamental)) {
+    return {
+      score: null,
+      label: "Not enough info",
+      tone: "na",
+      line: "No company financials saved yet — refresh this symbol to judge the business itself.",
+    };
+  }
+  const score = fundamental;
+  if (score >= 70)
+    return {
+      score,
+      label: "Strong business",
+      tone: "pos",
+      line: "Healthy finances with staying power — the kind of company you can hold through rough patches.",
+    };
+  if (score >= 58)
+    return {
+      score,
+      label: "Solid business",
+      tone: "pos",
+      line: "The finances are in good shape overall, with a few soft spots worth watching.",
+    };
+  if (score >= 45)
+    return {
+      score,
+      label: "Average business",
+      tone: "mid",
+      line: "Nothing alarming, nothing special — owning this long-term means betting it improves.",
+    };
+  if (score >= 33)
+    return {
+      score,
+      label: "Shaky business",
+      tone: "neg",
+      line: "The finances have real weak spots — a tough company to hold for years with confidence.",
+    };
+  return {
+    score,
+    label: "Weak business",
+    tone: "neg",
+    line: "The finances score poorly — long-term holders are fighting the odds here.",
+  };
+}
+
+function buildAddNowAnswer({ action, technical, fireSale, rsi14 }) {
+  if (action === "SELL") {
+    return {
+      score: Number.isFinite(technical) ? technical : null,
+      label: "Don't add",
+      tone: "neg",
+      line: "The committee wouldn't put new money in at all right now — see the plan below.",
+    };
+  }
+  if (fireSale) {
+    return {
+      score: Number.isFinite(technical) ? technical : null,
+      label: "Marked down",
+      tone: "pos",
+      line: "The price is on sale while the business holds up — a reasonable moment for patient money, though discounts can deepen first.",
+    };
+  }
+  if (!Number.isFinite(technical)) {
+    return {
+      score: null,
+      label: "Not enough info",
+      tone: "na",
+      line: "Not enough price history yet to judge the timing.",
+    };
+  }
+  if (Number.isFinite(rsi14) && rsi14 >= 75 && technical >= 55) {
+    return {
+      score: technical,
+      label: "Running hot",
+      tone: "mid",
+      line: "It's run up fast — good businesses are worth owning, but waiting for a breather usually gets a better price.",
+    };
+  }
+  if (technical >= 58) {
+    return {
+      score: technical,
+      label: "Decent time",
+      tone: "pos",
+      line: "The trend is healthy — buying here means joining strength, not catching a falling price.",
+    };
+  }
+  if (technical >= 45) {
+    return {
+      score: technical,
+      label: "No rush",
+      tone: "mid",
+      line: "The trend is flat to mixed — nothing says buy today, so you can afford to be patient.",
+    };
+  }
+  return {
+    score: technical,
+    label: "Still falling",
+    tone: "neg",
+    line: "The price hasn't stopped falling — if you want to own it, waiting for the trend to steady usually gets a better price.",
+  };
+}
+
 function buildThesis(tier, composite, convictionLabel, pillars) {
   const names = {
     technical: "the price trend",
@@ -991,6 +1101,18 @@ export function runPortfolioManager({
   // Kept for backward compatibility: `risk` is the BUY entry plan.
   const risk = plan?.kind === "entry" ? plan : null;
 
+  // Two answers, one verdict: the slow question (own it?) and the fast
+  // question (add now?), each with a plain-English label + line for the UI.
+  const answers = {
+    ownIt: buildOwnItAnswer(pillarScores.fundamental),
+    addNow: buildAddNowAnswer({
+      action,
+      technical: pillarScores.technical,
+      fireSale,
+      rsi14,
+    }),
+  };
+
   return {
     key: "portfolioManager",
     name: "Portfolio Manager",
@@ -1001,6 +1123,7 @@ export function runPortfolioManager({
     conviction,
     convictionLabel,
     fireSale,
+    answers,
     risk,
     plan,
     summary: buildThesis(tier, composite, convictionLabel, pillarScores),

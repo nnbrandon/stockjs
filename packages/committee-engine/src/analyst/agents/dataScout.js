@@ -12,6 +12,7 @@ import {
   volumeTrend,
 } from "../indicators";
 import { analyzeEarningsHistory } from "./earningsHistory";
+import { analyzeLongTermLens } from "./longTermLens";
 import {
   avg,
   bear,
@@ -762,6 +763,14 @@ export function runDataScout({
     Object.assign(metrics, earningsAnalysis.metrics);
     findings.push(...earningsAnalysis.findings);
     components.push(...earningsAnalysis.components);
+  }
+
+  // ---- Long-term lens (multi-year consistency, buybacks, dividends) ----
+  const longTerm = analyzeLongTermLens(quarterly, annual, metrics.price);
+  if (longTerm) {
+    Object.assign(metrics, longTerm.metrics);
+    findings.push(...longTerm.findings);
+    components.push(...longTerm.components);
   }
 
   if (components.length) fundamentalScore = avg(components);

@@ -101,6 +101,43 @@ function PillarBar({ label, score }) {
   );
 }
 
+// The verdict's two answers, side by side: the slow question (is this a
+// business worth owning?) and the fast one (is now a decent time to buy?).
+// Only present on engine v6+ verdicts — older stored runs render without it.
+function TwoAnswers({ answers, compact }) {
+  const tiles = [
+    { title: "Worth owning?", answer: answers?.ownIt },
+    { title: "Good time to buy?", answer: answers?.addNow },
+  ].filter((t) => t.answer);
+  if (!tiles.length) return null;
+
+  return (
+    <div>
+      <div
+        className={`${styles.answers} ${compact ? styles.answersCompact : ""}`}
+      >
+        {tiles.map(({ title, answer }) => (
+          <div key={title} className={styles.answer}>
+            <span className={styles.answerQuestion}>{title}</span>
+            <span
+              className={`${styles.answerLabel} ${styles[`answerTone_${answer.tone}`]}`}
+            >
+              {answer.label}
+            </span>
+            <p className={styles.answerLine}>{answer.line}</p>
+          </div>
+        ))}
+      </div>
+      {!compact && tiles.length === 2 && (
+        <p className={styles.answersNote}>
+          For a long-term investor the first answer matters most — the second
+          only helps you pick your moment.
+        </p>
+      )}
+    </div>
+  );
+}
+
 const fmtPrice = (n) =>
   Number.isFinite(n)
     ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -598,6 +635,8 @@ export default function AnalystPanel({
           </div>
         </div>
       </div>
+
+      <TwoAnswers answers={verdict.answers} compact={compact} />
 
       {!compact && portfolioManager?.narrative && (
         <p className={styles.verdictNarrative}>{portfolioManager.narrative}</p>

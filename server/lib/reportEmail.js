@@ -4,7 +4,6 @@
 // alternative is built alongside.
 
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
-import { describePortfolioHealth } from "@stockjs/committee-engine/portfolioHealth.js";
 import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
 
 const TIER_COLORS = {
@@ -50,6 +49,15 @@ function shortDate(day) {
   }).format(d);
 }
 
+// Text colors for the "Worth owning? / Good time to add?" labels, matching
+// the green/red the email already uses for tier changes.
+const ANSWER_TONE_COLORS = {
+  pos: "#1a7f37",
+  mid: "#9a6700",
+  neg: "#cf222e",
+  na: "#57606a",
+};
+
 function tierBadge(tier) {
   const color = TIER_COLORS[tier] || "#57606a";
   return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;background:${color};color:#ffffff;font-size:13px;font-weight:700;">${escapeHtml(tier)}</span>`;
@@ -89,25 +97,6 @@ function subjectLine(results, meta) {
     ? ` (${changes} change${changes === 1 ? "" : "s"})`
     : "";
   return `Portfolio committee — ${counts || "no verdicts"}${changeNote} — ${shortDate(meta.day)}`;
-}
-
-function healthLines(health) {
-  if (!health) return [];
-  const lines = [];
-  if (Number.isFinite(health.weightedScore)) {
-    lines.push(
-      `Value-weighted committee score: ${health.weightedScore.toFixed(0)}/100 across ${health.ratedValuePct.toFixed(0)}% of portfolio value.`,
-    );
-  }
-  if (health.pctInSellRated > 0) {
-    lines.push(
-      `${health.pctInSellRated.toFixed(0)}% of your portfolio value sits in names the committee would sell (${health.sellRatedSymbols.join(", ")}).`,
-    );
-  }
-  for (const flag of health.flags || []) {
-    lines.push(`${flag.severity === "warn" ? "⚠ " : ""}${flag.text}`);
-  }
-  return lines;
 }
 
 function sellDetails(report) {
@@ -189,9 +178,9 @@ function holdingHtml(r, appUrl) {
   }
 
   if (!r.report) {
-    const note = r.isFund
-      ? "Fund/ETF — tracks a basket of holdings, so the committee doesn't rate it. Counted in portfolio health."
-      : "Not enough data to run the committee (no financials or analyst coverage found).";
+    // Funds/ETFs never reach here — renderReportEmail filters them out.
+    const note =
+      "Not enough data to run the committee (no financials or analyst coverage found).";
     return `<tr><td style="padding:14px 16px;border-top:1px solid #d8dee4;">
       ${symbolLink(appUrl, r.symbol, `<strong style="font-size:15px;">${escapeHtml(r.symbol)}</strong>`)}
       <span style="color:#57606a;font-size:13px;"> — ${escapeHtml(note)}</span>
@@ -219,6 +208,19 @@ function holdingHtml(r, appUrl) {
       `<div style="color:${up ? "#1a7f37" : "#cf222e"};font-size:12px;font-weight:600;margin-bottom:6px;">${up ? "↑" : "↓"} ${escapeHtml(describeTierChange(r))}</div>`,
     );
   }
+
+  // Two answers, one glance: the slow question and the fast one (v6+ engine;
+  // absent on older stored reports).
+  const answerBits = [
+    v.answers?.ownIt &&
+      `Worth owning? <strong style="color:${ANSWER_TONE_COLORS[v.answers.ownIt.tone] ?? "#24292f"};">${escapeHtml(v.answers.ownIt.label)}</strong>`,
+    v.answers?.addNow &&
+      `Good time to add? <strong style="color:${ANSWER_TONE_COLORS[v.answers.addNow.tone] ?? "#24292f"};">${escapeHtml(v.answers.addNow.label)}</strong>`,
+  ].filter(Boolean);
+  if (answerBits.length)
+    cells.push(
+      `<div style="font-size:13px;color:#24292f;margin-bottom:6px;">${answerBits.join(" &nbsp;·&nbsp; ")}</div>`,
+    );
 
   // The one-sentence answer.
   const answer = pm?.narrative || pm?.summary;
@@ -253,9 +255,8 @@ function holdingText(r, appUrl) {
     return lines;
   }
   if (!r.report) {
-    lines.push(
-      `${r.symbol}: ${r.isFund ? "fund/ETF — not rated by the committee." : "not enough data to run the committee."}`,
-    );
+    // Funds/ETFs never reach here — renderReportEmail filters them out.
+    lines.push(`${r.symbol}: not enough data to run the committee.`);
     link();
     return lines;
   }
@@ -269,6 +270,11 @@ function holdingText(r, appUrl) {
     lines.push(
       `  ${r.tierChange.direction === "upgrade" ? "↑" : "↓"} ${describeTierChange(r)}`,
     );
+  const twoAnswers = [
+    v.answers?.ownIt && `Worth owning? ${v.answers.ownIt.label}`,
+    v.answers?.addNow && `Good time to add? ${v.answers.addNow.label}`,
+  ].filter(Boolean);
+  if (twoAnswers.length) lines.push(`  ${twoAnswers.join(" · ")}`);
   const answer = pm?.narrative || pm?.summary;
   if (answer) lines.push(`  ${answer}`);
   lines.push(`  What to do: ${doThisLine(r)}`);
@@ -316,7 +322,9 @@ function sortForListing(results) {
 
 /**
  * @param {Array} results per-symbol report results (see dailyReport.js)
- * @param {object|null} health analyzePortfolioHealth output
+ * @param {object|null} health analyzePortfolioHealth output — still passed by
+ *   the handler (the app's portfolio panel shows it) but no longer rendered
+ *   in the email.
  * @param {object} meta {day, engineVersion, articlesScored, sentimentPartial,
  *                       archiveSpanDays, failures}
  */
@@ -387,12 +395,15 @@ function trackRecordLines(tr) {
 }
 
 export function renderReportEmail(unsorted, health, meta) {
-  const results = sortForListing(unsorted);
+  // Funds and ETFs track baskets of holdings, so the committee never rates
+  // them — leave them out of the email entirely and keep it to the companies
+  // it can actually say something about. (They still show in the app panel.)
+  const funds = (unsorted ?? []).filter((r) => r.isFund);
+  const results = sortForListing((unsorted ?? []).filter((r) => !r.isFund));
   const appUrl = meta.appUrl || DEFAULT_APP_URL;
   const subject = subjectLine(results, meta);
   const changes = results.filter((r) => r.tierChange);
   const failures = results.filter((r) => r.error);
-  const hLines = healthLines(health);
 
   // ── HTML ────────────────────────────────────────────────────────────────
   const sections = [];
@@ -407,22 +418,6 @@ export function renderReportEmail(unsorted, health, meta) {
       .join("");
     sections.push(
       `<h2 style="font-size:15px;margin:18px 0 6px;">Tier changes</h2><ul style="margin:0 0 0 18px;padding:0;font-size:14px;">${items}</ul>`,
-    );
-  }
-
-  const healthNarrative = describePortfolioHealth(health);
-  if (hLines.length || healthNarrative) {
-    const lead = healthNarrative
-      ? `<p style="font-size:13px;color:#24292f;margin:0 0 8px;">${escapeHtml(healthNarrative)}</p>`
-      : "";
-    const items = hLines
-      .map((l) => `<li style="margin-bottom:4px;">${escapeHtml(l)}</li>`)
-      .join("");
-    const list = items
-      ? `<ul style="margin:0 0 0 18px;padding:0;font-size:13px;color:#24292f;">${items}</ul>`
-      : "";
-    sections.push(
-      `<h2 style="font-size:15px;margin:18px 0 6px;">Portfolio health</h2>${lead}${list}`,
     );
   }
 
@@ -460,6 +455,11 @@ export function renderReportEmail(unsorted, health, meta) {
   if (meta.sentimentPartial) {
     footerBits.push("news mood partial/unavailable today (model error)");
   }
+  if (funds.length) {
+    footerBits.push(
+      `${funds.length} fund/ETF holding${funds.length === 1 ? "" : "s"} (${funds.map((r) => r.symbol).join(", ")}) not shown — funds track baskets, so the committee doesn't rate them`,
+    );
+  }
   if (Number.isFinite(meta.archiveSpanDays) && meta.archiveSpanDays < 14) {
     footerBits.push(
       `news history still warming up (${Math.max(0, Math.round(meta.archiveSpanDays))} day${Math.round(meta.archiveSpanDays) === 1 ? "" : "s"})`,
@@ -487,12 +487,6 @@ export function renderReportEmail(unsorted, health, meta) {
   if (changes.length) {
     textLines.push("TIER CHANGES");
     for (const r of changes) textLines.push(`  ${describeTierChange(r)}`);
-    textLines.push("");
-  }
-  if (hLines.length || healthNarrative) {
-    textLines.push("PORTFOLIO HEALTH");
-    if (healthNarrative) textLines.push(`  ${healthNarrative}`);
-    for (const l of hLines) textLines.push(`  ${l}`);
     textLines.push("");
   }
   if (failures.length) {

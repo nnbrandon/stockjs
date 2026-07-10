@@ -93,6 +93,63 @@ export function walkForward({
   return records;
 }
 
+/**
+ * One real, traceable example per tier — the raw inputs of the exact
+ * calculation the aggregate metrics repeat, so the UI can show its work
+ * instead of black-boxing. Deliberately the MEDIAN outcome for each tier
+ * (not the best one), so the example is honest about typical results.
+ */
+export function buildExamples(
+  records,
+  candlesBySymbol,
+  spyCandles = null,
+  horizon = HORIZONS.fwd6m,
+) {
+  const sortedSpy = spyCandles?.length
+    ? [...spyCandles].sort((a, b) => t(a.date) - t(b.date))
+    : null;
+  const spyIndexByDay = sortedSpy
+    ? new Map(sortedSpy.map((c, i) => [String(c.date).slice(0, 10), i]))
+    : null;
+
+  const examples = [];
+  for (const tier of TIER_ORDER) {
+    const candidates = [];
+    for (const r of records) {
+      if (r.tier !== tier) continue;
+      const c = candlesBySymbol[r.symbol];
+      if (!c || r.index + horizon >= c.length) continue;
+      const entry = c[r.index];
+      const exit = c[r.index + horizon];
+      if (!Number.isFinite(entry?.close) || !Number.isFinite(exit?.close))
+        continue;
+
+      let spyRetPct = null;
+      if (spyIndexByDay) {
+        const i = spyIndexByDay.get(String(entry.date).slice(0, 10));
+        if (i != null && i + horizon < sortedSpy.length) {
+          spyRetPct =
+            (sortedSpy[i + horizon].close / sortedSpy[i].close - 1) * 100;
+        }
+      }
+      candidates.push({
+        tier,
+        symbol: r.symbol,
+        date: String(entry.date).slice(0, 10),
+        entryClose: entry.close,
+        exitDate: String(exit.date).slice(0, 10),
+        exitClose: exit.close,
+        retPct: (exit.close / entry.close - 1) * 100,
+        spyRetPct,
+      });
+    }
+    if (!candidates.length) continue;
+    candidates.sort((a, b) => a.retPct - b.retPct);
+    examples.push(candidates[Math.floor(candidates.length / 2)]);
+  }
+  return examples;
+}
+
 const mean = (xs) =>
   xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : null;
 const median = (xs) => {

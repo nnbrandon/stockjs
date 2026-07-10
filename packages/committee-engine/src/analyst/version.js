@@ -15,4 +15,9 @@
 // magnitudes (which regressed to ~50 as articles piled up) to a weighted
 // diffusion index — the balance of positive vs. negative coverage — so the
 // score uses the full 0–100 range. Mapping band retuned to ±0.7.
-export const COMMITTEE_ENGINE_VERSION = 5;
+// v6 (2026-07-10): long-term lens — the fundamental pillar now scores
+// multi-year consistency (annual revenue/profit track record, margin drift),
+// share-count trend (buybacks vs. dilution), and dividend affordability
+// (payout vs. free cash flow) from data already fetched. Verdict additionally
+// exposes `answers` — the "worth owning?" / "good time to add?" split.
+export const COMMITTEE_ENGINE_VERSION = 6;

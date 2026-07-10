@@ -15,12 +15,16 @@ import {
 } from "../../db";
 import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
 import { mergeEarningsIntoQuarterly } from "@stockjs/committee-engine/mergeEarningsIntoQuarterly.js";
-import { computeMetrics, walkForward } from "./walkForward";
+import { buildExamples, computeMetrics, walkForward } from "./walkForward";
 
 const MIN_CANDLES = 500; // ~2 years
 const ALL_TIME = ["1980-01-01", "2100-01-01"];
 
-export async function runBacktest({ log = true, benchmark = "SPY" } = {}) {
+export async function runBacktest({
+  log = true,
+  benchmark = "SPY",
+  onProgress = null,
+} = {}) {
   const symbols = await getStoredSymbols();
   const candlesBySymbol = {};
   const allRecords = [];
@@ -34,7 +38,13 @@ export async function runBacktest({ log = true, benchmark = "SPY" } = {}) {
       ? benchmarkCandles
       : [];
 
-  for (const symbol of symbols) {
+  for (const [i, symbol] of symbols.entries()) {
+    if (onProgress) {
+      onProgress({ done: i, total: symbols.length, symbol });
+      // The replay itself is synchronous — yield a frame so the progress
+      // update can actually paint before the CPU-heavy part starts.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
     const candles = await getStockDataBySymbol(symbol);
     if (!candles || candles.length < MIN_CANDLES) {
       skipped.push({ symbol, reason: `only ${candles?.length ?? 0} candles (need ${MIN_CANDLES})` });
@@ -74,6 +84,13 @@ export async function runBacktest({ log = true, benchmark = "SPY" } = {}) {
     spyCandles?.length >= MIN_CANDLES ? spyCandles : null,
   );
   report.skipped = skipped;
+  // One traceable median example per tier, so the UI can show the actual
+  // arithmetic behind the averages.
+  report.examples = buildExamples(
+    allRecords,
+    candlesBySymbol,
+    spyCandles?.length >= MIN_CANDLES ? spyCandles : null,
+  );
 
   if (log) {
     console.log(

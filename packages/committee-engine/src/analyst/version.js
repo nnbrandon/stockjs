@@ -20,4 +20,9 @@
 // share-count trend (buybacks vs. dilution), and dividend affordability
 // (payout vs. free cash flow) from data already fetched. Verdict additionally
 // exposes `answers` — the "worth owning?" / "good time to add?" split.
-export const COMMITTEE_ENGINE_VERSION = 6;
+// v7 (2026-07-10): peer-relative valuation — trailing P/E is now judged
+// against a static per-sector band (sectorBenchmarks.js) and averaged into the
+// own-valuation component (no double-count). Also this round (display-only, no
+// score effect): tier-change explanations, an upcoming-earnings heads-up
+// finding, and an ease-in tranche plan on BUY verdicts.
+export const COMMITTEE_ENGINE_VERSION = 7;

@@ -74,6 +74,10 @@ export async function getCommitteeResults(body, corsOrigin) {
       results: buildResults(holdings, state.symbols ?? {}),
       health: user?.health ?? null,
       healthGeneratedAt: user?.healthGeneratedAt ?? null,
+      // The committee's real report card — grades of its past verdicts vs.
+      // current prices. Persisted on each run / daily report; null until the
+      // oldest verdict ages into the shortest horizon (~30 days).
+      trackRecord: user?.trackRecord ?? null,
     },
     corsOrigin,
   );
@@ -128,7 +132,7 @@ export async function runCommittee(body, corsOrigin) {
     state,
   );
   const resultBySymbol = new Map(symbolResults.map((r) => [r.symbol, r]));
-  const { health } = computeUserView(holdings, resultBySymbol);
+  const { health, trackRecord } = computeUserView(holdings, resultBySymbol);
 
   // Persist held symbols only; leave email bookkeeping (lastSendDay,
   // lastHealthFlags) untouched so on-demand runs never suppress the daily
@@ -151,6 +155,7 @@ export async function runCommittee(body, corsOrigin) {
               ...(baseState.users?.[email] || {}),
               health,
               healthGeneratedAt: generatedAt,
+              trackRecord,
             },
           }
         : {}),
@@ -179,6 +184,7 @@ export async function runCommittee(body, corsOrigin) {
       results: buildResults(runHoldings, allSymbolsState),
       health,
       healthGeneratedAt: generatedAt,
+      trackRecord,
     },
     corsOrigin,
   );

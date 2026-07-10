@@ -37,6 +37,14 @@ export function runAnalystCommittee(input = {}) {
     input.analysis && typeof input.analysis === "object"
       ? input.analysis
       : null;
+  const nextEarningsDate =
+    typeof input.nextEarningsDate === "string" ? input.nextEarningsDate : null;
+  const nextEarningsDateIsEstimate = Boolean(input.nextEarningsDateIsEstimate);
+  // Sector comes from the analysis payload (assetProfile.sector) or an
+  // explicit override; used to judge valuation against peers.
+  const sector =
+    (typeof input.sector === "string" && input.sector) ||
+    (analysis && typeof analysis.sector === "string" ? analysis.sector : null);
 
   if (!chartData.length && !news.length && !quarterly.length) return null;
 
@@ -46,6 +54,9 @@ export function runAnalystCommittee(input = {}) {
     annual,
     earnings,
     analysis,
+    nextEarningsDate,
+    nextEarningsDateIsEstimate,
+    sector,
   });
   const sentiment = runSentimentAnalyst({ news });
 

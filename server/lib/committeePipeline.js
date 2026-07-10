@@ -13,6 +13,7 @@ import {
   runAnalystCommittee,
 } from "@stockjs/committee-engine/analyst/index.js";
 import {
+  explainTierChange,
   getPreviousSnapshot,
   getTierChange,
 } from "@stockjs/committee-engine/analyst/verdictHistory.js";
@@ -261,6 +262,10 @@ export async function analyzeSymbols(uniqueHoldings, state) {
       history,
       analysis: f.analysis,
       benchmarkCandles,
+      nextEarningsDate: f.fundamentals.earningsResult?.nextEarningsDate ?? null,
+      nextEarningsDateIsEstimate: Boolean(
+        f.fundamentals.earningsResult?.nextEarningsDateIsEstimate,
+      ),
     });
 
     if (!report) return { ...base, report: null };
@@ -268,6 +273,11 @@ export async function analyzeSymbols(uniqueHoldings, state) {
     // Baseline must be read before today's row lands in history.
     const previousSnapshot = getPreviousSnapshot(history);
     const tierChange = getTierChange(report, previousSnapshot);
+    // Explain WHY it changed (which signal moved) — flows to the app panel,
+    // portfolio panel, and email via the stored tierChange.
+    if (tierChange) {
+      tierChange.reason = explainTierChange(previousSnapshot, report);
+    }
 
     // One verdict-history row per symbol per day; same-day re-runs overwrite
     // (mirrors how the browser used to snapshot).

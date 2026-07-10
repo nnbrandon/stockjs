@@ -681,6 +681,50 @@
   margin: 10px 0 0;
 }
 
+/* Ease-in schedule (buy in tranches) */
+.easeIn {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--palette-divider);
+}
+.easeInTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--palette-text-disabled);
+  margin-bottom: 8px;
+}
+.easeInList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.easeInRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.easeInPct {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--palette-text-primary);
+  min-width: 42px;
+}
+.easeInWhen {
+  color: var(--palette-text-secondary);
+}
+.easeInNote {
+  font-size: 11.5px;
+  color: var(--palette-text-disabled);
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
 /* Thesis tracking: tier-change chip + score history */
 .tierChange {
   display: inline-block;
@@ -694,6 +738,13 @@
   border: 1px solid var(--palette-divider);
   background: var(--palette-bg-paper);
 }
+.tierChangeReason {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--palette-text-secondary);
+}
+
 .tierChangeUp {
   color: var(--palette-success);
 }

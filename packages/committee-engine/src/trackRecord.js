@@ -148,3 +148,79 @@ export function computeTrackRecord(
 
   return { horizons: out, gradedTotal: out.reduce((s, h) => s + h.graded, 0) };
 }
+
+// ── Plain-English rendering (shared by the daily email and the app panel) ────
+// One source of truth so both surfaces read identically. Beginner voice: no
+// trader jargon ("calls", "alpha") — "the stocks it rated Buy", "verdicts".
+
+const trAvgMove = (v) =>
+  Math.abs(v) < 0.5 ? "roughly flat" : `${v >= 0 ? "up " : "down "}${Math.abs(v).toFixed(0)}%`;
+
+const trHorizonLabel = (days) => {
+  if (days <= 45) return "about a month ago";
+  if (days <= 135) return "about three months ago";
+  return `about ${Math.round(days / 30)} months ago`;
+};
+
+// How much each pillar's score actually tracked the realized return, in words.
+const trRhoWord = (r) => {
+  if (r == null) return null;
+  if (r <= -0.1) return "actually pointed the wrong way";
+  if (r < 0.1) return "didn't help";
+  if (r < 0.25) return "helped a little";
+  if (r < 0.5) return "was a decent guide";
+  return "was a strong guide";
+};
+
+/**
+ * Turn a computeTrackRecord result into beginner-readable lines. Returns
+ * `{ lines: string[] }`; `lines[0]` is the headline (most prominent), the
+ * rest are supporting detail. Empty when nothing has aged enough to grade.
+ * @param {ReturnType<typeof computeTrackRecord>} tr
+ */
+export function describeTrackRecord(tr) {
+  if (!tr) return { lines: [] };
+  const lines = [];
+  for (const h of tr.horizons) {
+    if (!h.enough) continue;
+    const when = trHorizonLabel(h.horizon);
+
+    const bits = [];
+    for (const [action, label] of [
+      ["BUY", "Buy"],
+      ["HOLD", "Hold"],
+      ["SELL", "Sell"],
+    ]) {
+      const p = h.per[action];
+      if (p.n)
+        bits.push(
+          `the stocks it rated ${label} are ${trAvgMove(p.meanReturn)} (${p.n} stock${p.n === 1 ? "" : "s"})`,
+        );
+    }
+    if (!bits.length) continue;
+    let line = `Looking back at its verdicts from ${when}: ${bits.join(", ")}.`;
+    if (Number.isFinite(h.spread)) {
+      line +=
+        h.spread >= 0
+          ? ` The ones it rated Buy did about ${h.spread.toFixed(0)}% better than the ones it rated Sell — a good sign it's calling direction right.`
+          : ` The ones it rated Sell actually did about ${Math.abs(h.spread).toFixed(0)}% better than its Buys — worth watching.`;
+    }
+    lines.push(line);
+
+    // Which of the three signals actually predicted those moves.
+    const pv = h.predictive;
+    const pvParts = [];
+    for (const [pillar, label] of [
+      ["fundamental", "the company's finances"],
+      ["technical", "the price trend"],
+      ["sentiment", "the news mood"],
+    ]) {
+      const word = trRhoWord(pv?.[pillar]?.rho);
+      if (word) pvParts.push(`${label} ${word}`);
+    }
+    if (pvParts.length) {
+      lines.push(`Of the three signals: ${pvParts.join(", ")}.`);
+    }
+  }
+  return { lines };
+}

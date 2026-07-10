@@ -20,11 +20,15 @@ export function whatToDo({ action, tier, plan } = {}) {
       plan?.kind === "entry" && Number.isFinite(plan.positionSizePct)
         ? ` — keep it small, about ${plan.positionSizePct.toFixed(0)}% of your money`
         : "";
+    const easeIn =
+      plan?.kind === "entry" && plan.tranches?.length
+        ? " Ease in over a few steps rather than all at once."
+        : "";
     const stop =
       plan?.kind === "entry" && Number.isFinite(plan.stopPrice)
         ? ` Sell if it drops below ${fmtPrice(plan.stopPrice)}.`
         : "";
-    return `Consider buying${size}.${stop}`;
+    return `Consider buying${size}.${easeIn}${stop}`;
   }
 
   if (action === "SELL") {

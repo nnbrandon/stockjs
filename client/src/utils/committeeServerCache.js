@@ -7,6 +7,7 @@
 let cacheEmail = null;
 let rows = new Map();
 let health = null;
+let trackRecord = null;
 let generatedAt = null;
 let loaded = false;
 
@@ -30,6 +31,7 @@ function ensureEmail(email) {
     cacheEmail = email;
     rows = new Map();
     health = null;
+    trackRecord = null;
     generatedAt = null;
     loaded = false;
   }
@@ -48,6 +50,10 @@ export function getCommitteeHealth(email) {
   return cacheEmail === email ? health : null;
 }
 
+export function getCommitteeTrackRecord(email) {
+  return cacheEmail === email ? trackRecord : null;
+}
+
 export function getCommitteeGeneratedAt(email) {
   return cacheEmail === email ? generatedAt : null;
 }
@@ -59,6 +65,7 @@ export function storeCommitteeResponse(email, data) {
     if (row?.symbol) rows.set(row.symbol, row);
   }
   if (data.health != null) health = data.health;
+  if (data.trackRecord !== undefined) trackRecord = data.trackRecord;
   if (data.generatedAt) generatedAt = data.generatedAt;
   loaded = true;
   notify();
@@ -68,6 +75,7 @@ export function resetCommitteeCache() {
   cacheEmail = null;
   rows = new Map();
   health = null;
+  trackRecord = null;
   generatedAt = null;
   loaded = false;
   notify();

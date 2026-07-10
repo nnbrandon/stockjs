@@ -157,7 +157,17 @@ function trendFor(earningsTrend, period) {
 export async function fetchAnalysisData(symbol) {
   const result = await yahooFinance.quoteSummary(
     symbol,
-    { modules: ["earningsTrend", "financialData", "defaultKeyStatistics"] },
+    {
+      // assetProfile rides along on this existing call (no extra request) to
+      // give the committee the sector for peer-relative valuation. Missing on
+      // some foreign listings/ADRs → sector resolves to null, a safe no-op.
+      modules: [
+        "earningsTrend",
+        "financialData",
+        "defaultKeyStatistics",
+        "assetProfile",
+      ],
+    },
     { validateResult: false },
   );
 
@@ -170,6 +180,8 @@ export async function fetchAnalysisData(symbol) {
   return {
     symbol: symbol.toUpperCase(),
     fetchedAt: new Date().toISOString(),
+    sector: result?.assetProfile?.sector ?? null,
+    industry: result?.assetProfile?.industry ?? null,
     forwardEps: num(epsTrend.current),
     eps30dAgo: num(epsTrend["30daysAgo"]),
     eps90dAgo: num(epsTrend["90daysAgo"]),

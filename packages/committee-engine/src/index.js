@@ -11,6 +11,7 @@ export {
   getPreviousSnapshot,
   getTierChange,
   getScoreSeries,
+  explainTierChange,
 } from "./analyst/verdictHistory.js";
 export { mergeEarningsIntoQuarterly } from "./mergeEarningsIntoQuarterly.js";
 export { analyzePortfolioHealth } from "./portfolioHealth.js";

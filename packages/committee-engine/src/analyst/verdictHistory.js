@@ -56,6 +56,104 @@ export function getTierChange(report, previousSnapshot) {
   };
 }
 
+const TIER_RANK = {
+  "Strong Buy": 4,
+  Buy: 3,
+  Hold: 2,
+  Reduce: 1,
+  Sell: 0,
+};
+
+// Plain, pillar-appropriate phrasing for a pillar that moved up or down.
+const PILLAR_MOVE = {
+  technical: { up: "the price trend improved", down: "the price trend weakened" },
+  fundamental: {
+    up: "the company's finances strengthened",
+    down: "the company's finances weakened",
+  },
+  sentiment: { up: "the news mood improved", down: "the news mood soured" },
+};
+const PILLAR_NOUN = {
+  technical: "the price trend",
+  fundamental: "the company's finances",
+  sentiment: "the news mood",
+};
+
+const DRIVER_MIN = 6; // points a pillar must move to count as a driver
+const UNCHANGED_MAX = 2; // points below which a pillar reads as "unchanged"
+
+/**
+ * A one-sentence, beginner-plain reason a verdict's tier changed since the
+ * previous review — which of the three signals moved, and by how much. Pure
+ * and display-only (no scoring). Returns null when there's no tier change or
+ * nothing comparable to explain it.
+ *
+ * @param {object} previousSnapshot  a prior verdict-history row (carries
+ *   technical/fundamental/sentiment pillar scores + tier)
+ * @param {object} report            the current committee report
+ * @returns {string|null}
+ */
+export function explainTierChange(previousSnapshot, report) {
+  if (!previousSnapshot || !report?.verdict) return null;
+  const nowTier = report.verdict.tier;
+  const wasTier = previousSnapshot.tier;
+  const now = TIER_RANK[nowTier];
+  const was = TIER_RANK[wasTier];
+  if (!Number.isFinite(now) || !Number.isFinite(was) || now === was) return null;
+  const direction = now > was ? "up" : "down";
+
+  const pillars = report.pillars ?? {};
+  const moves = [];
+  for (const key of ["technical", "fundamental", "sentiment"]) {
+    const before = Number(previousSnapshot[key]);
+    const after = Number(pillars[key]);
+    if (!Number.isFinite(before) || !Number.isFinite(after)) continue;
+    moves.push({ key, before, after, delta: after - before });
+  }
+  if (!moves.length) return null;
+
+  // The driver must move the SAME way as the tier, or the explanation would
+  // contradict itself (thresholds / devil's-advocate dampening can shift a
+  // tier without a matching pillar swing).
+  const drivers = moves
+    .filter((m) =>
+      direction === "up" ? m.delta >= DRIVER_MIN : m.delta <= -DRIVER_MIN,
+    )
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+  const verb = direction === "up" ? "Upgraded" : "Downgraded";
+  if (!drivers.length) {
+    return `${verb} from small shifts across the signals rather than one big move.`;
+  }
+
+  const lead = drivers[0];
+  const moveDir = lead.delta >= 0 ? "up" : "down";
+  let sentence = `${verb} mainly because ${PILLAR_MOVE[lead.key][moveDir]} (${Math.round(
+    lead.before,
+  )} → ${Math.round(lead.after)}).`;
+
+  if (drivers[1]) {
+    const second = drivers[1];
+    const secondDir = second.delta >= 0 ? "up" : "down";
+    sentence += ` ${PILLAR_MOVE[second.key][secondDir][0].toUpperCase()}${PILLAR_MOVE[
+      second.key
+    ][secondDir].slice(1)} too.`;
+  } else {
+    // Name a pillar that genuinely held steady, for contrast (matches the
+    // "the company's finances are unchanged" read). "finances" is plural, so
+    // its verb agrees separately from the singular trend/mood nouns.
+    const steady = moves.find(
+      (m) => m.key !== lead.key && Math.abs(m.delta) <= UNCHANGED_MAX,
+    );
+    if (steady) {
+      const noun = PILLAR_NOUN[steady.key];
+      const verb = steady.key === "fundamental" ? "are" : "is";
+      sentence += ` ${noun[0].toUpperCase()}${noun.slice(1)} ${verb} unchanged.`;
+    }
+  }
+  return sentence;
+}
+
 /** Composite scores (current engine only) for a history sparkline. */
 export function getScoreSeries(history) {
   if (!Array.isArray(history)) return [];

@@ -67,16 +67,20 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
             </div>
             <p style={{ marginTop: 10 }}>
               Price trend covers momentum, moving averages, RSI, and volatility.
-              Company finances covers revenue, earnings, margins, and valuation,
-              plus financial strength (free cash flow, debt load, return on
-              equity) and expectations — whether analysts are raising or cutting
-              their forecasts, and forward valuation. Analyst price targets are
-              shown for context but never scored. News mood comes from article
-              sentiment (see below). The weighting is built for long-term
-              investing — the business counts more than the chart — and a strong
-              business trading well below its 52-week high gets a small
-              &ldquo;quality on sale&rdquo; boost instead of being punished for
-              the dip.
+              Company finances covers revenue, earnings, and margins, plus
+              financial strength (free cash flow, debt load, return on equity)
+              and a long-term track record — whether sales and profits have
+              grown steadily over several years, whether the company is buying
+              back its own shares or issuing new ones, and whether its dividend
+              is affordable. Valuation is judged two ways: against the
+              company&apos;s own history and against what&apos;s typical for its
+              industry. Expectations count too — whether analysts are raising or
+              cutting their forecasts. Analyst price targets are shown for
+              context but never scored. News mood comes from article sentiment
+              (see below). The weighting is built for long-term investing — the
+              business counts more than the chart — and a strong business
+              trading well below its 52-week high gets a small &ldquo;quality on
+              sale&rdquo; boost instead of being punished for the dip.
             </p>
           </section>
 

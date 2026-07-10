@@ -13,6 +13,7 @@ import {
 } from "../indicators";
 import { analyzeEarningsHistory } from "./earningsHistory";
 import { analyzeLongTermLens } from "./longTermLens";
+import { sectorValuationRead } from "../../sectorBenchmarks";
 import {
   avg,
   bear,
@@ -51,10 +52,14 @@ export function runDataScout({
   annual = [],
   earnings = [],
   analysis = null,
+  nextEarningsDate = null,
+  nextEarningsDateIsEstimate = false,
+  sector = null,
 }) {
   const closes = toCloses(candles);
   const findings = [];
   const metrics = {};
+  if (sector) metrics.sector = sector;
 
   // ---- Technicals ----
   let technicalScore = null;
@@ -582,10 +587,12 @@ export function runDataScout({
           metrics.revenueGrowthYoY,
         ].find((g) => Number.isFinite(g) && g > 5);
 
+        // The own-valuation score (PEG-based or raw-P/E-based).
+        let ownPeScore;
         if (Number.isFinite(growth)) {
           const peg = pe / growth;
           metrics.peg = peg;
-          components.push(scaleClamp(peg, 2.5, 0.5, 20, 90)); // lower PEG → higher score
+          ownPeScore = scaleClamp(peg, 2.5, 0.5, 20, 90); // lower PEG → higher
           if (peg < 1)
             findings.push(
               bull(
@@ -601,7 +608,7 @@ export function runDataScout({
               ),
             );
         } else {
-          components.push(scaleClamp(pe, 60, 10, 20, 80)); // lower P/E → higher score
+          ownPeScore = scaleClamp(pe, 60, 10, 20, 80); // lower P/E → higher
           if (pe < 15)
             findings.push(
               bull(
@@ -616,6 +623,32 @@ export function runDataScout({
                 1,
               ),
             );
+        }
+
+        // Peer context: how the P/E compares with what's typical for its
+        // sector. Averaged INTO the own-valuation score (not a second
+        // component) so valuation isn't double-counted. Unknown sector → no
+        // effect at all.
+        const sectorRead = sectorValuationRead(pe, sector);
+        if (sectorRead) {
+          metrics.sectorValuationVerdict = sectorRead.verdict;
+          components.push(avg([ownPeScore, sectorRead.score]));
+          if (sectorRead.verdict === "cheap")
+            findings.push(
+              bull(
+                `Cheap for its industry — about $${pe.toFixed(0)} per $1 of profit, while ${sector} companies typically run $${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)}`,
+                1,
+              ),
+            );
+          else if (sectorRead.verdict === "rich")
+            findings.push(
+              bear(
+                `Expensive even for ${sector} — about $${pe.toFixed(0)} per $1 of profit vs. a typical $${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)}. It needs to keep growing fast to justify that`,
+                1,
+              ),
+            );
+        } else {
+          components.push(ownPeScore);
         }
       } else {
         metrics.trailingPE = null;
@@ -771,6 +804,33 @@ export function runDataScout({
     Object.assign(metrics, longTerm.metrics);
     findings.push(...longTerm.findings);
     components.push(...longTerm.components);
+  }
+
+  // ---- Upcoming earnings heads-up (non-scored) ----
+  // A scheduled quarterly report is when prices and verdicts swing most. Never
+  // touches the score — it's a plain calendar warning so a beginner doesn't
+  // buy blind into a binary event. `metrics.nextEarningsDate` is also read by
+  // the entry plan (to time the middle tranche).
+  if (nextEarningsDate) {
+    const when = new Date(nextEarningsDate).getTime();
+    if (Number.isFinite(when)) {
+      metrics.nextEarningsDate = nextEarningsDate;
+      metrics.nextEarningsDateIsEstimate = Boolean(nextEarningsDateIsEstimate);
+      const days = Math.round((when - Date.now()) / (24 * 60 * 60 * 1000));
+      if (days >= 0 && days <= 14) {
+        const label = new Date(nextEarningsDate).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+        const approx = nextEarningsDateIsEstimate ? "around " : "";
+        findings.push(
+          neutral(
+            `Earnings report expected ${approx}${label} — prices often jump or drop on report day, and this verdict can change after it.`,
+            1,
+          ),
+        );
+      }
+    }
   }
 
   if (components.length) fundamentalScore = avg(components);

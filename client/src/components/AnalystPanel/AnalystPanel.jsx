@@ -186,6 +186,23 @@ function GamePlan({ plan, hasPosition, position, positionMetrics }) {
             </span>
           </div>
         </div>
+        {plan.tranches?.length === 3 && (
+          <div className={styles.easeIn}>
+            <div className={styles.easeInTitle}>How to ease in</div>
+            <ul className={styles.easeInList}>
+              {plan.tranches.map((t, i) => (
+                <li key={i} className={styles.easeInRow}>
+                  <span className={styles.easeInPct}>{t.pct}%</span>
+                  <span className={styles.easeInWhen}>{t.when}</span>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.easeInNote}>
+              Buying in steps rather than all at once means one bad day&apos;s
+              price can&apos;t define your whole position.
+            </p>
+          </div>
+        )}
         <p className={styles.planNote}>
           Sized so a wrong call costs at most ~
           {plan.portfolioRiskPct.toFixed(1)}% of your portfolio. This is a risk
@@ -620,6 +637,9 @@ export default function AnalystPanel({
                 </span>
               )}
             </div>
+            {tierChange?.reason && (
+              <p className={styles.tierChangeReason}>{tierChange.reason}</p>
+            )}
             <p className={styles.verdictContext}>{verdictContext}</p>
           </div>
         </div>

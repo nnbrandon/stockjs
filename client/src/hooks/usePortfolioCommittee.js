@@ -6,6 +6,7 @@ import {
   getCommitteeGeneratedAt,
   getCommitteeHealth,
   getCommitteeRow,
+  getCommitteeTrackRecord,
   isCommitteeCacheLoaded,
   resetCommitteeCache,
   storeCommitteeResponse,
@@ -51,6 +52,7 @@ function mapFromCache(email, tradeablePositions) {
   return {
     results,
     health: getCommitteeHealth(email),
+    trackRecord: getCommitteeTrackRecord(email),
     generatedAt: getCommitteeGeneratedAt(email),
     anyAnalyzed,
   };
@@ -74,6 +76,7 @@ export default function usePortfolioCommittee(positions) {
   const [status, setStatus] = useState("idle");
   const [results, setResults] = useState([]);
   const [health, setHealth] = useState(null);
+  const [trackRecord, setTrackRecord] = useState(null);
   const [generatedAt, setGeneratedAt] = useState(null);
   const [progress, setProgress] = useState({
     done: 0,
@@ -89,6 +92,7 @@ export default function usePortfolioCommittee(positions) {
     (view) => {
       setResults(view.results);
       setHealth(view.health);
+      setTrackRecord(view.trackRecord);
       setGeneratedAt(view.generatedAt);
       setStatus(view.anyAnalyzed ? "done" : "idle");
     },
@@ -109,6 +113,7 @@ export default function usePortfolioCommittee(positions) {
         const view = mapFromCache(email, tradeablePositions);
         setResults(view.results);
         setHealth(view.health);
+        setTrackRecord(view.trackRecord);
         setGeneratedAt(view.generatedAt);
         return view.anyAnalyzed ? "done" : "idle";
       });
@@ -123,6 +128,7 @@ export default function usePortfolioCommittee(positions) {
       setStatus("idle");
       setResults([]);
       setHealth(null);
+      setTrackRecord(null);
       setGeneratedAt(null);
       return undefined;
     }
@@ -189,6 +195,7 @@ export default function usePortfolioCommittee(positions) {
     const view = mapFromCache(email, tradeablePositions);
     setResults(view.results);
     setHealth(view.health);
+    setTrackRecord(view.trackRecord);
     setGeneratedAt(view.generatedAt);
     setStatus("done");
   }, [tradeablePositions, configured]);
@@ -198,6 +205,7 @@ export default function usePortfolioCommittee(positions) {
     setStatus("idle");
     setResults([]);
     setHealth(null);
+    setTrackRecord(null);
     setGeneratedAt(null);
     setProgress({
       done: 0,
@@ -214,6 +222,7 @@ export default function usePortfolioCommittee(positions) {
     progress,
     reviewMode: "server",
     health,
+    trackRecord,
     generatedAt,
     run,
     reset,

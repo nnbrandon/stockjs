@@ -52,7 +52,7 @@ function offHighPct(candles = []) {
 // to quarters whose date falls inside the candle window (older ones have no
 // price to match), so with a short candle history it simply returns null and
 // the caller falls back to a growth-relative read.
-function historicalPESeries(candles = [], quarterly = []) {
+export function historicalPESeries(candles = [], quarterly = []) {
   const times = candles
     .map((c) => new Date(c.date).getTime())
     .filter(Number.isFinite);
@@ -209,7 +209,7 @@ function fundamentalTrajectory(metrics) {
 // NOT yet include today's row. Returns how long the streak has run and how
 // far off its high the stock was when it started, so the caller can tell a
 // discount that's persisting from one that's finally narrowing.
-function fireSaleStreak(history) {
+export function fireSaleStreak(history) {
   if (!Array.isArray(history) || !history.length) return null;
   let start = null;
   let latestDay = null;
@@ -255,9 +255,12 @@ function discountCheck(candles = [], pillars, quarterly = [], metrics = {}) {
   // (#1) Valuation gate: a stock down from its high but still richly valued
   // versus its own history/growth isn't "on sale" — it's a correction
   // unwinding an overvaluation. Only blocks on a positive "rich" reading;
-  // unknown valuation never blocks.
+  // unknown valuation never blocks. Own-history is primary; the sector read
+  // only adds a gate when we have no own read at all (so a stock that's
+  // expensive versus its peers can't sneak through as "on sale" unjudged).
   const valuation = valuationRead(candles, quarterly, metrics);
   if (valuation?.verdict === "rich") return null;
+  if (!valuation && metrics.sectorValuationVerdict === "rich") return null;
 
   return { offHighPct: off, fundamental, valuation };
 }
@@ -483,8 +486,49 @@ const fmtPrice = (n) =>
     ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
     : null;
 
+// How to ease in, by conviction: the fraction of the planned position to add
+// now vs. later. Higher conviction → more up front; lower → hold more back.
+// Long-term beginners do better averaging in than committing everything at a
+// single price.
+const TRANCHE_SPLIT = {
+  High: [50, 25, 25],
+  Moderate: [40, 30, 30],
+  Low: [25, 25, 50],
+};
+
+function buildTranches(convictionLabel, nextEarningsDate) {
+  const split = TRANCHE_SPLIT[convictionLabel] ?? TRANCHE_SPLIT.Moderate;
+  let earningsSoon = false;
+  let label = null;
+  if (nextEarningsDate) {
+    const days = Math.round(
+      (new Date(nextEarningsDate).getTime() - Date.now()) / DAY_MS,
+    );
+    if (days >= 0 && days <= 21) {
+      earningsSoon = true;
+      label = new Date(nextEarningsDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+    }
+  }
+  return [
+    { pct: split[0], when: "now" },
+    {
+      pct: split[1],
+      when: earningsSoon ? `after the report on ${label}` : "in about a month",
+    },
+    {
+      pct: split[2],
+      when: earningsSoon
+        ? "once it settles after the report"
+        : "a month or two later",
+    },
+  ];
+}
+
 // 3-5-7 rule: ≤3% account risk per trade, ≤5% per position, ≤7% total exposure.
-function buildEntryPlan(candles, metrics) {
+function buildEntryPlan(candles, metrics, convictionLabel) {
   const entry = metrics.price;
   if (!Number.isFinite(entry)) return null;
 
@@ -521,6 +565,10 @@ function buildEntryPlan(candles, metrics) {
     positionSizePct,
     portfolioRiskPct,
     rewardRisk: 2,
+    // Ease-in schedule (fractions of the planned position) + the earnings
+    // date, so the UI/email can show "buy a third now, the rest later".
+    tranches: buildTranches(convictionLabel, metrics.nextEarningsDate ?? null),
+    nextEarningsDate: metrics.nextEarningsDate ?? null,
     actionable: true,
   };
 }
@@ -610,9 +658,26 @@ function buildPlanFindings(action, tier, plan) {
         1,
       ),
     );
+    // Ease in rather than commit everything at one price.
+    if (plan.tranches?.length === 3) {
+      const [t0, t1, t2] = plan.tranches;
+      out.push(
+        neutral(
+          `If buying: ease in rather than all at once — about ${t0.pct}% of your planned amount ${t0.when}, then ${t1.pct}% ${t1.when} and ${t2.pct}% ${t2.when}. Keep the whole position under about ${plan.positionSizePct.toFixed(0)}% of your portfolio.`,
+          1,
+        ),
+      );
+    } else {
+      out.push(
+        neutral(
+          `If buying: keep it to about ${plan.positionSizePct.toFixed(1)}% of your portfolio.`,
+          1,
+        ),
+      );
+    }
     out.push(
       neutral(
-        `If buying: keep it to about ${plan.positionSizePct.toFixed(1)}% of your portfolio, and treat ${fmtPrice(plan.stopPrice)} (${plan.stopDistancePct.toFixed(1)}% below) as the line where this thesis is wrong.`,
+        `Treat ${fmtPrice(plan.stopPrice)} (${plan.stopDistancePct.toFixed(1)}% below) as the line where this thesis is wrong.`,
         1,
       ),
     );
@@ -1093,7 +1158,7 @@ export function runPortfolioManager({
   const metrics = dataScout.metrics ?? {};
   const plan =
     action === "BUY"
-      ? buildEntryPlan(candles, metrics)
+      ? buildEntryPlan(candles, metrics, convictionLabel)
       : action === "SELL"
         ? buildExitPlan(metrics, bearAgent, pillarScores, tier, conviction)
         : buildWatchPlan(metrics);

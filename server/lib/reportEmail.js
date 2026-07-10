@@ -5,6 +5,7 @@
 
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
 import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
+import { describeTrackRecord } from "@stockjs/committee-engine/trackRecord.js";
 
 const TIER_COLORS = {
   "Strong Buy": "#1a7f37",
@@ -71,10 +72,30 @@ function fireSaleBadge(fireSale) {
   return `<span style="display:inline-block;padding:1px 10px;border-radius:12px;background:#fff1e5;border:1px solid #e8590c;color:#bc4c00;font-size:12px;font-weight:700;">🔥 FIRE SALE${label}</span>`;
 }
 
+// A one-line earnings heads-up when a report is scheduled within a week.
+// Returns null otherwise (funds, no date, or further out).
+function earningsHeadsUp(report) {
+  const iso = report?.metrics?.nextEarningsDate;
+  if (!iso) return null;
+  const when = new Date(iso).getTime();
+  if (!Number.isFinite(when)) return null;
+  const days = Math.round((when - Date.now()) / (24 * 60 * 60 * 1000));
+  if (days < 0 || days > 7) return null;
+  const label = new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const approx = report.metrics.nextEarningsDateIsEstimate ? "around " : "";
+  return `Earnings report expected ${approx}${label} — prices and this verdict often swing after a report.`;
+}
+
 function describeTierChange(r) {
   const c = r.tierChange;
   const verb = c.direction === "upgrade" ? "upgraded" : "downgraded";
-  return `${r.symbol} ${verb}: ${c.fromTier} → ${r.report.verdict.tier}`;
+  const base = `${r.symbol} ${verb}: ${c.fromTier} → ${r.report.verdict.tier}`;
+  // The plain-English "why" (which signal moved), when the pipeline computed it.
+  return c.reason ? `${base} — ${c.reason}` : base;
 }
 
 function subjectLine(results, meta) {
@@ -231,6 +252,11 @@ function holdingHtml(r, appUrl) {
 
   cells.push(labeled("What to do", escapeHtml(doThisLine(r))));
 
+  // Heads up — a scheduled earnings report within the week (prices/verdicts
+  // swing most around these).
+  const earnings = earningsHeadsUp(r.report);
+  if (earnings) cells.push(labeled("Heads up", escapeHtml(earnings)));
+
   // Why — sells only (the specifics behind a sell-your-money call).
   const sell = sellDetails(r.report);
   if (sell?.reasons?.length)
@@ -278,6 +304,8 @@ function holdingText(r, appUrl) {
   const answer = pm?.narrative || pm?.summary;
   if (answer) lines.push(`  ${answer}`);
   lines.push(`  What to do: ${doThisLine(r)}`);
+  const earnings = earningsHeadsUp(r.report);
+  if (earnings) lines.push(`  Heads up: ${earnings}`);
   const sell = sellDetails(r.report);
   if (sell?.reasons?.length)
     lines.push(`  Why: ${sell.reasons.slice(0, 3).join("; ")}`);
@@ -328,70 +356,11 @@ function sortForListing(results) {
  * @param {object} meta {day, engineVersion, articlesScored, sentimentPartial,
  *                       archiveSpanDays, failures}
  */
-// Committee track record (#2): plain lines from computeTrackRecord output.
-// Empty until at least one horizon has enough graded verdicts.
+// Committee track record: plain lines from computeTrackRecord output, shared
+// with the app panel (one voice, one source of truth). Empty until at least
+// one horizon has enough graded verdicts.
 function trackRecordLines(tr) {
-  if (!tr) return [];
-  // Plain-English versions of the numbers — the email is for a human, the raw
-  // percentages/correlations live in the calibration log for tuning.
-  const avgMove = (v) =>
-    Math.abs(v) < 0.5 ? "flat" : `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`;
-  const rhoWord = (r) => {
-    if (r == null) return null;
-    if (r <= -0.1) return "backwards (misleading)";
-    if (r < 0.1) return "no help";
-    if (r < 0.25) return "a little";
-    if (r < 0.5) return "helpful";
-    return "a strong guide";
-  };
-  const lines = [];
-  for (const h of tr.horizons) {
-    if (!h.enough) continue;
-    // How each group of past calls actually moved.
-    const bits = [];
-    for (const [action, label] of [
-      ["BUY", "Buy"],
-      ["HOLD", "Hold"],
-      ["SELL", "Sell"],
-    ]) {
-      const p = h.per[action];
-      if (p.n)
-        bits.push(
-          `${label} ${avgMove(p.meanReturn)} (${p.n} stock${p.n === 1 ? "" : "s"})`,
-        );
-    }
-    if (!bits.length) continue;
-    let line = `Its calls from ~${h.horizon} days ago: ${bits.join(", ")}.`;
-    if (Number.isFinite(h.spread)) {
-      line +=
-        h.spread >= 0
-          ? ` The stocks it rated Buy did about ${h.spread.toFixed(0)}% better than the ones it rated Sell — a good sign it's calling direction right.`
-          : ` The stocks it rated Sell actually did about ${Math.abs(h.spread).toFixed(0)}% better than its Buys — worth watching.`;
-    }
-    lines.push(line);
-
-    // Which of the three signals actually predicted those moves, in words.
-    const pv = h.predictive;
-    const pvParts = [];
-    for (const [pillar, label] of [
-      ["fundamental", "finances"],
-      ["technical", "trend"],
-      ["sentiment", "news"],
-    ]) {
-      const word = rhoWord(pv?.[pillar]?.rho);
-      if (word) pvParts.push(`${label} was ${word}`);
-    }
-    if (pvParts.length) {
-      const n = Math.max(
-        0,
-        ...["technical", "fundamental", "sentiment"].map((p) => pv[p]?.n || 0),
-      );
-      lines.push(
-        `Of the three signals, which actually predicted those moves: ${pvParts.join(", ")} (based on ${n} past calls).`,
-      );
-    }
-  }
-  return lines;
+  return describeTrackRecord(tr).lines;
 }
 
 export function renderReportEmail(unsorted, health, meta) {
@@ -428,7 +397,7 @@ export function renderReportEmail(unsorted, health, meta) {
       .join("");
     sections.push(
       `<h2 style="font-size:15px;margin:18px 0 6px;">Committee track record</h2>
-       <p style="font-size:12px;color:#57606a;margin:0 0 6px;">A report card on the committee's own past calls — how the stocks it rated have actually moved since, so you can see if it's any good. (Based on each stock's price change, not your specific buys. Small samples, so treat it as a gut-check, not gospel.)</p>
+       <p style="font-size:12px;color:#57606a;margin:0 0 6px;">A report card on the committee's own past verdicts — how the stocks it rated have actually moved since, so you can see if it's any good. (Based on each stock's price change, not your specific buys. Small samples, so treat it as a gut-check, not gospel.)</p>
        <ul style="margin:0 0 0 18px;padding:0;font-size:13px;color:#24292f;">${items}</ul>`,
     );
   }

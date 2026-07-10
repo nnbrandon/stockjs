@@ -95,9 +95,10 @@ export async function fetchEarningsHistory(symbol) {
       .filter((h) => h.date)
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
+    const now = Date.now();
+
     // Fallback: earnings call date is often the announcement day.
     if (history.length && !history[0].reportedDate) {
-      const now = Date.now();
       const callDate = (res?.calendarEvents?.earnings?.earningsCallDate ?? [])
         .map((d) => toIso(d))
         .filter((d) => d && new Date(d).getTime() <= now)
@@ -105,9 +106,32 @@ export async function fetchEarningsHistory(symbol) {
       if (callDate) history[0].reportedDate = callDate;
     }
 
-    return { history, reportedDate: history[0]?.reportedDate ?? null };
+    // Next scheduled report. Yahoo returns a single confirmed date, or a
+    // two-date window when the date is still an estimate. Consider both
+    // earningsDate and any future earningsCallDate; pick the soonest ahead.
+    const rawEarningsDate = res?.calendarEvents?.earnings?.earningsDate ?? [];
+    const futureDates = [
+      ...rawEarningsDate,
+      ...(res?.calendarEvents?.earnings?.earningsCallDate ?? []),
+    ]
+      .map((d) => toIso(d))
+      .filter((d) => d && new Date(d).getTime() >= now - 24 * 60 * 60 * 1000)
+      .sort((a, b) => new Date(a) - new Date(b));
+
+    return {
+      history,
+      reportedDate: history[0]?.reportedDate ?? null,
+      nextEarningsDate: futureDates[0] ?? null,
+      // A two-date earningsDate window means Yahoo hasn't confirmed the day.
+      nextEarningsDateIsEstimate: rawEarningsDate.length > 1,
+    };
   } catch (err) {
     console.error("earningsHistory error:", err);
-    return { history: [], reportedDate: null };
+    return {
+      history: [],
+      reportedDate: null,
+      nextEarningsDate: null,
+      nextEarningsDateIsEstimate: false,
+    };
   }
 }

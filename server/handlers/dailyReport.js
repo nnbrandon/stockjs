@@ -202,6 +202,9 @@ export async function runDailyReport() {
       })),
       health,
       healthGeneratedAt: generatedAt,
+      // Persist the committee's report card so the app's read path can show it
+      // without recomputing (mirrors how `health` is stored).
+      trackRecord,
     };
 
     const spanDays = Math.min(

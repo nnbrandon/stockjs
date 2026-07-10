@@ -10,6 +10,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 
 import AiCommitteeHelpButton from "../AiCommitteeHelp/AiCommitteeHelpButton";
 import CommitteeBacktestModal from "./CommitteeBacktestModal";
+import TrackRecordCard from "./TrackRecordCard";
 import ResizableSidebar from "../ResizableSidebar/ResizableSidebar";
 import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
@@ -333,6 +334,10 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
       <div className={styles.cardBody}>
         <p className={styles.context}>{portfolioManager?.narrative || context}</p>
 
+        {tierChange?.reason && (
+          <p className={styles.changeReason}>{tierChange.reason}</p>
+        )}
+
         <p className={styles.whatToDo}>
           <strong>What to do:</strong>{" "}
           {whatToDo({
@@ -468,6 +473,7 @@ export default function PortfolioCommitteePanel({
     results,
     progress,
     generatedAt,
+    trackRecord,
     run,
     reset,
     count,
@@ -605,6 +611,8 @@ export default function PortfolioCommitteePanel({
                 ? `Analyzed ${new Date(generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} — same results as your daily email`
                 : "Server review — same results as your daily email"}
             </p>
+
+            <TrackRecordCard trackRecord={trackRecord} />
 
             <ToggleButtonGroup
               exclusive

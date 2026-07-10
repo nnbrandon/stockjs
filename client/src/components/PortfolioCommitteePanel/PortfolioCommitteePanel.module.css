@@ -288,6 +288,13 @@
   border-radius: 6px;
 }
 
+.changeReason {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--palette-text-secondary);
+}
+
 .newsMood {
   margin: 0;
   font-size: 11.5px;

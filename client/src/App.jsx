@@ -100,9 +100,9 @@ function App() {
       if (!normalized) return;
       setMobileNavOpen(false);
       navigate(
-        options.openCommittee
-          ? `/stock/${normalized}/committee`
-          : `/stock/${normalized}`,
+        options.openNews
+          ? `/stock/${normalized}`
+          : `/stock/${normalized}/committee`,
       );
     },
     [navigate],

@@ -20,7 +20,7 @@
 #   FUNCTION_NAME (default stockjs-api), REGION (default us-east-1),
 #   ROLE_NAME (default stockjs-lambda-role),
 #   REPORT_EMAIL (default herosekai@gmail.com),
-#   SCHEDULE_EXPRESSION (default "cron(0 9 * * ? *)")
+#   SCHEDULE_EXPRESSION (default "cron(0 9 ? * MON-FRI *)" — weekdays only)
 
 set -euo pipefail
 
@@ -41,7 +41,9 @@ REPORT_SYMBOLS="${REPORT_SYMBOLS:-}"
 # default; override for a custom domain).
 APP_URL="${APP_URL:-https://nnbrandon.github.io/stockjs}"
 SCHEDULE_NAME="${SCHEDULE_NAME:-stockjs-daily-report}"
-SCHEDULE_EXPRESSION="${SCHEDULE_EXPRESSION:-cron(0 9 * * ? *)}"
+# Weekdays only (Mon–Fri) — markets are closed on weekends and no report goes
+# out then; the handler also guards against weekend runs as a backstop.
+SCHEDULE_EXPRESSION="${SCHEDULE_EXPRESSION:-cron(0 9 ? * MON-FRI *)}"
 SCHEDULER_ROLE_NAME="${SCHEDULER_ROLE_NAME:-stockjs-scheduler-role}"
 HANDLER="dist/index.handler"
 MEMORY=2048

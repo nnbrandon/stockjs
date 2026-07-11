@@ -112,22 +112,20 @@ function TwoAnswers({ answers, compact }) {
   if (!tiles.length) return null;
 
   return (
-    <div>
-      <div
-        className={`${styles.answers} ${compact ? styles.answersCompact : ""}`}
-      >
-        {tiles.map(({ title, answer }) => (
-          <div key={title} className={styles.answer}>
-            <span className={styles.answerQuestion}>{title}</span>
-            <span
-              className={`${styles.answerLabel} ${styles[`answerTone_${answer.tone}`]}`}
-            >
-              {answer.label}
-            </span>
-            <p className={styles.answerLine}>{answer.line}</p>
-          </div>
-        ))}
-      </div>
+    <div
+      className={`${styles.answers} ${compact ? styles.answersCompact : ""}`}
+    >
+      {tiles.map(({ title, answer }) => (
+        <div key={title} className={styles.answer}>
+          <span className={styles.answerQuestion}>{title}</span>
+          <span
+            className={`${styles.answerLabel} ${styles[`answerTone_${answer.tone}`]}`}
+          >
+            {answer.label}
+          </span>
+          <p className={styles.answerLine}>{answer.line}</p>
+        </div>
+      ))}
       {!compact && tiles.length === 2 && (
         <p className={styles.answersNote}>
           For a long-term investor the first answer matters most — the second

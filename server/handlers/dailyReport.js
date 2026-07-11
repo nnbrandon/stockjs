@@ -118,8 +118,24 @@ async function loadReportUsers(bucket, fallbackEmail) {
   return users;
 }
 
+/** Sat/Sun in America/Los_Angeles — markets are closed and no report goes out. */
+export function isPacificWeekend(date = new Date()) {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    weekday: "short",
+  }).format(date);
+  return weekday === "Sat" || weekday === "Sun";
+}
+
 export async function runDailyReport() {
   const startedAt = Date.now();
+  // No report on weekends (user preference) — markets are closed, so there's
+  // nothing new to analyze or send. Bail before any work or SES delivery.
+  if (isPacificWeekend()) {
+    const summary = "Skipped — weekend (no report on Sat/Sun)";
+    console.log(`dailyReport: ${summary}`);
+    return { statusCode: 200, body: summary };
+  }
   const bucket = process.env.REPORT_STATE_BUCKET || "";
   // The verified SES identity every report is sent FROM (recipients are the
   // per-portfolio addresses). Also the fallback recipient for pre-multi-user

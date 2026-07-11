@@ -120,8 +120,8 @@ export default function StockContextPanel({
             sx={tabsSx}
             variant="fullWidth"
           >
-            <Tab label="News" disableRipple />
-            <Tab label="AI Committee" disableRipple />
+            <Tab label="AI Committee" value={1} disableRipple />
+            <Tab label="News" value={0} disableRipple />
           </Tabs>
           <AiCommitteeHelpButton className={styles.helpBtn} />
           <IconButton

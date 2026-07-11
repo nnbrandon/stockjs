@@ -89,8 +89,9 @@ directly (never via the public Function URL) at 9 AM `America/Los_Angeles`.
 5. **S3 for state**, one JSON object, read+write once per day.
 6. **SES sandbox is sufficient**: verify `herosekai@gmail.com` once and use
    it as both sender and recipient (sandbox allows verified→verified).
-7. **Timezone**: `cron(0 9 * * ? *)` with `America/Los_Angeles` (tracks
-   PST/PDT). If fixed-UTC-offset is truly wanted, `cron(0 17 * * ? *)` UTC.
+7. **Timezone**: `cron(0 9 ? * MON-FRI *)` with `America/Los_Angeles` (tracks
+   PST/PDT; weekdays only). If fixed-UTC-offset is truly wanted,
+   `cron(0 17 ? * MON-FRI *)` UTC.
 
 ## Phase 1 — Shared engine package (the sync guarantee)
 
@@ -307,7 +308,7 @@ retries the email.
    `lambda:InvokeFunction`, then:
    ```
    aws scheduler create-schedule --name stockjs-daily-report \
-     --schedule-expression "cron(0 9 * * ? *)" \
+     --schedule-expression "cron(0 9 ? * MON-FRI *)" \
      --schedule-expression-timezone "America/Los_Angeles" \
      --flexible-time-window Mode=OFF \
      --target '{"Arn":"<lambda-arn>","RoleArn":"<role-arn>","Input":"{\"action\":\"dailyReport\"}"}'

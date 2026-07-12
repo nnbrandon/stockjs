@@ -58,68 +58,86 @@ export function analyzeEarningsHistory(earnings = []) {
 
   const quarterLabel = tracked.length === 1 ? "quarter" : "quarters";
 
+  // Track record and latest surprise share one bullet when they agree; a
+  // beat streak broken by a fresh miss (or vice versa) stays two bullets so
+  // the colors don't lie. `base` is the tail-less phrasing used when merged.
+  let track;
   if (streak >= 3 && streakIsBeat) {
-    findings.push(
-      bull(
-        `Beat profit expectations ${streak} ${quarterLabel} in a row — analysts keep underestimating it`,
-        2,
-      ),
-    );
+    track = {
+      polarity: "bull",
+      weight: 2,
+      base: `Beat profit expectations ${streak} ${quarterLabel} in a row`,
+      text: `Beat profit expectations ${streak} ${quarterLabel} in a row — analysts keep underestimating it`,
+    };
   } else if (streak >= 3 && !streakIsBeat) {
-    findings.push(
-      bear(
-        `Missed profit expectations ${streak} ${quarterLabel} in a row — a worrying pattern`,
-        2,
-      ),
-    );
+    track = {
+      polarity: "bear",
+      weight: 2,
+      base: `Missed profit expectations ${streak} ${quarterLabel} in a row`,
+      text: `Missed profit expectations ${streak} ${quarterLabel} in a row — a worrying pattern`,
+    };
   } else if (beatRate >= 75) {
-    findings.push(
-      bull(
-        `Usually beats profit expectations — ${beats} of the last ${tracked.length} ${quarterLabel}`,
-        2,
-      ),
-    );
+    track = {
+      polarity: "bull",
+      weight: 2,
+      base: `Usually beats profit expectations (${beats} of the last ${tracked.length} ${quarterLabel})`,
+      text: `Usually beats profit expectations — ${beats} of the last ${tracked.length} ${quarterLabel}`,
+    };
   } else if (beatRate < 50) {
-    findings.push(
-      bear(
-        `Often misses profit expectations — only ${beats} of the last ${tracked.length} ${quarterLabel} beat`,
-        2,
-      ),
-    );
+    track = {
+      polarity: "bear",
+      weight: 2,
+      base: `Often misses profit expectations (only ${beats} of the last ${tracked.length} ${quarterLabel} beat)`,
+      text: `Often misses profit expectations — only ${beats} of the last ${tracked.length} ${quarterLabel} beat`,
+    };
   } else {
-    findings.push(
-      neutral(
-        `Mixed record vs. profit expectations — beat ${beats} of the last ${tracked.length} ${quarterLabel}`,
-        1,
-      ),
-    );
+    track = {
+      polarity: "neutral",
+      weight: 1,
+      base: `Mixed record vs. profit expectations (beat ${beats} of the last ${tracked.length} ${quarterLabel})`,
+      text: `Mixed record vs. profit expectations — beat ${beats} of the last ${tracked.length} ${quarterLabel}`,
+    };
   }
 
+  let surprise = null;
   if (Number.isFinite(latest.surprisePercent)) {
     const actual = latest.epsActual.toFixed(2);
     const estimate = latest.epsEstimate.toFixed(2);
     if (latest.surprisePercent > EPS_SURPRISE_THRESH) {
-      findings.push(
-        bull(
-          `Latest quarter crushed the estimate ($${actual} vs. $${estimate}, +${latest.surprisePercent.toFixed(1)}%)`,
-          streak >= 3 && streakIsBeat ? 1 : 2,
-        ),
-      );
+      surprise = {
+        polarity: "bull",
+        weight: streak >= 3 && streakIsBeat ? 1 : 2,
+        tail: `latest crushed the estimate ($${actual} vs. $${estimate}, +${latest.surprisePercent.toFixed(1)}%)`,
+        text: `Latest quarter crushed the estimate ($${actual} vs. $${estimate}, +${latest.surprisePercent.toFixed(1)}%)`,
+      };
     } else if (latest.surprisePercent < -EPS_SURPRISE_THRESH) {
-      findings.push(
-        bear(
-          `Latest quarter missed the estimate ($${actual} vs. $${estimate}, -${Math.abs(latest.surprisePercent).toFixed(1)}%)`,
-          2,
-        ),
-      );
+      surprise = {
+        polarity: "bear",
+        weight: 2,
+        tail: `latest missed ($${actual} vs. $${estimate}, -${Math.abs(latest.surprisePercent).toFixed(1)}%)`,
+        text: `Latest quarter missed the estimate ($${actual} vs. $${estimate}, -${Math.abs(latest.surprisePercent).toFixed(1)}%)`,
+      };
     } else {
-      findings.push(
-        neutral(
-          `Latest quarter landed near the estimate ($${actual} vs. $${estimate})`,
-          1,
-        ),
-      );
+      surprise = {
+        polarity: "neutral",
+        weight: 1,
+        tail: `latest landed near the estimate ($${actual} vs. $${estimate})`,
+        text: `Latest quarter landed near the estimate ($${actual} vs. $${estimate})`,
+      };
     }
+  }
+
+  const mk = { bull, bear, neutral };
+  if (surprise && surprise.polarity === track.polarity) {
+    findings.push(
+      mk[track.polarity](
+        `${track.base} — ${surprise.tail}`,
+        Math.max(track.weight, surprise.weight),
+      ),
+    );
+  } else {
+    findings.push(mk[track.polarity](track.text, track.weight));
+    if (surprise) findings.push(mk[surprise.polarity](surprise.text, surprise.weight));
   }
 
   // Match by date, not position — a skipped quarter would silently shift a

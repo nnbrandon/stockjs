@@ -236,15 +236,25 @@ export function runDataScout({
     }
 
     // Range position. Full width matters: near the 52-week low must be able
-    // to score low, or beaten-down stocks never register as weak.
+    // to score low, or beaten-down stocks never register as weak. Merges with
+    // the drawdown read when both fire — they're one story.
     const rangeScore = Number.isFinite(rangePos)
       ? scaleClamp(rangePos, 5, 95, 15, 85)
       : null;
+    const nearLow = Number.isFinite(rangePos) && rangePos <= 15;
+    const deepDrawdown = Number.isFinite(dd) && dd < -35;
     if (Number.isFinite(rangePos)) {
       if (rangePos >= 85)
         findings.push(bull("Near its highest price of the past year", 1));
-      else if (rangePos <= 15)
-        findings.push(bear("Near its lowest price of the past year", 1));
+      else if (nearLow)
+        findings.push(
+          bear(
+            deepDrawdown
+              ? `Near its lowest price of the past year — down ${pct(Math.abs(dd))} from its recent high`
+              : "Near its lowest price of the past year",
+            1,
+          ),
+        );
     }
 
     // Volume confirmation: does volume back the price move? A rally on rising
@@ -282,7 +292,7 @@ export function runDataScout({
       findings.push(
         bear("The price swings a lot day to day (high volatility)", 1),
       );
-    if (Number.isFinite(dd) && dd < -35)
+    if (deepDrawdown && !nearLow)
       findings.push(
         bear(`Has fallen ${pct(Math.abs(dd))} from its recent high`, 1),
       );
@@ -332,40 +342,64 @@ export function runDataScout({
       latestIncome === latest ? yearAgo : findYearAgoRow(q, latestIncome);
 
     // Revenue growth YoY
+    let revG = null;
     if (
       yearAgo &&
       Number.isFinite(latest.totalRevenue) &&
       yearAgo.totalRevenue
     ) {
-      const revG =
+      revG =
         ((latest.totalRevenue - yearAgo.totalRevenue) /
           Math.abs(yearAgo.totalRevenue)) *
         100;
       metrics.revenueGrowthYoY = revG;
       components.push(scaleClamp(revG, -10, 30, 5, 95));
-      if (revG > 10)
-        findings.push(bull(`Sales up ${revG.toFixed(0)}% vs. a year ago`, 2));
-      else if (revG < 0)
-        findings.push(
-          bear(`Sales down ${Math.abs(revG).toFixed(0)}% vs. a year ago`, 2),
-        );
     }
 
     // Net income / profitability
+    let niG = null;
     if (
       incomeYearAgo &&
       Number.isFinite(latestIncome.netIncome) &&
       incomeYearAgo.netIncome
     ) {
-      const niG =
+      niG =
         ((latestIncome.netIncome - incomeYearAgo.netIncome) /
           Math.abs(incomeYearAgo.netIncome)) *
         100;
       metrics.netIncomeGrowthYoY = niG;
       components.push(scaleClamp(niG, -25, 40, 5, 95));
-      if (niG > 10)
+    }
+
+    // Sales and profit growth share one bullet when they point the same way.
+    const revUp = revG != null && revG > 10;
+    const revDown = revG != null && revG < 0;
+    const niUp = niG != null && niG > 10;
+    const niDown = niG != null && niG < -10;
+    if (revUp && niUp) {
+      findings.push(
+        bull(
+          `Sales up ${revG.toFixed(0)}% and profit up ${niG.toFixed(0)}% vs. a year ago`,
+          2,
+        ),
+      );
+    } else if (revDown && niDown) {
+      findings.push(
+        bear(
+          `Sales down ${Math.abs(revG).toFixed(0)}% and profit down ${Math.abs(niG).toFixed(0)}% vs. a year ago`,
+          2,
+        ),
+      );
+    } else {
+      if (revUp)
+        findings.push(bull(`Sales up ${revG.toFixed(0)}% vs. a year ago`, 2));
+      else if (revDown)
+        findings.push(
+          bear(`Sales down ${Math.abs(revG).toFixed(0)}% vs. a year ago`, 2),
+        );
+      if (niUp)
         findings.push(bull(`Profit up ${niG.toFixed(0)}% vs. a year ago`, 1));
-      else if (niG < -10)
+      else if (niDown)
         findings.push(
           bear(`Profit down ${Math.abs(niG).toFixed(0)}% vs. a year ago`, 1),
         );
@@ -382,43 +416,63 @@ export function runDataScout({
       const margin = (latestIncome.netIncome / latestIncome.totalRevenue) * 100;
       metrics.netMargin = margin;
       components.push(scaleClamp(margin, -5, 25, 10, 90));
-      if (margin > 15)
-        findings.push(
-          bull(
-            `Keeps ${margin.toFixed(0)}¢ of every sales dollar as profit (healthy)`,
-            1,
-          ),
-        );
-      else if (margin < 0)
-        findings.push(bear("Spends more than it earns on each sale", 1));
 
       // Margin trend: profitability quietly eroding is one of the earliest
       // signs a business is deteriorating, before revenue growth rolls over.
+      let marginChange = null;
       if (
         Number.isFinite(incomeYearAgo?.netIncome) &&
         incomeYearAgo?.totalRevenue
       ) {
         const marginThen =
           (incomeYearAgo.netIncome / incomeYearAgo.totalRevenue) * 100;
-        const marginChange = margin - marginThen;
+        marginChange = margin - marginThen;
         metrics.netMarginChange = marginChange;
-        if (marginChange <= -3) {
-          components.push(25);
+        if (marginChange <= -3) components.push(25);
+        else if (marginChange >= 3) components.push(80);
+      }
+      const improving = marginChange != null && marginChange >= 3;
+      const slipping = marginChange != null && marginChange <= -3;
+
+      // Margin level and trend share one bullet when they agree.
+      if (margin > 15 && improving) {
+        findings.push(
+          bull(
+            `Keeps ${margin.toFixed(0)}¢ of every sales dollar as profit (healthy) — ${marginChange.toFixed(0)}¢ more than a year ago`,
+            1,
+          ),
+        );
+      } else if (margin < 0 && slipping) {
+        findings.push(
+          bear(
+            `Spends more than it earns on each sale — and keeps ${Math.abs(marginChange).toFixed(0)}¢ less per sales dollar than a year ago`,
+            2,
+          ),
+        );
+      } else {
+        if (margin > 15)
+          findings.push(
+            bull(
+              `Keeps ${margin.toFixed(0)}¢ of every sales dollar as profit (healthy)`,
+              1,
+            ),
+          );
+        else if (margin < 0)
+          findings.push(bear("Spends more than it earns on each sale", 1));
+        if (slipping)
           findings.push(
             bear(
               `Profitability slipping — keeps ${Math.abs(marginChange).toFixed(0)}¢ less per sales dollar than a year ago`,
               2,
             ),
           );
-        } else if (marginChange >= 3) {
-          components.push(80);
+        else if (improving)
           findings.push(
             bull(
               `Profitability improving — keeps ${marginChange.toFixed(0)}¢ more per sales dollar than a year ago`,
               1,
             ),
           );
-        }
       }
     }
 
@@ -452,51 +506,78 @@ export function runDataScout({
     // Free-cash-flow margin: how much of each sales dollar becomes cash the
     // company can actually spend.
     const fcfVsRevenue = ttmPaired("freeCashFlow", "totalRevenue");
+    let fcfMargin = null;
     if (fcfVsRevenue && fcfVsRevenue[1] > 0) {
-      const fcfMargin = (fcfVsRevenue[0] / fcfVsRevenue[1]) * 100;
+      fcfMargin = (fcfVsRevenue[0] / fcfVsRevenue[1]) * 100;
       metrics.fcfMargin = fcfMargin;
       components.push(scaleClamp(fcfMargin, -5, 20, 5, 90));
-      if (fcfMargin > 15)
+    }
+
+    // Earnings quality: profits that don't turn into cash are a warning sign.
+    const fcfVsIncome = ttmPaired("freeCashFlow", "netIncome");
+    let quality = null; // "worst" | "warning" | "high"
+    if (fcfVsIncome) {
+      const [fcfP, niP] = fcfVsIncome;
+      if (niP > 0 && fcfP < 0) {
+        components.push(10);
+        quality = "worst";
+      } else if (niP > 0 && fcfP < 0.5 * niP) {
+        components.push(25);
+        quality = "warning";
+      } else if (niP > 0 && fcfP > niP * 1.1) {
+        quality = "high";
+      }
+    }
+
+    // Cash generation and earnings quality share one bullet when they tell
+    // the same story.
+    if (fcfMargin != null && fcfMargin > 15 && quality === "high") {
+      findings.push(
+        bull(
+          `Turns ${fcfMargin.toFixed(0)}¢ of every sales dollar into spendable cash (excellent) — more cash than its reported profit, high-quality earnings`,
+          1,
+        ),
+      );
+    } else if (fcfMargin != null && fcfMargin < 0 && quality === "worst") {
+      findings.push(
+        bear(
+          "Claims a profit while actually burning cash — spends more than the business brings in, the worst kind of earnings",
+          2,
+        ),
+      );
+    } else {
+      if (fcfMargin != null && fcfMargin > 15)
         findings.push(
           bull(
             `Turns ${fcfMargin.toFixed(0)}¢ of every sales dollar into spendable cash (excellent)`,
             1,
           ),
         );
-      else if (fcfMargin < 0)
+      else if (fcfMargin != null && fcfMargin < 0)
         findings.push(
           bear("Burning cash — spends more than the business brings in", 2),
         );
-    }
-
-    // Earnings quality: profits that don't turn into cash are a warning sign.
-    const fcfVsIncome = ttmPaired("freeCashFlow", "netIncome");
-    if (fcfVsIncome) {
-      const [fcfP, niP] = fcfVsIncome;
-      if (niP > 0 && fcfP < 0) {
-        components.push(10);
+      if (quality === "worst")
         findings.push(
           bear(
             "Claims a profit but actually loses cash — the worst kind of earnings",
             2,
           ),
         );
-      } else if (niP > 0 && fcfP < 0.5 * niP) {
-        components.push(25);
+      else if (quality === "warning")
         findings.push(
           bear(
             "Reported profits aren't turning into real cash — a classic warning sign",
             2,
           ),
         );
-      } else if (niP > 0 && fcfP > niP * 1.1) {
+      else if (quality === "high")
         findings.push(
           bull(
             "Generates more cash than its reported profit — high-quality earnings",
             1,
           ),
         );
-      }
     }
 
     // ---- Quality-of-earnings red flags (v8) ----
@@ -692,43 +773,45 @@ export function runDataScout({
           metrics.revenueGrowthYoY,
         ].find((g) => Number.isFinite(g) && g > 5);
 
-        // The own-valuation score (PEG-based or raw-P/E-based).
+        // The own-valuation read (PEG-based or raw-P/E-based), held back so
+        // it can share a bullet with the sector read below when both agree.
         let ownPeScore;
+        let ownVal = null; // { polarity, text, peg }
         if (Number.isFinite(growth)) {
           const peg = pe / growth;
           metrics.peg = peg;
           ownPeScore = scaleClamp(peg, 2.5, 0.5, 20, 90); // lower PEG → higher
           if (peg < 1)
-            findings.push(
-              bull(
-                `Reasonably priced for its growth (PEG ${peg.toFixed(1)})`,
-                1,
-              ),
-            );
+            ownVal = {
+              polarity: "bull",
+              peg,
+              text: `Reasonably priced for its growth (PEG ${peg.toFixed(1)})`,
+            };
           else if (peg > 2.5)
-            findings.push(
-              bear(
-                `Expensive even given its growth (PEG ${peg.toFixed(1)})`,
-                1,
-              ),
-            );
+            ownVal = {
+              polarity: "bear",
+              peg,
+              text: `Expensive even given its growth (PEG ${peg.toFixed(1)})`,
+            };
         } else {
           ownPeScore = scaleClamp(pe, 60, 10, 20, 80); // lower P/E → higher
           if (pe < 15)
-            findings.push(
-              bull(
-                `Looks cheap — about $${pe.toFixed(0)} per $1 of yearly profit`,
-                1,
-              ),
-            );
+            ownVal = {
+              polarity: "bull",
+              text: `Looks cheap — about $${pe.toFixed(0)} per $1 of yearly profit`,
+            };
           else if (pe > 45)
-            findings.push(
-              bear(
-                `Looks expensive — about $${pe.toFixed(0)} per $1 of yearly profit`,
-                1,
-              ),
-            );
+            ownVal = {
+              polarity: "bear",
+              text: `Looks expensive — about $${pe.toFixed(0)} per $1 of yearly profit`,
+            };
         }
+        const pushOwnVal = () => {
+          if (!ownVal) return;
+          findings.push(
+            (ownVal.polarity === "bull" ? bull : bear)(ownVal.text, 1),
+          );
+        };
 
         // Peer context: how the P/E compares with what's typical for its
         // sector. Averaged INTO the own-valuation score (not a second
@@ -738,22 +821,53 @@ export function runDataScout({
         if (sectorRead) {
           metrics.sectorValuationVerdict = sectorRead.verdict;
           components.push(avg([ownPeScore, sectorRead.score]));
-          if (sectorRead.verdict === "cheap")
-            findings.push(
-              bull(
-                `Cheap for its industry — $${pe.toFixed(0)} per $1 of profit vs. a typical $${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)} for ${sector}`,
-                1,
-              ),
-            );
-          else if (sectorRead.verdict === "rich")
-            findings.push(
-              bear(
-                `Expensive even for ${sector} — $${pe.toFixed(0)} per $1 of profit vs. a typical $${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)}; needs fast growth to justify it`,
-                1,
-              ),
-            );
+          const band = `$${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)}`;
+          if (sectorRead.verdict === "cheap") {
+            if (ownVal?.polarity === "bull") {
+              // One valuation bullet: the sector read carries the $-numbers,
+              // the PEG adds growth context, a raw-P/E read adds nothing new.
+              findings.push(
+                bull(
+                  Number.isFinite(ownVal.peg)
+                    ? `Cheap for its industry ($${pe.toFixed(0)} per $1 of profit vs. a typical ${band} for ${sector}) and for its growth (PEG ${ownVal.peg.toFixed(1)})`
+                    : `Cheap for its industry — $${pe.toFixed(0)} per $1 of profit vs. a typical ${band} for ${sector}`,
+                  1,
+                ),
+              );
+            } else {
+              pushOwnVal();
+              findings.push(
+                bull(
+                  `Cheap for its industry — $${pe.toFixed(0)} per $1 of profit vs. a typical ${band} for ${sector}`,
+                  1,
+                ),
+              );
+            }
+          } else if (sectorRead.verdict === "rich") {
+            if (ownVal?.polarity === "bear") {
+              findings.push(
+                bear(
+                  Number.isFinite(ownVal.peg)
+                    ? `Expensive even for ${sector} ($${pe.toFixed(0)} per $1 of profit vs. a typical ${band}) and even given its growth (PEG ${ownVal.peg.toFixed(1)})`
+                    : `Expensive even for ${sector} — $${pe.toFixed(0)} per $1 of profit vs. a typical ${band}; needs fast growth to justify it`,
+                  1,
+                ),
+              );
+            } else {
+              pushOwnVal();
+              findings.push(
+                bear(
+                  `Expensive even for ${sector} — $${pe.toFixed(0)} per $1 of profit vs. a typical ${band}; needs fast growth to justify it`,
+                  1,
+                ),
+              );
+            }
+          } else {
+            pushOwnVal();
+          }
         } else {
           components.push(ownPeScore);
+          pushOwnVal();
         }
       } else {
         metrics.trailingPE = null;

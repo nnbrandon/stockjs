@@ -44,39 +44,79 @@ function analyzeConsistency(annualDesc) {
     : null;
   const components = [avg([growthScore, profitScore])].filter(Number.isFinite);
 
-  if (upYears === pairs) {
-    findings.push(
-      bull(
-        `Sales have grown every year for ${years} years — a steady grower, not a one-quarter story`,
-        2,
-      ),
-    );
-  } else if (upYears <= pairs / 2) {
-    findings.push(
-      bear(
-        `Sales grew in only ${upYears} of the last ${pairs} years — growth has been unreliable for a while`,
-        2,
-      ),
-    );
-  } else {
-    findings.push(
-      neutral(
-        `Sales grew in ${upYears} of the last ${pairs} years — decent, but not a straight line`,
-        1,
-      ),
-    );
+  // Margin drift across the window: quietly rising or eroding profitability
+  // over years says more about the business than any single quarter.
+  const marginOf = (r) =>
+    Number.isFinite(r.netIncome) && r.totalRevenue
+      ? (r.netIncome / r.totalRevenue) * 100
+      : null;
+  const newest = marginOf(rows[0]);
+  const oldest = marginOf(rows[rows.length - 1]);
+  let drift = null;
+  if (Number.isFinite(newest) && Number.isFinite(oldest)) {
+    drift = newest - oldest;
+    metrics.marginDriftYears = drift;
   }
+  const driftUp = drift != null && drift >= 3;
+  const driftDown = drift != null && drift <= -3;
 
-  if (profitRows.length >= 3) {
-    if (profitableYears === profitRows.length) {
+  // Growth, profit record, and margin drift collapse into one bullet when
+  // they all lean the same way — the "steady compounder" (or its opposite)
+  // is one story, not three.
+  const allGrew = upYears === pairs;
+  const grewLittle = upYears <= pairs / 2;
+  const allProfitable =
+    profitRows.length >= 3 && profitableYears === profitRows.length;
+  const someLosses =
+    profitRows.length >= 3 && profitableYears < profitRows.length;
+  const lossYears = profitRows.length - profitableYears;
+  let driftMerged = false;
+
+  if (allGrew && allProfitable) {
+    let text = `Sales have grown every year for ${years} years and it turned a profit in each — a steady, reliable business`;
+    if (driftUp) {
+      text += `, keeping ${drift.toFixed(0)}¢ more per sales dollar than ${years} years ago`;
+      driftMerged = true;
+    }
+    findings.push(bull(text, 2));
+  } else if (grewLittle && someLosses) {
+    let text = `Sales grew in only ${upYears} of the last ${pairs} years and it lost money in ${lossYears} of ${profitRows.length} — unreliable growth and profits`;
+    if (driftDown) {
+      text += `, keeping ${Math.abs(drift).toFixed(0)}¢ less per sales dollar than ${years} years ago`;
+      driftMerged = true;
+    }
+    findings.push(bear(text, 2));
+  } else {
+    if (allGrew) {
+      findings.push(
+        bull(
+          `Sales have grown every year for ${years} years — a steady grower, not a one-quarter story`,
+          2,
+        ),
+      );
+    } else if (grewLittle) {
+      findings.push(
+        bear(
+          `Sales grew in only ${upYears} of the last ${pairs} years — growth has been unreliable for a while`,
+          2,
+        ),
+      );
+    } else {
+      findings.push(
+        neutral(
+          `Sales grew in ${upYears} of the last ${pairs} years — decent, but not a straight line`,
+          1,
+        ),
+      );
+    }
+    if (allProfitable) {
       findings.push(
         bull(
           `Profitable in each of the last ${profitRows.length} years — reliably earns money`,
           1,
         ),
       );
-    } else if (profitableYears < profitRows.length) {
-      const lossYears = profitRows.length - profitableYears;
+    } else if (someLosses) {
       findings.push(
         bear(
           `Lost money in ${lossYears} of the last ${profitRows.length} years — profits here come and go`,
@@ -86,25 +126,15 @@ function analyzeConsistency(annualDesc) {
     }
   }
 
-  // Margin drift across the window: quietly rising or eroding profitability
-  // over years says more about the business than any single quarter.
-  const marginOf = (r) =>
-    Number.isFinite(r.netIncome) && r.totalRevenue
-      ? (r.netIncome / r.totalRevenue) * 100
-      : null;
-  const newest = marginOf(rows[0]);
-  const oldest = marginOf(rows[rows.length - 1]);
-  if (Number.isFinite(newest) && Number.isFinite(oldest)) {
-    const drift = newest - oldest;
-    metrics.marginDriftYears = drift;
-    if (drift >= 3) {
+  if (!driftMerged) {
+    if (driftUp) {
       findings.push(
         bull(
           `Profitability improving over the years — keeps ${drift.toFixed(0)}¢ more per sales dollar than ${years} years ago`,
           1,
         ),
       );
-    } else if (drift <= -3) {
+    } else if (driftDown) {
       findings.push(
         bear(
           `Profitability eroding for years — keeps ${Math.abs(drift).toFixed(0)}¢ less per sales dollar than ${years} years ago`,
@@ -229,6 +259,22 @@ function analyzeDividends(quarterlyDesc, annualDesc, price) {
       ? paired.reduce((s, r) => s + r.freeCashFlow, 0)
       : null;
 
+  // Direction: is the dividend growing? Compare the two most recent full
+  // years of payments. Computed first so it can share the affordability
+  // bullet below when both lean the same way.
+  let growth = null;
+  const aRows = annualDesc.filter((r) => divPaidOf(r) != null);
+  if (aRows.length >= 2) {
+    const [thisYear, lastYear] = aRows.map(divPaidOf);
+    if (lastYear > 0) {
+      growth = ((thisYear - lastYear) / lastYear) * 100;
+      metrics.dividendGrowthYoY = growth;
+    }
+  }
+  const growing = growth != null && growth >= 4;
+  const shrinking = growth != null && growth <= -4;
+  let growthMerged = false;
+
   if (Number.isFinite(fcf)) {
     if (fcf <= 0) {
       components.push(18);
@@ -245,10 +291,13 @@ function analyzeDividends(quarterlyDesc, annualDesc, price) {
         components.push(78);
         findings.push(
           bull(
-            `Pays ${yieldBit} and can comfortably afford it (only ${payoutPct.toFixed(0)}% of its spare cash)`,
+            growing
+              ? `Pays ${yieldBit}, comfortably afforded (only ${payoutPct.toFixed(0)}% of its spare cash) — and growing, payouts up ${growth.toFixed(0)}% vs. the prior year`
+              : `Pays ${yieldBit} and can comfortably afford it (only ${payoutPct.toFixed(0)}% of its spare cash)`,
             1,
           ),
         );
+        growthMerged = growing;
       } else if (payoutPct <= 95) {
         findings.push(
           neutral(
@@ -260,39 +309,34 @@ function analyzeDividends(quarterlyDesc, annualDesc, price) {
         components.push(25);
         findings.push(
           bear(
-            `Pays ${yieldBit}, but the payout costs more than the spare cash it generates — dividends like this sometimes get cut`,
+            shrinking
+              ? `Pays ${yieldBit}, but the payout costs more than the spare cash it generates and is already shrinking (down ${Math.abs(growth).toFixed(0)}% vs. the prior year) — dividends like this sometimes get cut`
+              : `Pays ${yieldBit}, but the payout costs more than the spare cash it generates — dividends like this sometimes get cut`,
             2,
           ),
         );
+        growthMerged = shrinking;
       }
     }
   } else {
     findings.push(neutral(`Pays ${yieldBit}`, 1));
   }
 
-  // Direction: is the dividend growing? Compare the two most recent full
-  // years of payments.
-  const aRows = annualDesc.filter((r) => divPaidOf(r) != null);
-  if (aRows.length >= 2) {
-    const [thisYear, lastYear] = aRows.map(divPaidOf);
-    if (lastYear > 0) {
-      const growth = ((thisYear - lastYear) / lastYear) * 100;
-      metrics.dividendGrowthYoY = growth;
-      if (growth >= 4) {
-        findings.push(
-          bull(
-            `Dividend growing — payouts up ${growth.toFixed(0)}% vs. the prior year`,
-            1,
-          ),
-        );
-      } else if (growth <= -4) {
-        findings.push(
-          bear(
-            `Dividend shrinking — payouts down ${Math.abs(growth).toFixed(0)}% vs. the prior year`,
-            1,
-          ),
-        );
-      }
+  if (!growthMerged) {
+    if (growing) {
+      findings.push(
+        bull(
+          `Dividend growing — payouts up ${growth.toFixed(0)}% vs. the prior year`,
+          1,
+        ),
+      );
+    } else if (shrinking) {
+      findings.push(
+        bear(
+          `Dividend shrinking — payouts down ${Math.abs(growth).toFixed(0)}% vs. the prior year`,
+          1,
+        ),
+      );
     }
   }
 

@@ -72,10 +72,18 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               and a long-term track record — whether sales and profits have
               grown steadily over several years, whether the company is buying
               back its own shares or issuing new ones, and whether its dividend
-              is affordable. Valuation is judged two ways: against the
+              is affordable. It also runs quality-of-earnings checks: whether
+              customers&apos; unpaid bills or unsold goods are piling up much
+              faster than sales, and how much of revenue is paid out as stock
+              to employees — classic warning signs that reported profits are
+              lower quality than they look. Valuation is judged two ways:
+              against the
               company&apos;s own history and against what&apos;s typical for its
               industry. Expectations count too — whether analysts are raising or
-              cutting their forecasts. Analyst price targets are shown for
+              cutting their forecasts, and whether company insiders have been
+              buying their own stock with their own money (buying counts for a
+              lot; selling only counts when it&apos;s heavy, since insiders sell
+              for many innocent reasons). Analyst price targets are shown for
               context but never scored. News mood comes from article sentiment
               (see below). The weighting is built for long-term investing — the
               business counts more than the chart — and a strong business
@@ -129,6 +137,14 @@ export default function AiCommitteeHelpModal({ open, onClose }) {
               that&apos;s been sliding for weeks also nudges today&apos;s
               verdict slightly downward (and vice versa) — deterioration in the
               evidence is itself a signal.
+            </p>
+            <p>
+              On a Buy, the committee also saves a <em>thesis</em> — the two or
+              three strongest business reasons to own the stock — and re-checks
+              each one on every later run. The &ldquo;Why you&apos;d own
+              it&rdquo; card shows whether those reasons still hold, and warns
+              plainly when the reason you bought is gone — the clearest sell
+              signal a long-term investor has.
             </p>
           </section>
 

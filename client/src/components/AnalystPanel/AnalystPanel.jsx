@@ -22,8 +22,12 @@ import { computePositionMetrics } from "../../utils/computePositionMetrics";
 import { getGuardrail } from "@stockjs/committee-engine/guardrails.js";
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
 import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
+import { buildPositionRead } from "@stockjs/committee-engine/positionRead.js";
 import PositionHolding from "../PositionHolding/PositionHolding";
 import CommitteeScoreChart from "../CommitteeScoreChart/CommitteeScoreChart";
+import EarningsReviewCard from "./EarningsReviewCard";
+import ExpectedReturnCard from "./ExpectedReturnCard";
+import ThesisCard from "./ThesisCard";
 import { getStockDataByDateRange } from "../../db";
 import calculateRange from "../../utils/calculateRange";
 import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
@@ -154,6 +158,13 @@ const fmtShares = (n) =>
 function GamePlan({ plan, hasPosition, position, positionMetrics }) {
   if (!plan) return null;
 
+  // Position-aware read (v9): where the user personally stands on this holding.
+  // On SELL plans it speaks to trimming a gain / harvesting a loss; on non-SELL
+  // plans it only surfaces for a doubled winner. Silent (null) otherwise.
+  const gainPct = hasPosition ? positionMetrics?.totalGainLossPct : null;
+  const sellRead = buildPositionRead({ gainPct, action: "SELL" });
+  const winnerRead = buildPositionRead({ gainPct, action: "HOLD" });
+
   if (plan.kind === "entry") {
     return (
       <div className={styles.plan}>
@@ -209,6 +220,7 @@ function GamePlan({ plan, hasPosition, position, positionMetrics }) {
           reassess level is a checkpoint to re-review, not an order to sell a
           winner.
         </p>
+        {winnerRead && <p className={styles.planNote}>{winnerRead.line}</p>}
       </div>
     );
   }
@@ -257,6 +269,7 @@ function GamePlan({ plan, hasPosition, position, positionMetrics }) {
             reassess if the score keeps sliding or the price recovers.
           </p>
         )}
+        {sellRead && <p className={styles.planNote}>{sellRead.line}</p>}
         <ul className={styles.planList}>
           {plan.reasons.slice(0, 4).map((r, i) => (
             <li key={i} className={styles.planReason}>
@@ -297,6 +310,7 @@ function GamePlan({ plan, hasPosition, position, positionMetrics }) {
             </div>
           )}
         </div>
+        {winnerRead && <p className={styles.planNote}>{winnerRead.line}</p>}
       </div>
     );
   }
@@ -654,7 +668,19 @@ export default function AnalystPanel({
         </div>
       </div>
 
+      {/* Post-earnings review (v8): substance for ~10 days after a report.
+          The RecentEarningsBanner on the stock page stays the attention hook;
+          this card explains expected vs. delivered and what changed. */}
+      <EarningsReviewCard review={latest?.earningsReview} />
+
+      {/* The thesis (v8): why the committee rated this a BUY, re-checked on
+          every run. */}
+      <ThesisCard thesis={latest?.thesis} thesisCheck={latest?.thesisCheck} />
+
       <TwoAnswers answers={verdict.answers} compact={compact} />
+
+      {/* Rough 5-year return sketch (v8, never scored). */}
+      <ExpectedReturnCard expectedReturn={report.metrics?.expectedReturn} />
 
       {!compact && portfolioManager?.narrative && (
         <p className={styles.verdictNarrative}>{portfolioManager.narrative}</p>

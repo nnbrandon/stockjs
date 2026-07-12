@@ -6,6 +6,7 @@
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
 import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
 import { describeTrackRecord } from "@stockjs/committee-engine/trackRecord.js";
+import { buildPositionRead } from "@stockjs/committee-engine/positionRead.js";
 
 const TIER_COLORS = {
   "Strong Buy": "#1a7f37",
@@ -171,6 +172,24 @@ function doThisLine(r) {
   return whatToDo({ action: v.action, tier: v.tier, plan });
 }
 
+// Position-aware read (v9): the one line about where the user personally
+// stands on this holding. Current price is the report's price, falling back to
+// the last candle close; cost basis is the server-side `avgCostBasis`. The
+// shared builder only speaks on SELL verdicts or doubled winners, so this stays
+// silent (and the email short) most of the time.
+function positionReadLine(r) {
+  const price =
+    Number(r.report?.metrics?.price) ||
+    Number(r.candles?.at(-1)?.close) ||
+    null;
+  const avgCost = Number(r.avgCostBasis);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  if (!Number.isFinite(avgCost) || avgCost <= 0) return null;
+  const gainPct = (price / avgCost - 1) * 100;
+  const read = buildPositionRead({ gainPct, action: r.report?.verdict?.action });
+  return read?.line ?? null;
+}
+
 // One plain news line: the mood plus the single most relevant headline.
 function plainNewsLine(r) {
   const parts = newsMoodBlock(r);
@@ -257,10 +276,30 @@ function holdingHtml(r, appUrl) {
   const earnings = earningsHeadsUp(r.report);
   if (earnings) cells.push(labeled("Heads up", escapeHtml(earnings)));
 
+  // Earnings review — for ~10 days after a report: expected vs. delivered,
+  // the market's reaction, and whether the committee's view changed.
+  if (r.earningsReview?.lines?.length)
+    cells.push(
+      labeled("Earnings review", escapeHtml(r.earningsReview.lines.join(" "))),
+    );
+
+  // Thesis check — ONE line, and only on the day the status changed to
+  // something other than intact (never a recurring section).
+  if (
+    r.thesisCheck?.statusChanged &&
+    r.thesisCheck.status !== "intact" &&
+    r.thesisCheck.line
+  )
+    cells.push(labeled("Thesis check", escapeHtml(r.thesisCheck.line)));
+
   // Why — sells only (the specifics behind a sell-your-money call).
   const sell = sellDetails(r.report);
   if (sell?.reasons?.length)
     cells.push(labeled("Why", escapeHtml(sell.reasons.slice(0, 3).join("; "))));
+
+  const positionRead = positionReadLine(r);
+  if (positionRead)
+    cells.push(labeled("Your position", escapeHtml(positionRead)));
 
   const horizon = holdingHorizon(r);
   if (horizon?.lines?.length)
@@ -306,9 +345,19 @@ function holdingText(r, appUrl) {
   lines.push(`  What to do: ${doThisLine(r)}`);
   const earnings = earningsHeadsUp(r.report);
   if (earnings) lines.push(`  Heads up: ${earnings}`);
+  if (r.earningsReview?.lines?.length)
+    lines.push(`  Earnings review: ${r.earningsReview.lines.join(" ")}`);
+  if (
+    r.thesisCheck?.statusChanged &&
+    r.thesisCheck.status !== "intact" &&
+    r.thesisCheck.line
+  )
+    lines.push(`  Thesis check: ${r.thesisCheck.line}`);
   const sell = sellDetails(r.report);
   if (sell?.reasons?.length)
     lines.push(`  Why: ${sell.reasons.slice(0, 3).join("; ")}`);
+  const positionRead = positionReadLine(r);
+  if (positionRead) lines.push(`  Your position: ${positionRead}`);
   const horizon = holdingHorizon(r);
   if (horizon?.lines?.length) lines.push(`  Timing: ${horizon.lines.join(" ")}`);
   const parts = newsMoodBlock(r);

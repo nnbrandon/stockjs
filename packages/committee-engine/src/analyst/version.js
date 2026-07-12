@@ -25,4 +25,20 @@
 // own-valuation component (no double-count). Also this round (display-only, no
 // score effect): tier-change explanations, an upcoming-earnings heads-up
 // finding, and an ease-in tranche plan on BUY verdicts.
-export const COMMITTEE_ENGINE_VERSION = 7;
+// v8 (2026-07-10): "think like an analyst" round. The one SCORING change is
+// quality-of-earnings red flags in dataScout — receivables running ahead of
+// sales, a heavy stock-based-compensation load, and inventory piling up faster
+// than sales each add a bearish scored component (silent when the field is
+// missing). Also this round, all DISPLAY-ONLY (no score effect): a persistent
+// thesis with kill criteria (thesis.js), a rough 5-year expected-return
+// estimate (expectedReturn.js), a post-earnings review (earningsReview.js), and
+// portfolio-level sector-concentration + correlation-cluster flags
+// (portfolioHealth.js).
+// v9 (2026-07-10): insider net-purchase signal in dataScout — insiders buying
+// more of their own stock than they sell scores up (meaningfully for heavy
+// buying, mildly for modest buying), and only heavy selling with several sellers
+// scores down mildly. Asymmetric by design: buying is a strong signal, selling a
+// weak one. Silent below three transactions or when Yahoo omits the module. Also
+// this round, DISPLAY-ONLY (no score effect): position-aware advice
+// (positionRead.js) surfaced on SELL verdicts and doubled winners.
+export const COMMITTEE_ENGINE_VERSION = 9;

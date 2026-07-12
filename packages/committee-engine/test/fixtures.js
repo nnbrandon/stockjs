@@ -60,6 +60,13 @@ export function makeQuarterly({
   eps = 1.0,
   totalDebt = 300,
   equity = 1500,
+  // Optional forensic fields (v8 quality-of-earnings checks). Left off unless
+  // a fixture opts in, so every existing fixture stays byte-for-byte the same.
+  receivablesBase = null, // accountsReceivable on the newest row
+  receivablesGrowPerYear = grow, // its own growth, independent of revenue
+  inventoryBase = null,
+  inventoryGrowPerYear = grow,
+  sbcPerQuarter = null, // stockBasedCompensation per quarter
 } = {}) {
   const rows = [];
   for (let i = 0; i < n; i++) {
@@ -82,6 +89,17 @@ export function makeQuarterly({
     if (dividendPerQuarter > 0) {
       // Yahoo reports dividends paid as a negative cash-flow figure.
       row.cashDividendsPaid = -dividendPerQuarter * factor;
+    }
+    if (receivablesBase != null) {
+      row.accountsReceivable =
+        receivablesBase * Math.pow(1 + receivablesGrowPerYear, -yearsAgo);
+    }
+    if (inventoryBase != null) {
+      row.inventory =
+        inventoryBase * Math.pow(1 + inventoryGrowPerYear, -yearsAgo);
+    }
+    if (sbcPerQuarter != null) {
+      row.stockBasedCompensation = sbcPerQuarter * factor;
     }
     rows.push(row);
   }

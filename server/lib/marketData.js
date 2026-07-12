@@ -166,6 +166,7 @@ export async function fetchAnalysisData(symbol) {
         "financialData",
         "defaultKeyStatistics",
         "assetProfile",
+        "netSharePurchaseActivity",
       ],
     },
     { validateResult: false },
@@ -176,6 +177,12 @@ export async function fetchAnalysisData(symbol) {
   const revisions = nextYear?.epsRevisions ?? {};
   const fin = result?.financialData ?? {};
   const stats = result?.defaultKeyStatistics ?? {};
+  // Insider open-market activity (v9). Yahoo returns netPercentInsiderShares
+  // as a FRACTION (live-checked 2026-07-11: PLTR −0.026 = −2.6% of insider
+  // shares) — normalized to percent units here so the engine reads a straight
+  // percent. Module is often missing (funds, foreign listings) → all null.
+  const insider = result?.netSharePurchaseActivity ?? {};
+  const insiderNetFrac = num(insider.netPercentInsiderShares);
 
   return {
     symbol: symbol.toUpperCase(),
@@ -195,6 +202,12 @@ export async function fetchAnalysisData(symbol) {
     forwardPE: num(stats.forwardPE),
     pegRatio: num(stats.pegRatio),
     beta: num(stats.beta),
+    insiderPeriod: typeof insider.period === "string" ? insider.period : null,
+    insiderBuyCount: num(insider.buyInfoCount),
+    insiderSellCount: num(insider.sellInfoCount),
+    insiderNetShares: num(insider.netInfoShares),
+    insiderNetPct: insiderNetFrac != null ? insiderNetFrac * 100 : null,
+    insiderTotalShares: num(insider.totalInsiderShares),
   };
 }
 

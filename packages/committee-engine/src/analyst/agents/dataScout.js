@@ -14,6 +14,7 @@ import {
 import { analyzeEarningsHistory } from "./earningsHistory";
 import { analyzeLongTermLens } from "./longTermLens";
 import { sectorValuationRead } from "../../sectorBenchmarks";
+import { estimateExpectedReturn } from "../../expectedReturn";
 import {
   avg,
   bear,
@@ -25,6 +26,19 @@ import {
   sortByDateDesc,
   stanceFromScore,
 } from "./helpers";
+
+// Yahoo's netSharePurchaseActivity.period is a short code like "6m". Map the
+// common ones to a readable phrase; fall back to "recent months" otherwise.
+function insiderPeriodWording(period) {
+  const map = {
+    "1m": "the last month",
+    "3m": "the last three months",
+    "6m": "the last six months",
+    "12m": "the last year",
+    "1y": "the last year",
+  };
+  return map[period] ?? "recent months";
+}
 
 function buildScoutSummary(tech, fund, m) {
   const bits = [];
@@ -504,6 +518,116 @@ export function runDataScout({
       }
     }
 
+    // ---- Quality-of-earnings red flags (v8) ----
+    // Three classic forensic tells that reported growth may be lower quality
+    // than it looks. Each is SILENT when the underlying field is missing
+    // (banks, insurers, software companies, and many foreign listings simply
+    // don't report them) — a missing field is never a penalty and never a
+    // reward.
+
+    // 3a. Receivables running ahead of sales. Booking revenue customers
+    // haven't paid for inflates growth; receivables outracing sales is the
+    // tell. Compare the newest row carrying receivables against its year-ago
+    // counterpart, requiring revenue on both.
+    const receivablesOf = (r) =>
+      [r.accountsReceivable, r.receivables].find((v) => Number.isFinite(v));
+    const recRows = q.filter(
+      (r) =>
+        Number.isFinite(receivablesOf(r)) &&
+        Number.isFinite(r.totalRevenue) &&
+        r.totalRevenue > 0,
+    );
+    if (recRows.length) {
+      const rNow = recRows[0];
+      const recThenRow = findYearAgoRow(recRows, rNow);
+      const recNow = receivablesOf(rNow);
+      const recThen = recThenRow ? receivablesOf(recThenRow) : null;
+      if (
+        recThenRow &&
+        Number.isFinite(recThen) &&
+        recThen > 0 &&
+        recThenRow.totalRevenue > 0
+      ) {
+        const recGrowth = (recNow / recThen - 1) * 100;
+        const revGrowth = (rNow.totalRevenue / recThenRow.totalRevenue - 1) * 100;
+        const gap = recGrowth - revGrowth;
+        metrics.receivablesVsRevenueGapPp = gap;
+        if (gap > 25 && recGrowth > 15) {
+          components.push(25);
+          findings.push(
+            bear(
+              `Customers owe it a lot more than a year ago (+${recGrowth.toFixed(0)}%) while sales grew ${revGrowth.toFixed(0)}% — sales booked before the cash arrives can be a sign of forced growth`,
+              2,
+            ),
+          );
+        } else if (gap > 15) {
+          findings.push(
+            bear(
+              `Customers owe it more than a year ago (+${recGrowth.toFixed(0)}%), a bit faster than sales grew (${revGrowth.toFixed(0)}%) — worth keeping an eye on`,
+              1,
+            ),
+          );
+        }
+      }
+    }
+
+    // 3b. Stock-based compensation load. Paying staff in shares is a real
+    // cost that never touches "profit" but lands on shareholders as dilution.
+    const sbcVsRev = ttmPaired("stockBasedCompensation", "totalRevenue");
+    if (sbcVsRev && sbcVsRev[1] > 0) {
+      const sbcPct = (sbcVsRev[0] / sbcVsRev[1]) * 100;
+      metrics.sbcPctOfRevenue = sbcPct;
+      if (sbcPct > 20) {
+        components.push(22);
+        findings.push(
+          bear(
+            `Pays out ${sbcPct.toFixed(0)}% of its sales in new stock to employees — a real cost that doesn't show in profit, and it waters down each share you own`,
+            2,
+          ),
+        );
+      } else if (sbcPct > 10) {
+        components.push(35);
+        findings.push(
+          bear(
+            `Pays out ${sbcPct.toFixed(0)}% of its sales as stock to employees — a real cost that doesn't show up in reported profit`,
+            1,
+          ),
+        );
+      }
+    }
+
+    // 3c. Inventory building faster than sales. Unsold goods piling up often
+    // precede discounts and margin hits. Same year-ago pairing as 3a.
+    const invRows = q.filter(
+      (r) =>
+        Number.isFinite(r.inventory) &&
+        Number.isFinite(r.totalRevenue) &&
+        r.totalRevenue > 0,
+    );
+    if (invRows.length) {
+      const iNow = invRows[0];
+      const iThenRow = findYearAgoRow(invRows, iNow);
+      if (
+        iThenRow &&
+        iThenRow.inventory > 0 &&
+        iThenRow.totalRevenue > 0
+      ) {
+        const invGrowth = (iNow.inventory / iThenRow.inventory - 1) * 100;
+        const revGrowth = (iNow.totalRevenue / iThenRow.totalRevenue - 1) * 100;
+        const gap = invGrowth - revGrowth;
+        metrics.inventoryVsRevenueGapPp = gap;
+        if (gap > 30 && invGrowth > 20) {
+          components.push(30);
+          findings.push(
+            bear(
+              `Unsold goods are piling up — inventory grew ${invGrowth.toFixed(0)}% while sales grew ${revGrowth.toFixed(0)}%. Stockpiles like that often get cleared with price cuts, which hurts profit`,
+              1,
+            ),
+          );
+        }
+      }
+    }
+
     // Balance sheet: debt load and return on equity from the latest quarter
     // that reports them.
     const bsRow = q.find(
@@ -749,6 +873,48 @@ export function runDataScout({
         );
     }
 
+    // Insider buying/selling (v9). Executives buying their own stock with
+    // their own money is one of the better-documented public signals; heavy
+    // selling is a much weaker one (insiders sell for taxes and diversification
+    // all the time). Scored asymmetrically: buying scores up meaningfully, only
+    // heavy selling scores down mildly. Silent below 3 transactions (noise) or
+    // when the module is missing. `insiderNetPct` is normalized to percent
+    // units in fetchAnalysisData; here it's read as a straight percent.
+    const insiderPct = analysis.insiderNetPct;
+    const insiderTx =
+      (analysis.insiderBuyCount ?? 0) + (analysis.insiderSellCount ?? 0);
+    if (Number.isFinite(insiderPct) && insiderTx >= 3) {
+      metrics.insiderNetPct = insiderPct;
+      if (analysis.insiderPeriod) metrics.insiderPeriod = analysis.insiderPeriod;
+      const period = insiderPeriodWording(analysis.insiderPeriod);
+      if (insiderPct >= 2) {
+        components.push(72);
+        findings.push(
+          bull(
+            `Company insiders bought more of their own stock than they sold over ${period} — the people with the best view of the business are putting their own money in.`,
+            2,
+          ),
+        );
+      } else if (insiderPct >= 0.5) {
+        components.push(62);
+        findings.push(
+          bull(
+            `Company insiders have been modest net buyers of their own stock over ${period} — a quietly encouraging sign.`,
+            1,
+          ),
+        );
+      } else if (insiderPct <= -10 && (analysis.insiderSellCount ?? 0) >= 5) {
+        components.push(42);
+        findings.push(
+          bear(
+            `Company insiders sold a meaningful chunk of their own stock over ${period}. Insiders sell for many reasons (taxes, diversification), but this much selling is worth knowing about.`,
+            1,
+          ),
+        );
+      }
+      // Otherwise: routine churn — no component, no finding.
+    }
+
     // Forward vs. trailing valuation. Only scored when trailing P/E couldn't
     // be, to avoid double-counting valuation.
     if (Number.isFinite(analysis.forwardPE) && analysis.forwardPE > 0) {
@@ -804,6 +970,27 @@ export function runDataScout({
     Object.assign(metrics, longTerm.metrics);
     findings.push(...longTerm.findings);
     components.push(...longTerm.components);
+  }
+
+  // ---- Expected-return sketch (v8, non-scored) ----
+  // Placed after the long-term lens so dividend/buyback yields are already on
+  // `metrics`. Never scored — its pieces (growth, yield, valuation) are each
+  // scored above, so scoring the combination would double-count.
+  const expectedReturn = estimateExpectedReturn({ metrics, analysis, annual });
+  if (expectedReturn) {
+    metrics.expectedReturn = expectedReturn;
+    const g = Math.round(expectedReturn.growthPct);
+    const lo = Math.round(expectedReturn.lowPct);
+    const hi = Math.round(expectedReturn.highPct);
+    const hedge = expectedReturn.capped
+      ? " Treat this one with extra caution — the raw math came out unusually high."
+      : "";
+    findings.push(
+      neutral(
+        `Rough 5-year math: if profits grow about ${g}% a year and the valuation settles toward normal, this could return roughly ${lo}–${hi}% a year including dividends and buybacks. A sketch, not a promise.${hedge}`,
+        1,
+      ),
+    );
   }
 
   // ---- Upcoming earnings heads-up (non-scored) ----

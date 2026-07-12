@@ -2,6 +2,8 @@ import { correlation } from "./analyst/indicators";
 
 const STOCK_CONCENTRATION_PCT = 20;
 const TOP3_CONCENTRATION_PCT = 60;
+const SECTOR_CONCENTRATION_PCT = 40;
+const SECTOR_WARN_PCT = 60;
 const CORRELATION_FLAG = 0.8;
 const WEAK_POSITION_PCT = 10;
 
@@ -24,6 +26,7 @@ export function analyzePortfolioHealth(items = []) {
       symbol: i.symbol,
       isFund: Boolean(i.isFund),
       weightPct: (i.currentValue / totalValue) * 100,
+      sector: typeof i.sector === "string" && i.sector ? i.sector : null,
       tier: i.tier ?? null,
       action: i.action ?? null,
       composite: Number.isFinite(i.composite) ? i.composite : null,
@@ -56,6 +59,28 @@ export function analyzePortfolioHealth(items = []) {
     });
   }
 
+  // Sector concentration: too much of the account riding on one industry.
+  // Only individual stocks with a known sector count — funds are baskets, and
+  // an unknown sector is never invented as a group of its own.
+  const sectorTotals = new Map();
+  for (const w of stocks) {
+    if (!w.sector) continue;
+    const cur = sectorTotals.get(w.sector) ?? { pct: 0, symbols: [] };
+    cur.pct += w.weightPct;
+    cur.symbols.push(w.symbol);
+    sectorTotals.set(w.sector, cur);
+  }
+  for (const [sector, { pct, symbols }] of sectorTotals) {
+    if (pct > SECTOR_CONCENTRATION_PCT && symbols.length >= 2) {
+      flags.push({
+        kind: "sector",
+        severity: pct > SECTOR_WARN_PCT ? "warn" : "info",
+        symbols,
+        text: `${pct.toFixed(0)}% of your portfolio is in one industry — ${sector} (${symbols.join(", ")}). One bad year for that industry would hit most of your account at once.`,
+      });
+    }
+  }
+
   // Correlation clusters: pairs of stocks that move together are closer to
   // one bet than two. Series are aligned from the end, so if one symbol's
   // cache is stale (ends weeks earlier) the returns don't line up day-to-day
@@ -84,7 +109,56 @@ export function analyzePortfolioHealth(items = []) {
       }
     }
   }
+  // Group correlated pairs into connected clusters (a tiny union-find). Three
+  // or more names all moving together is a bigger deal than a single pair —
+  // it's closer to one concentrated bet than to diversification.
+  const parent = new Map();
+  const find = (x) => {
+    while (parent.get(x) !== x) {
+      parent.set(x, parent.get(parent.get(x)));
+      x = parent.get(x);
+    }
+    return x;
+  };
+  const union = (a, b) => {
+    parent.set(find(a), find(b));
+  };
   for (const pair of correlatedPairs) {
+    for (const s of pair.symbols) if (!parent.has(s)) parent.set(s, s);
+    union(pair.symbols[0], pair.symbols[1]);
+  }
+  const components = new Map();
+  for (const s of parent.keys()) {
+    const root = find(s);
+    if (!components.has(root)) components.set(root, []);
+    components.get(root).push(s);
+  }
+  const clusters = [];
+  const clusteredSymbols = new Set();
+  for (const members of components.values()) {
+    if (members.length < 3) continue;
+    // Order clusters by portfolio weight so the biggest bet reads first.
+    const symbols = members.slice().sort((a, b) => {
+      const wa = weights.find((w) => w.symbol === a)?.weightPct ?? 0;
+      const wb = weights.find((w) => w.symbol === b)?.weightPct ?? 0;
+      return wb - wa;
+    });
+    clusters.push({ symbols });
+    for (const s of symbols) clusteredSymbols.add(s);
+  }
+  for (const cluster of clusters) {
+    const syms = cluster.symbols;
+    const listText = `${syms.slice(0, -1).join(", ")} and ${syms.at(-1)}`;
+    flags.push({
+      kind: "correlation",
+      severity: "info",
+      symbols: syms,
+      text: `${listText} have been moving almost in lockstep — that's closer to one bet than ${syms.length} separate ones.`,
+    });
+  }
+  // Pairs not absorbed into a ≥3 cluster keep the plain two-name wording.
+  for (const pair of correlatedPairs) {
+    if (pair.symbols.some((s) => clusteredSymbols.has(s))) continue;
     flags.push({
       kind: "correlation",
       severity: "info",
@@ -123,6 +197,7 @@ export function analyzePortfolioHealth(items = []) {
     pctInSellRated,
     sellRatedSymbols: sellRated.map((w) => w.symbol),
     correlatedPairs,
+    clusters,
     flags,
   };
 }

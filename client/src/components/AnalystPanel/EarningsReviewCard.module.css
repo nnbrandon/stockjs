@@ -1,0 +1,25 @@
+.card {
+  border: 1px solid var(--palette-divider);
+  border-radius: var(--shape-radius);
+  background: var(--palette-bg-paper);
+  padding: 14px 16px;
+}
+
+.title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--palette-text-disabled);
+  margin-bottom: 8px;
+}
+
+.line {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--palette-text-primary);
+}
+.line:last-child {
+  margin-bottom: 0;
+}

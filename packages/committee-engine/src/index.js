@@ -15,6 +15,10 @@ export {
 } from "./analyst/verdictHistory.js";
 export { mergeEarningsIntoQuarterly } from "./mergeEarningsIntoQuarterly.js";
 export { analyzePortfolioHealth } from "./portfolioHealth.js";
+export { estimateExpectedReturn } from "./expectedReturn.js";
+export { buildEarningsReview } from "./earningsReview.js";
+export { buildThesisSnapshot, checkThesis } from "./thesis.js";
+export { buildPositionRead } from "./positionRead.js";
 export { isFundSymbol, isFundInstrumentType } from "./isFundSymbol.js";
 export { getGuardrail } from "./guardrails.js";
 export {

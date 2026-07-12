@@ -11,12 +11,14 @@ import CircularProgress from "@mui/material/CircularProgress";
 import AiCommitteeHelpButton from "../AiCommitteeHelp/AiCommitteeHelpButton";
 import CommitteeBacktestModal from "./CommitteeBacktestModal";
 import TrackRecordCard from "./TrackRecordCard";
+import PortfolioRisksCard from "./PortfolioRisksCard";
 import ResizableSidebar from "../ResizableSidebar/ResizableSidebar";
 import { usePortfolioCommitteeContext } from "./PortfolioCommitteeProvider";
 import { getVerdictContext } from "@stockjs/committee-engine/analyst/verdictContext.js";
 import { getTierChange } from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import { getExitTimingAdvice } from "@stockjs/committee-engine/exitTimingAdvice.js";
 import { whatToDo } from "@stockjs/committee-engine/actionAdvice.js";
+import { buildPositionRead } from "@stockjs/committee-engine/positionRead.js";
 import styles from "./PortfolioCommitteePanel.module.css";
 
 // Chevron collapse/expand toggles — square ghost icon buttons.
@@ -331,6 +333,23 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
         }
       : null;
 
+  // Position-aware read (v9): compute the user's unrealized gain % from their
+  // cost basis (client-local field is `averageCostBasis`) and the latest price,
+  // then let the shared builder decide whether there's anything worth saying.
+  const avgCost = item.position?.averageCostBasis;
+  const price = report.metrics?.price;
+  const gainPct =
+    Number.isFinite(avgCost) &&
+    avgCost > 0 &&
+    Number.isFinite(price) &&
+    price > 0
+      ? (price / avgCost - 1) * 100
+      : null;
+  const positionRead = buildPositionRead({
+    gainPct,
+    action: verdict.action,
+  });
+
   return (
     <div className={styles.card}>
       <div className={styles.cardHeadStatic}>
@@ -405,6 +424,9 @@ function PositionVerdictCard({ item, onSelectSymbol }) {
                       : ""
                   }.`}
             </p>
+          )}
+          {positionRead && (
+            <p className={styles.sellSizing}>{positionRead.line}</p>
           )}
         </div>
 
@@ -525,6 +547,7 @@ export default function PortfolioCommitteePanel({
     results,
     progress,
     generatedAt,
+    health,
     trackRecord,
     run,
     reset,
@@ -666,6 +689,8 @@ export default function PortfolioCommitteePanel({
             </p>
 
             <TrackRecordCard trackRecord={trackRecord} />
+
+            <PortfolioRisksCard health={health} />
 
             <ToggleButtonGroup
               exclusive

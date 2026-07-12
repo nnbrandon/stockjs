@@ -19,6 +19,11 @@ import {
 } from "@stockjs/committee-engine/analyst/verdictHistory.js";
 import { mergeEarningsIntoQuarterly } from "@stockjs/committee-engine/mergeEarningsIntoQuarterly.js";
 import { analyzePortfolioHealth } from "@stockjs/committee-engine/portfolioHealth.js";
+import { buildEarningsReview } from "@stockjs/committee-engine/earningsReview.js";
+import {
+  buildThesisSnapshot,
+  checkThesis,
+} from "@stockjs/committee-engine/thesis.js";
 import { computeTrackRecord } from "@stockjs/committee-engine/trackRecord.js";
 import { isFundSymbol } from "@stockjs/committee-engine/isFundSymbol.js";
 import {
@@ -38,7 +43,10 @@ const CANDLE_DAYS = 420;
 // Match the client's fundamentals cache window (loadCommitteeData).
 const FUNDAMENTALS_YEARS = 25;
 const ARCHIVE_WINDOW_DAYS = 30;
-export const MAX_HISTORY_ROWS = 60;
+// 150 daily rows ≈ 5 months — the 90-day track-record horizon (±40% window in
+// computeTrackRecord) needs rows up to 126 days old, so a 60-row cap starved
+// that report card. Rows are ~16 scalar fields; the growth is negligible.
+export const MAX_HISTORY_ROWS = 150;
 const FIRST_RUN_SCORE_CAP = 25;
 const SYMBOL_CONCURRENCY = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -247,6 +255,10 @@ export async function analyzeSymbols(uniqueHoldings, state) {
       candles: f.candles,
       articles: f.archive,
       history,
+      // Keep a previously stored thesis alive through no-report days — a
+      // fetch hiccup must not erase the anchor. Overridden below when the
+      // committee actually runs.
+      thesis: prevState.thesis ?? null,
       error: null,
     };
 
@@ -277,6 +289,61 @@ export async function analyzeSymbols(uniqueHoldings, state) {
     // portfolio panel, and email via the stored tierChange.
     if (tierChange) {
       tierChange.reason = explainTierChange(previousSnapshot, report);
+    }
+
+    // Post-earnings review (v8, display-only): "what we expected vs. what
+    // happened", for ~10 days after each report. Uses the PRE-update history
+    // on purpose — the review only reads verdicts from before the report.
+    const earningsReview = buildEarningsReview({
+      earnings,
+      history,
+      candles: f.candles,
+      report,
+    });
+
+    // Persistent thesis with kill criteria (v8, display-only). Built once on
+    // a BUY with strong business legs, then CHECKED (never refreshed) on every
+    // later run — the whole point is a stable anchor. Rebuilt only on a
+    // genuine re-buy: the stored thesis is broken AND today's verdict is BUY
+    // again.
+    const prevLastStatus = prevState.thesis?.lastStatus ?? null;
+    let thesis = prevState.thesis ?? null;
+    let thesisCheck = null;
+    if (thesis) {
+      thesisCheck = checkThesis(thesis, report);
+      if (
+        thesisCheck?.status === "broken" &&
+        report.verdict.action === "BUY"
+      ) {
+        const rebuilt = buildThesisSnapshot(report);
+        if (rebuilt) {
+          thesis = {
+            ...rebuilt,
+            createdDay: day,
+            price: report.metrics?.price ?? null,
+            tier: report.verdict.tier,
+          };
+          thesisCheck = checkThesis(thesis, report);
+        }
+      }
+    } else if (report.verdict.action === "BUY") {
+      const built = buildThesisSnapshot(report);
+      if (built) {
+        thesis = {
+          ...built,
+          createdDay: day,
+          price: report.metrics?.price ?? null,
+          tier: report.verdict.tier,
+        };
+        thesisCheck = checkThesis(thesis, report);
+      }
+    }
+    if (thesis && thesisCheck) {
+      // The email only speaks on change days; the very first check never
+      // counts as a change.
+      thesisCheck.statusChanged =
+        prevLastStatus != null && thesisCheck.status !== prevLastStatus;
+      thesis = { ...thesis, lastStatus: thesisCheck.status };
     }
 
     // One verdict-history row per symbol per day; same-day re-runs overwrite
@@ -319,6 +386,9 @@ export async function analyzeSymbols(uniqueHoldings, state) {
       report,
       previousSnapshot,
       tierChange,
+      earningsReview,
+      thesis,
+      thesisCheck,
       newsMood: sentimentAgent?.summary ?? null,
       topPositive: sentimentAgent?.raw?.topPositive ?? null,
       topNegative: sentimentAgent?.raw?.topNegative ?? null,
@@ -363,6 +433,11 @@ export function toLatestBlock(r, generatedAt) {
     report: r.report ?? null,
     previousSnapshot: r.previousSnapshot ?? null,
     tierChange: r.tierChange ?? null,
+    // v8: post-earnings review (~10 days after a report, else null) and the
+    // persistent thesis + its per-run check.
+    earningsReview: r.earningsReview ?? null,
+    thesis: r.thesis ?? null,
+    thesisCheck: r.thesisCheck ?? null,
     newsMood: r.newsMood ?? null,
     topPositive: r.topPositive ?? null,
     topNegative: r.topNegative ?? null,
@@ -383,6 +458,8 @@ export function nextSymbolStateEntries(symbolResults, generatedAt) {
         {
           articles: r.articles ?? [],
           history: r.history ?? [],
+          // The thesis anchor persists per symbol (null when none was built).
+          thesis: r.thesis ?? null,
           latest: toLatestBlock(r, generatedAt),
         },
       ]),
@@ -416,6 +493,9 @@ export function computeUserView(holdings, resultBySymbol) {
           symbol: r.symbol,
           isFund: Boolean(r.isFund),
           currentValue,
+          // v8: sector for the concentration flag (null when unknown; the
+          // engine skips unknowns silently).
+          sector: r.report?.metrics?.sector ?? null,
           lastDate: r.candles?.at(-1)?.date ?? null,
           closes: (r.candles ?? [])
             .map((c) => Number(c.close))

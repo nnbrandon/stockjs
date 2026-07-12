@@ -43,19 +43,13 @@ function insiderPeriodWording(period) {
 function buildScoutSummary(tech, fund, m) {
   const bits = [];
   if (Number.isFinite(tech))
-    bits.push(
-      `the price trend looks ${labelScore(tech)} (${tech.toFixed(0)}/100)`,
-    );
+    bits.push(`price trend ${labelScore(tech)} (${tech.toFixed(0)}/100)`);
   if (Number.isFinite(fund))
-    bits.push(
-      `the company's finances look ${labelScore(fund)} (${fund.toFixed(0)}/100)`,
-    );
-  else bits.push("the company's finances aren't available");
+    bits.push(`finances ${labelScore(fund)} (${fund.toFixed(0)}/100)`);
+  else bits.push("finances not available");
   if (Number.isFinite(m.trailingPE))
-    bits.push(
-      `investors pay about $${m.trailingPE.toFixed(0)} per $1 of yearly profit`,
-    );
-  return `In short, ${bits.join("; ")}.`;
+    bits.push(`about $${m.trailingPE.toFixed(0)} paid per $1 of yearly profit`);
+  return `In short: ${bits.join("; ")}.`;
 }
 
 // Pulls the quantitative metrics: price trend, momentum, RSI, range, plus
@@ -118,7 +112,7 @@ export function runDataScout({
         trendScore = sma200Rising ? 88 : 82;
         findings.push(
           bull(
-            "Price is above both its 50-day and 200-day average, with the 50-day on top — a steady uptrend",
+            "Steady uptrend — above both its 50-day and 200-day averages, 50-day on top",
             2,
           ),
         );
@@ -126,7 +120,7 @@ export function runDataScout({
         trendScore = 58;
         findings.push(
           neutral(
-            "Above its 50-day average price but still below the 200-day — looks like it's recovering",
+            "Above its 50-day average but still below the 200-day — looks to be recovering",
             1,
           ),
         );
@@ -134,7 +128,7 @@ export function runDataScout({
         trendScore = 40;
         findings.push(
           bear(
-            "Has dipped below its 50-day average price, though the longer trend is still up",
+            "Dipped below its 50-day average, though the longer trend is still up",
             1,
           ),
         );
@@ -142,7 +136,7 @@ export function runDataScout({
         trendScore = 28;
         findings.push(
           bear(
-            "Price has fallen below both its 50-day and 200-day averages — the uptrend is breaking down",
+            "Uptrend breaking down — below both its 50-day and 200-day averages",
             2,
           ),
         );
@@ -151,8 +145,8 @@ export function runDataScout({
         findings.push(
           bear(
             sma200Falling
-              ? "Price is below both averages and the long-term trend itself is falling — a confirmed downtrend"
-              : "Price is below both its 50-day and 200-day average — a downtrend",
+              ? "Confirmed downtrend — below both averages, and the long-term trend itself is falling"
+              : "Downtrend — below both its 50-day and 200-day averages",
             2,
           ),
         );
@@ -161,8 +155,8 @@ export function runDataScout({
       trendScore = price > sma50 ? 65 : 35;
       findings.push(
         price > sma50
-          ? bull("Trading above its average price over the last 50 days", 1)
-          : bear("Trading below its average price over the last 50 days", 1),
+          ? bull("Trading above its 50-day average price", 1)
+          : bear("Trading below its 50-day average price", 1),
       );
     }
     metrics.sma200Rising = sma200Prev != null ? sma200Rising : null;
@@ -195,7 +189,7 @@ export function runDataScout({
           rsiScore = 40;
           findings.push(
             bear(
-              "Bounced hard within a downtrend — rallies like this often fade before the trend turns",
+              "Bounced hard within a downtrend — rallies like this often fade",
               1,
             ),
           );
@@ -220,7 +214,7 @@ export function runDataScout({
         rsiScore = 40;
         findings.push(
           bear(
-            "Has risen quickly and looks overbought — a pullback wouldn't be surprising",
+            "Overbought after a fast rise — a pullback wouldn't be surprising",
             1,
           ),
         );
@@ -268,10 +262,7 @@ export function runDataScout({
       if (rising && heavy) {
         volumeAdj = 6;
         findings.push(
-          bull(
-            "Rising on increasing volume — buyers are committed (a confirmed move)",
-            1,
-          ),
+          bull("Rising on increasing volume — a confirmed move", 1),
         );
       } else if (rising && light) {
         volumeAdj = -6;
@@ -353,15 +344,10 @@ export function runDataScout({
       metrics.revenueGrowthYoY = revG;
       components.push(scaleClamp(revG, -10, 30, 5, 95));
       if (revG > 10)
-        findings.push(
-          bull(`Sales grew ${revG.toFixed(0)}% compared to a year ago`, 2),
-        );
+        findings.push(bull(`Sales up ${revG.toFixed(0)}% vs. a year ago`, 2));
       else if (revG < 0)
         findings.push(
-          bear(
-            `Sales shrank ${Math.abs(revG).toFixed(0)}% compared to a year ago`,
-            2,
-          ),
+          bear(`Sales down ${Math.abs(revG).toFixed(0)}% vs. a year ago`, 2),
         );
     }
 
@@ -378,15 +364,10 @@ export function runDataScout({
       metrics.netIncomeGrowthYoY = niG;
       components.push(scaleClamp(niG, -25, 40, 5, 95));
       if (niG > 10)
-        findings.push(
-          bull(`Profit grew ${niG.toFixed(0)}% compared to a year ago`, 1),
-        );
+        findings.push(bull(`Profit up ${niG.toFixed(0)}% vs. a year ago`, 1));
       else if (niG < -10)
         findings.push(
-          bear(
-            `Profit fell ${Math.abs(niG).toFixed(0)}% compared to a year ago`,
-            1,
-          ),
+          bear(`Profit down ${Math.abs(niG).toFixed(0)}% vs. a year ago`, 1),
         );
     }
     if (Number.isFinite(latestIncome.netIncome)) {
@@ -404,7 +385,7 @@ export function runDataScout({
       if (margin > 15)
         findings.push(
           bull(
-            `Keeps ${margin.toFixed(0)} cents of every sales dollar as profit (healthy)`,
+            `Keeps ${margin.toFixed(0)}¢ of every sales dollar as profit (healthy)`,
             1,
           ),
         );
@@ -425,7 +406,7 @@ export function runDataScout({
           components.push(25);
           findings.push(
             bear(
-              `Profitability is slipping — keeps ${Math.abs(marginChange).toFixed(0)} cents less of each sales dollar than a year ago`,
+              `Profitability slipping — keeps ${Math.abs(marginChange).toFixed(0)}¢ less per sales dollar than a year ago`,
               2,
             ),
           );
@@ -433,7 +414,7 @@ export function runDataScout({
           components.push(80);
           findings.push(
             bull(
-              `Profitability is improving — keeps ${marginChange.toFixed(0)} cents more of each sales dollar than a year ago`,
+              `Profitability improving — keeps ${marginChange.toFixed(0)}¢ more per sales dollar than a year ago`,
               1,
             ),
           );
@@ -478,7 +459,7 @@ export function runDataScout({
       if (fcfMargin > 15)
         findings.push(
           bull(
-            `Turns ${fcfMargin.toFixed(0)} cents of every sales dollar into spendable cash (excellent)`,
+            `Turns ${fcfMargin.toFixed(0)}¢ of every sales dollar into spendable cash (excellent)`,
             1,
           ),
         );
@@ -556,14 +537,14 @@ export function runDataScout({
           components.push(25);
           findings.push(
             bear(
-              `Customers owe it a lot more than a year ago (+${recGrowth.toFixed(0)}%) while sales grew ${revGrowth.toFixed(0)}% — sales booked before the cash arrives can be a sign of forced growth`,
+              `Customers owe it a lot more than a year ago (+${recGrowth.toFixed(0)}% vs. sales +${revGrowth.toFixed(0)}%) — booking sales before the cash arrives can signal forced growth`,
               2,
             ),
           );
         } else if (gap > 15) {
           findings.push(
             bear(
-              `Customers owe it more than a year ago (+${recGrowth.toFixed(0)}%), a bit faster than sales grew (${revGrowth.toFixed(0)}%) — worth keeping an eye on`,
+              `Customers owe it more than a year ago (+${recGrowth.toFixed(0)}%, a bit ahead of sales +${revGrowth.toFixed(0)}%) — worth watching`,
               1,
             ),
           );
@@ -581,7 +562,7 @@ export function runDataScout({
         components.push(22);
         findings.push(
           bear(
-            `Pays out ${sbcPct.toFixed(0)}% of its sales in new stock to employees — a real cost that doesn't show in profit, and it waters down each share you own`,
+            `Pays ${sbcPct.toFixed(0)}% of sales in new stock to employees — a real cost outside profit that waters down each share you own`,
             2,
           ),
         );
@@ -589,7 +570,7 @@ export function runDataScout({
         components.push(35);
         findings.push(
           bear(
-            `Pays out ${sbcPct.toFixed(0)}% of its sales as stock to employees — a real cost that doesn't show up in reported profit`,
+            `Pays ${sbcPct.toFixed(0)}% of sales in new stock to employees — a real cost that never shows in reported profit`,
             1,
           ),
         );
@@ -620,7 +601,7 @@ export function runDataScout({
           components.push(30);
           findings.push(
             bear(
-              `Unsold goods are piling up — inventory grew ${invGrowth.toFixed(0)}% while sales grew ${revGrowth.toFixed(0)}%. Stockpiles like that often get cleared with price cuts, which hurts profit`,
+              `Unsold goods are piling up (inventory +${invGrowth.toFixed(0)}% vs. sales +${revGrowth.toFixed(0)}%) — often cleared with price cuts that hurt profit`,
               1,
             ),
           );
@@ -675,7 +656,7 @@ export function runDataScout({
           if (roe > 20)
             findings.push(
               bull(
-                `Earns ${roe.toFixed(0)} cents a year on every dollar shareholders have in the business — a sign of a high-quality company`,
+                `Earns ${roe.toFixed(0)}¢ a year per $1 shareholders have in the business — a high-quality sign`,
                 1,
               ),
             );
@@ -727,7 +708,7 @@ export function runDataScout({
           else if (peg > 2.5)
             findings.push(
               bear(
-                `Expensive even accounting for its growth (PEG ${peg.toFixed(1)})`,
+                `Expensive even given its growth (PEG ${peg.toFixed(1)})`,
                 1,
               ),
             );
@@ -736,14 +717,14 @@ export function runDataScout({
           if (pe < 15)
             findings.push(
               bull(
-                `Looks inexpensive — about $${pe.toFixed(0)} paid per $1 of yearly profit`,
+                `Looks cheap — about $${pe.toFixed(0)} per $1 of yearly profit`,
                 1,
               ),
             );
           else if (pe > 45)
             findings.push(
               bear(
-                `Looks expensive — about $${pe.toFixed(0)} paid per $1 of yearly profit`,
+                `Looks expensive — about $${pe.toFixed(0)} per $1 of yearly profit`,
                 1,
               ),
             );
@@ -760,14 +741,14 @@ export function runDataScout({
           if (sectorRead.verdict === "cheap")
             findings.push(
               bull(
-                `Cheap for its industry — about $${pe.toFixed(0)} per $1 of profit, while ${sector} companies typically run $${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)}`,
+                `Cheap for its industry — $${pe.toFixed(0)} per $1 of profit vs. a typical $${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)} for ${sector}`,
                 1,
               ),
             );
           else if (sectorRead.verdict === "rich")
             findings.push(
               bear(
-                `Expensive even for ${sector} — about $${pe.toFixed(0)} per $1 of profit vs. a typical $${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)}. It needs to keep growing fast to justify that`,
+                `Expensive even for ${sector} — $${pe.toFixed(0)} per $1 of profit vs. a typical $${sectorRead.low.toFixed(0)}–${sectorRead.high.toFixed(0)}; needs fast growth to justify it`,
                 1,
               ),
             );
@@ -795,17 +776,14 @@ export function runDataScout({
           components.push(scaleClamp(pfcf, 60, 8, 25, 80));
           findings.push(
             neutral(
-              `Not profitable on paper, but generates real cash — priced at $${pfcf.toFixed(0)} per $1 of yearly cash flow`,
+              `Not profitable on paper but generates real cash — $${pfcf.toFixed(0)} per $1 of yearly cash flow`,
               1,
             ),
           );
         } else {
           components.push(25);
           findings.push(
-            bear(
-              "Hasn't been profitable over the past year, so it's hard to value",
-              1,
-            ),
+            bear("No profit over the past year — hard to value", 1),
           );
         }
       }
@@ -840,14 +818,14 @@ export function runDataScout({
       if (netShare >= 0.5)
         findings.push(
           bull(
-            `Analysts have been raising their profit forecasts (${up} up vs. ${down} down this month) — expectations are improving`,
+            `Analysts are raising profit forecasts (${up} up vs. ${down} down this month)`,
             1,
           ),
         );
       else if (netShare <= -0.5)
         findings.push(
           bear(
-            `Analysts have been cutting their profit forecasts (${down} down vs. ${up} up this month)`,
+            `Analysts are cutting profit forecasts (${down} down vs. ${up} up this month)`,
             1,
           ),
         );
@@ -867,7 +845,7 @@ export function runDataScout({
       if (drift < -5)
         findings.push(
           bear(
-            `Analysts keep cutting next year's profit forecast (down ${Math.abs(drift).toFixed(1)}% in a month) — a bad sign that tends to continue`,
+            `Next year's profit forecast cut ${Math.abs(drift).toFixed(1)}% in a month — cuts like that tend to continue`,
             2,
           ),
         );
@@ -891,7 +869,7 @@ export function runDataScout({
         components.push(72);
         findings.push(
           bull(
-            `Company insiders bought more of their own stock than they sold over ${period} — the people with the best view of the business are putting their own money in.`,
+            `Insiders bought more of their own stock than they sold over ${period} — the people who know the business best are putting their own money in`,
             2,
           ),
         );
@@ -899,7 +877,7 @@ export function runDataScout({
         components.push(62);
         findings.push(
           bull(
-            `Company insiders have been modest net buyers of their own stock over ${period} — a quietly encouraging sign.`,
+            `Insiders were modest net buyers of their own stock over ${period} — a quietly encouraging sign`,
             1,
           ),
         );
@@ -907,7 +885,7 @@ export function runDataScout({
         components.push(42);
         findings.push(
           bear(
-            `Company insiders sold a meaningful chunk of their own stock over ${period}. Insiders sell for many reasons (taxes, diversification), but this much selling is worth knowing about.`,
+            `Insiders sold a meaningful chunk of their own stock over ${period} — they sell for many reasons (taxes, diversification), but this much selling is worth knowing about`,
             1,
           ),
         );
@@ -928,7 +906,7 @@ export function runDataScout({
       ) {
         findings.push(
           bull(
-            `Priced more reasonably against next year's expected profits (forward P/E ${analysis.forwardPE.toFixed(0)} vs. ${metrics.trailingPE.toFixed(0)} trailing)`,
+            `Cheaper on next year's expected profits (forward P/E ${analysis.forwardPE.toFixed(0)} vs. ${metrics.trailingPE.toFixed(0)} trailing)`,
             1,
           ),
         );
@@ -949,7 +927,7 @@ export function runDataScout({
     if (Number.isFinite(analysis.targetMeanPrice) && Number.isFinite(metrics.price)) {
       findings.push(
         neutral(
-          `Analyst average target: $${analysis.targetMeanPrice.toFixed(0)} (take with salt — targets skew optimistic)`,
+          `Analyst average target: $${analysis.targetMeanPrice.toFixed(0)} (targets skew optimistic)`,
           1,
         ),
       );
@@ -983,11 +961,11 @@ export function runDataScout({
     const lo = Math.round(expectedReturn.lowPct);
     const hi = Math.round(expectedReturn.highPct);
     const hedge = expectedReturn.capped
-      ? " Treat this one with extra caution — the raw math came out unusually high."
+      ? " (Raw math came out unusually high — extra caution.)"
       : "";
     findings.push(
       neutral(
-        `Rough 5-year math: if profits grow about ${g}% a year and the valuation settles toward normal, this could return roughly ${lo}–${hi}% a year including dividends and buybacks. A sketch, not a promise.${hedge}`,
+        `Rough 5-year math: ~${g}%/yr profit growth at a normal valuation ≈ ${lo}–${hi}%/yr return, dividends and buybacks included — a sketch, not a promise.${hedge}`,
         1,
       ),
     );
@@ -1012,7 +990,7 @@ export function runDataScout({
         const approx = nextEarningsDateIsEstimate ? "around " : "";
         findings.push(
           neutral(
-            `Earnings report expected ${approx}${label} — prices often jump or drop on report day, and this verdict can change after it.`,
+            `Earnings report expected ${approx}${label} — prices often swing on report day, and this verdict can change after it`,
             1,
           ),
         );

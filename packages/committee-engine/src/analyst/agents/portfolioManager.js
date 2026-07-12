@@ -152,16 +152,16 @@ function valuationReason(v) {
   const cheap = v.verdict === "cheap";
   if (v.basis === "own-history")
     return cheap
-      ? `It's genuinely cheap, not just down: around ${v.current.toFixed(0)}× earnings versus its own typical ${v.typical.toFixed(0)}× — about ${Math.abs(v.cheapPct).toFixed(0)}% below its usual valuation.`
-      : `Valued roughly in line with its own history (around ${v.current.toFixed(0)}× earnings vs. a typical ${v.typical.toFixed(0)}×) — the markdown isn't unwinding an overvaluation.`;
+      ? `Genuinely cheap, not just down — ${v.current.toFixed(0)}× earnings vs. its own typical ${v.typical.toFixed(0)}× (about ${Math.abs(v.cheapPct).toFixed(0)}% below usual).`
+      : `Valued in line with its own history (${v.current.toFixed(0)}× earnings vs. a typical ${v.typical.toFixed(0)}×).`;
   if (v.basis === "growth")
     return cheap
-      ? `Cheap for its growth (PEG ${v.peg.toFixed(1)}) — the markdown isn't just unwinding an overvaluation.`
-      : `Fairly priced for its growth (PEG ${v.peg.toFixed(1)}) — not a bargain on that basis, but not expensive either.`;
+      ? `Cheap for its growth (PEG ${v.peg.toFixed(1)}) — not just unwinding an overvaluation.`
+      : `Fairly priced for its growth (PEG ${v.peg.toFixed(1)}) — not a bargain, not expensive.`;
   if (v.basis === "forward")
     return cheap
-      ? `Priced more cheaply against next year's expected profits (forward P/E ${v.forwardPE.toFixed(0)} vs. ${v.trailingPE.toFixed(0)} trailing).`
-      : `Forward valuation is roughly in line with trailing (forward P/E ${v.forwardPE.toFixed(0)} vs. ${v.trailingPE.toFixed(0)}) — no strong valuation signal either way.`;
+      ? `Cheaper on next year's expected profits (forward P/E ${v.forwardPE.toFixed(0)} vs. ${v.trailingPE.toFixed(0)} trailing).`
+      : `Forward P/E ${v.forwardPE.toFixed(0)} vs. ${v.trailingPE.toFixed(0)} trailing — no strong valuation signal either way.`;
   return "Valuation looks reasonable.";
 }
 
@@ -267,7 +267,7 @@ function discountCheck(candles = [], pillars, quarterly = [], metrics = {}) {
 
 function discountFinding(discount) {
   return bull(
-    `On sale, not broken: the finances score ${discount.fundamental.toFixed(0)}/100 while the stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high with news holding up — priced low on a healthy business, with room to recover if the trend turns. (Discounts can keep discounting: the exit line still applies.)`,
+    `On sale, not broken — finances score ${discount.fundamental.toFixed(0)}/100 while the stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high with news holding up. (Discounts can keep discounting: the exit line still applies.)`,
     2,
   );
 }
@@ -288,10 +288,10 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
   const fundMargin = discount.fundamental - DISCOUNT_MIN_FUNDAMENTAL;
   confidence += Math.min(fundMargin * 1.2, 25);
   reasons.push(
-    `The company's finances score ${discount.fundamental.toFixed(0)}/100 — ${fundMargin >= 10 ? "comfortably" : "just"} above the ${DISCOUNT_MIN_FUNDAMENTAL}/100 bar this flag requires.`,
+    `Finances score ${discount.fundamental.toFixed(0)}/100 — ${fundMargin >= 10 ? "comfortably" : "just"} above the ${DISCOUNT_MIN_FUNDAMENTAL} bar this flag requires.`,
   );
   reasons.push(
-    `The stock sits ${discount.offHighPct.toFixed(0)}% below its 52-week high — a genuine markdown, not a routine dip.`,
+    `Sits ${discount.offHighPct.toFixed(0)}% below its 52-week high — a genuine markdown, not a routine dip.`,
   );
 
   // (#1) Valuation: cheap versus its own history/growth, not just off its high.
@@ -306,7 +306,7 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
   } else {
     confidence -= 5;
     cautions.push(
-      "Couldn't confirm it's genuinely cheap (not enough valuation data) — being down from its high isn't the same as being a bargain.",
+      "Couldn't confirm it's genuinely cheap (not enough valuation data) — down from its high isn't the same as a bargain.",
     );
   }
 
@@ -314,7 +314,7 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
   if (trajectory?.state === "deteriorating") {
     confidence = Math.min(confidence, 29); // force a Low grade
     cautions.unshift(
-      `The business is heading the wrong way — ${trajectory.note}. A cheap price on shrinking fundamentals is the classic value trap, so treat this flag with caution.`,
+      `The business is heading the wrong way (${trajectory.note}) — cheap plus shrinking is the classic value trap, so treat this flag with caution.`,
     );
   } else if (trajectory?.state === "improving") {
     confidence += 8;
@@ -331,7 +331,7 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
     if (sentiment >= 55) {
       confidence += 10;
       reasons.push(
-        `News mood is holding up (${sentiment.toFixed(0)}/100) — the markdown doesn't look driven by bad company news.`,
+        `News mood is holding up (${sentiment.toFixed(0)}/100) — the markdown doesn't look news-driven.`,
       );
     } else {
       confidence -= 5;
@@ -342,7 +342,7 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
   } else {
     confidence -= 10;
     cautions.push(
-      "No scored news available — the committee can't rule out a story behind the drop.",
+      "No scored news available — can't rule out a story behind the drop.",
     );
   }
 
@@ -352,12 +352,12 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
     if (price > sma50) {
       confidence += 10;
       reasons.push(
-        "The price has climbed back above its 50-day average — an early sign the bounce may have started.",
+        "Back above its 50-day average — an early sign the bounce may have started.",
       );
     } else {
       confidence -= 5;
       cautions.push(
-        "The price is still below its 50-day average — no sign of a turn yet, so the discount could deepen before it recovers.",
+        "Still below its 50-day average — no sign of a turn yet, so the discount could deepen first.",
       );
     }
   }
@@ -367,12 +367,12 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
     if (benchmark >= BENCH_MARKET_WIDE_OFF_HIGH) {
       confidence -= 8;
       cautions.push(
-        `Much of this markdown is market-wide — the broad market is itself ${benchmark.toFixed(0)}% off its high, so less of the discount is specific to this company.`,
+        `Much of the markdown is market-wide — the broad market is itself ${benchmark.toFixed(0)}% off its high.`,
       );
     } else if (benchmark <= BENCH_NEAR_HIGH_OFF) {
       confidence += 8;
       reasons.push(
-        `The broad market is near its highs (only ${benchmark.toFixed(0)}% off) while this name is ${discount.offHighPct.toFixed(0)}% down — the discount looks specific to this stock, not the whole market.`,
+        `The broad market is near its highs (${benchmark.toFixed(0)}% off) while this stock is ${discount.offHighPct.toFixed(0)}% down — the discount is specific to this stock.`,
       );
     }
   }
@@ -381,7 +381,7 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
   if (discount.offHighPct >= 50) {
     confidence -= 15;
     cautions.push(
-      `The markdown is very deep (${discount.offHighPct.toFixed(0)}% off the high) — discounts this large sometimes mean the market sees a problem the numbers don't show yet.`,
+      `A very deep markdown (${discount.offHighPct.toFixed(0)}% off the high) — sometimes the market sees a problem the numbers don't show yet.`,
     );
   }
 
@@ -401,7 +401,7 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
         Math.min(confidence, 55) -
         Math.min((streak.days - FIRESALE_STALE_MIN_DAYS) / 14, 15);
       cautions.push(
-        `It's been flagged as a fire sale for about ${weeksFlagged} weeks without recovering — the longer a discount persists, the more likely the market sees something the numbers don't.`,
+        `Flagged as a fire sale for about ${weeksFlagged} weeks without recovering — the longer a discount persists, the more likely the market sees something the numbers don't.`,
       );
     } else {
       reasons.push(
@@ -440,7 +440,7 @@ function buildFireSale(discount, pillars, metrics, ctx = {}) {
 function fireSaleFindings(fireSale) {
   return [
     bull(
-      `Fire sale flagged (${fireSale.signalLabel.toLowerCase()}) — on sale, not broken: priced low on a healthy business, with room to bounce back. (Discounts can keep discounting: the exit line still applies.)`,
+      `Fire sale flagged (${fireSale.signalLabel.toLowerCase()}) — priced low on a healthy business, not a broken one. (Discounts can keep discounting: the exit line still applies.)`,
       2,
     ),
     ...fireSale.reasons.map((r) => bull(`Why: ${r}`, 1)),
@@ -482,11 +482,11 @@ function momentumFinding(momentum, finalComposite) {
   const to = finalComposite.toFixed(0);
   return momentum.nudge < 0
     ? bear(
-        `The committee's own score has been sliding (${from} → ${to} since ${momentum.past.day}) — the picture is deteriorating, not stabilizing`,
+        `The committee's own score is sliding (${from} → ${to} since ${momentum.past.day}) — the picture is deteriorating`,
         1,
       )
     : bull(
-        `The committee's own score has been climbing (${from} → ${to} since ${momentum.past.day}) — the picture is improving`,
+        `The committee's own score is climbing (${from} → ${to} since ${momentum.past.day}) — the picture is improving`,
         1,
       );
 }
@@ -630,9 +630,9 @@ function buildExitPlan(metrics, bearAgent, pillars, tier, conviction) {
     trimPct,
     fullExit: trimPct >= 100,
     reinvest: [
-      "You don't have to reinvest right away — cash is a position too. Wait for an idea that actually scores Buy here.",
-      "If you want to stay invested, compare against your other holdings: money freed up here is best moved toward the ones this committee rates Buy.",
-      "If nothing on your list qualifies, a broad market index fund is the boring-but-sound default while you look.",
+      "No rush to reinvest — cash is a position too. Wait for an idea that actually scores Buy here.",
+      "To stay invested, move the freed-up money toward holdings this committee rates Buy.",
+      "If nothing qualifies, a broad market index fund is the boring-but-sound default while you look.",
     ],
     actionable: true,
   };
@@ -673,7 +673,7 @@ function buildPlanFindings(action, tier, plan) {
       const [t0, t1, t2] = plan.tranches;
       out.push(
         neutral(
-          `If buying: ease in rather than all at once — about ${t0.pct}% of your planned amount ${t0.when}, then ${t1.pct}% ${t1.when} and ${t2.pct}% ${t2.when}. Keep the whole position under about ${plan.positionSizePct.toFixed(0)}% of your portfolio.`,
+          `If buying, ease in: ~${t0.pct}% of your planned amount ${t0.when}, ${t1.pct}% ${t1.when}, ${t2.pct}% ${t2.when} — and keep the position under ~${plan.positionSizePct.toFixed(0)}% of your portfolio.`,
           1,
         ),
       );
@@ -693,13 +693,13 @@ function buildPlanFindings(action, tier, plan) {
     );
     out.push(
       neutral(
-        `For a long-term position: above that line, ignore the day-to-day noise. ${fmtPrice(plan.targetPrice)} is a checkpoint to re-review the thesis — not an order to sell a winner.`,
+        `Above that line, ignore day-to-day noise; ${fmtPrice(plan.targetPrice)} is a checkpoint to re-review the thesis, not an order to sell a winner.`,
         1,
       ),
     );
     out.push(
       neutral(
-        "Below it, sell rather than averaging down — being wrong small is how long-term investors stay in the game.",
+        "Below it, sell rather than average down — being wrong small keeps you in the game.",
         1,
       ),
     );
@@ -710,8 +710,8 @@ function buildPlanFindings(action, tier, plan) {
     out.push(
       bear(
         tier === "Reduce"
-          ? "The evidence leans negative — if you hold this, trimming the position beats adding to it."
-          : "The weight of evidence is firmly negative — if you hold this, consider exiting rather than riding it down.",
+          ? "The evidence leans negative — if you hold this, trimming beats adding."
+          : "The evidence is firmly negative — if you hold this, consider exiting rather than riding it down.",
         2,
       ),
     );
@@ -719,8 +719,8 @@ function buildPlanFindings(action, tier, plan) {
       out.push(
         neutral(
           plan.fullExit
-            ? "How much: the committee's confidence is high enough to close the whole position rather than average down."
-            : `How much: sell about ${plan.trimPct}% of the position now and reassess the rest — sized to the committee's ${plan.trimPct >= 50 ? "firmer" : "lower"} confidence in this call.`,
+            ? "How much: confidence is high enough to close the whole position rather than average down."
+            : `How much: sell ~${plan.trimPct}% now and reassess the rest — sized to the committee's ${plan.trimPct >= 50 ? "firmer" : "lower"} confidence.`,
           1,
         ),
       );
@@ -729,7 +729,7 @@ function buildPlanFindings(action, tier, plan) {
     if (Number.isFinite(plan.reclaimPrice)) {
       out.push(
         neutral(
-          `We'd revisit this call if the price recovers above its 50-day average (about ${fmtPrice(plan.reclaimPrice)}).`,
+          `We'd revisit this call above its 50-day average (about ${fmtPrice(plan.reclaimPrice)}).`,
           1,
         ),
       );
@@ -741,7 +741,7 @@ function buildPlanFindings(action, tier, plan) {
   // HOLD
   out.push(
     neutral(
-      "No edge either way right now — the committee wouldn't put new money in or pull money out.",
+      "No edge either way right now — the committee wouldn't add new money or pull money out.",
       1,
     ),
   );
@@ -1230,7 +1230,7 @@ export function runPortfolioManager({
       ...(chaseCapped
         ? [
             neutral(
-              `Would be a Strong Buy on the numbers, but the stock has gone nearly vertical (RSI ${rsi14.toFixed(0)}) — wait for a pullback rather than chasing it here.`,
+              `Strong Buy on the numbers, but it's gone nearly vertical (RSI ${rsi14.toFixed(0)}) — wait for a pullback rather than chasing.`,
               1,
             ),
           ]
@@ -1238,7 +1238,7 @@ export function runPortfolioManager({
       ...(evidenceCapped
         ? [
             neutral(
-              "Would be a Strong Buy on the chart, but no company financials are saved — the top rating needs the full picture. Refresh this symbol's fundamentals.",
+              "Strong Buy on the chart, but no company financials are saved — refresh this symbol to give the top rating the full picture.",
               1,
             ),
           ]

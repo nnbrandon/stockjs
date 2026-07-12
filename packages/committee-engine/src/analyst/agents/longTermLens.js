@@ -47,14 +47,14 @@ function analyzeConsistency(annualDesc) {
   if (upYears === pairs) {
     findings.push(
       bull(
-        `Sales have grown every year for the last ${years} years — a steady grower, not a one-quarter story`,
+        `Sales have grown every year for ${years} years — a steady grower, not a one-quarter story`,
         2,
       ),
     );
   } else if (upYears <= pairs / 2) {
     findings.push(
       bear(
-        `Sales grew in only ${upYears} of the last ${pairs} years — growth has been unreliable for a while, not just recently`,
+        `Sales grew in only ${upYears} of the last ${pairs} years — growth has been unreliable for a while`,
         2,
       ),
     );
@@ -71,7 +71,7 @@ function analyzeConsistency(annualDesc) {
     if (profitableYears === profitRows.length) {
       findings.push(
         bull(
-          `Made a profit in each of the last ${profitRows.length} years — a business that reliably earns money`,
+          `Profitable in each of the last ${profitRows.length} years — reliably earns money`,
           1,
         ),
       );
@@ -100,14 +100,14 @@ function analyzeConsistency(annualDesc) {
     if (drift >= 3) {
       findings.push(
         bull(
-          `Profitability has improved over the years — keeps ${drift.toFixed(0)} cents more of each sales dollar than ${years} years ago`,
+          `Profitability improving over the years — keeps ${drift.toFixed(0)}¢ more per sales dollar than ${years} years ago`,
           1,
         ),
       );
     } else if (drift <= -3) {
       findings.push(
         bear(
-          `Profitability has been eroding for years — keeps ${Math.abs(drift).toFixed(0)} cents less of each sales dollar than ${years} years ago`,
+          `Profitability eroding for years — keeps ${Math.abs(drift).toFixed(0)}¢ less per sales dollar than ${years} years ago`,
           1,
         ),
       );
@@ -169,14 +169,14 @@ function analyzeShareCount(quarterlyDesc, annualDesc) {
     if (perYearPct <= -0.75) {
       findings.push(
         bull(
-          `Buying back its own shares — the share count fell ${Math.abs(totalChangePct).toFixed(1)}% over ${spanLabel}, so each share you own is a growing slice of the company`,
+          `Buying back its own shares — count down ${Math.abs(totalChangePct).toFixed(1)}% over ${spanLabel}, so each share you own is a growing slice`,
           Math.abs(perYearPct) >= 2 ? 2 : 1,
         ),
       );
     } else if (perYearPct >= 2) {
       findings.push(
         bear(
-          `Keeps issuing new shares — the share count grew ${totalChangePct.toFixed(1)}% over ${spanLabel}, so each share you own becomes a thinner slice (dilution)`,
+          `Keeps issuing new shares — count up ${totalChangePct.toFixed(1)}% over ${spanLabel}, so each share you own becomes a thinner slice (dilution)`,
           perYearPct >= 5 ? 2 : 1,
         ),
       );
@@ -234,7 +234,7 @@ function analyzeDividends(quarterlyDesc, annualDesc, price) {
       components.push(18);
       findings.push(
         bear(
-          `Pays a dividend (${yieldBit}) while the business burns cash — payouts like this often get cut`,
+          `Pays a dividend (${yieldBit}) while burning cash — payouts like this often get cut`,
           2,
         ),
       );
@@ -245,14 +245,14 @@ function analyzeDividends(quarterlyDesc, annualDesc, price) {
         components.push(78);
         findings.push(
           bull(
-            `Pays ${yieldBit} and can comfortably afford it — the payout uses only ${payoutPct.toFixed(0)}% of the spare cash the business generates`,
+            `Pays ${yieldBit} and can comfortably afford it (only ${payoutPct.toFixed(0)}% of its spare cash)`,
             1,
           ),
         );
       } else if (payoutPct <= 95) {
         findings.push(
           neutral(
-            `Pays ${yieldBit}, but the payout uses ${payoutPct.toFixed(0)}% of its spare cash — affordable, with little room to grow it`,
+            `Pays ${yieldBit} — uses ${payoutPct.toFixed(0)}% of its spare cash, so affordable but little room to grow`,
             1,
           ),
         );
@@ -260,7 +260,7 @@ function analyzeDividends(quarterlyDesc, annualDesc, price) {
         components.push(25);
         findings.push(
           bear(
-            `Pays ${yieldBit}, but the payout costs more than the spare cash the business generates — dividends like this sometimes get cut`,
+            `Pays ${yieldBit}, but the payout costs more than the spare cash it generates — dividends like this sometimes get cut`,
             2,
           ),
         );
@@ -281,14 +281,14 @@ function analyzeDividends(quarterlyDesc, annualDesc, price) {
       if (growth >= 4) {
         findings.push(
           bull(
-            `The dividend is growing — total payouts rose ${growth.toFixed(0)}% versus the prior year`,
+            `Dividend growing — payouts up ${growth.toFixed(0)}% vs. the prior year`,
             1,
           ),
         );
       } else if (growth <= -4) {
         findings.push(
           bear(
-            `The dividend has been shrinking — total payouts fell ${Math.abs(growth).toFixed(0)}% versus the prior year`,
+            `Dividend shrinking — payouts down ${Math.abs(growth).toFixed(0)}% vs. the prior year`,
             1,
           ),
         );

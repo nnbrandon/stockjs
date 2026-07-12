@@ -75,21 +75,21 @@ export function analyzeEarningsHistory(earnings = []) {
   } else if (beatRate >= 75) {
     findings.push(
       bull(
-        `Usually beats profit expectations — ${beats} of the last ${tracked.length} ${quarterLabel} (${beatRate.toFixed(0)}% hit rate)`,
+        `Usually beats profit expectations — ${beats} of the last ${tracked.length} ${quarterLabel}`,
         2,
       ),
     );
   } else if (beatRate < 50) {
     findings.push(
       bear(
-        `Often misses profit expectations — only ${beats} of the last ${tracked.length} ${quarterLabel} beat (${beatRate.toFixed(0)}% hit rate)`,
+        `Often misses profit expectations — only ${beats} of the last ${tracked.length} ${quarterLabel} beat`,
         2,
       ),
     );
   } else {
     findings.push(
       neutral(
-        `Mixed record vs. profit expectations — beat ${beats} of the last ${tracked.length} ${quarterLabel} (${beatRate.toFixed(0)}% hit rate)`,
+        `Mixed record vs. profit expectations — beat ${beats} of the last ${tracked.length} ${quarterLabel}`,
         1,
       ),
     );
@@ -101,21 +101,21 @@ export function analyzeEarningsHistory(earnings = []) {
     if (latest.surprisePercent > EPS_SURPRISE_THRESH) {
       findings.push(
         bull(
-          `Latest quarter crushed the estimate by ${latest.surprisePercent.toFixed(1)}% ($${actual} vs. $${estimate} expected)`,
+          `Latest quarter crushed the estimate ($${actual} vs. $${estimate}, +${latest.surprisePercent.toFixed(1)}%)`,
           streak >= 3 && streakIsBeat ? 1 : 2,
         ),
       );
     } else if (latest.surprisePercent < -EPS_SURPRISE_THRESH) {
       findings.push(
         bear(
-          `Latest quarter fell short of the estimate by ${Math.abs(latest.surprisePercent).toFixed(1)}% ($${actual} vs. $${estimate} expected)`,
+          `Latest quarter missed the estimate ($${actual} vs. $${estimate}, -${Math.abs(latest.surprisePercent).toFixed(1)}%)`,
           2,
         ),
       );
     } else {
       findings.push(
         neutral(
-          `Latest quarter landed near the estimate ($${actual} vs. $${estimate} expected)`,
+          `Latest quarter landed near the estimate ($${actual} vs. $${estimate})`,
           1,
         ),
       );
@@ -139,14 +139,14 @@ export function analyzeEarningsHistory(earnings = []) {
     if (revYoY > 10) {
       findings.push(
         bull(
-          `Revenue from the latest report grew ${revYoY.toFixed(0)}% vs. the same quarter last year`,
+          `Latest report: revenue up ${revYoY.toFixed(0)}% vs. the same quarter last year`,
           1,
         ),
       );
     } else if (revYoY < -5) {
       findings.push(
         bear(
-          `Revenue from the latest report shrank ${Math.abs(revYoY).toFixed(0)}% vs. the same quarter last year`,
+          `Latest report: revenue down ${Math.abs(revYoY).toFixed(0)}% vs. the same quarter last year`,
           1,
         ),
       );
